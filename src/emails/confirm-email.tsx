@@ -14,6 +14,7 @@ import {
   Tailwind,
   Text,
 } from 'react-email';
+import type { ReactElement, ReactNode } from 'react';
 
 const GITHUB_URL = 'https://github.com/Gerard-Devlin/Luma';
 
@@ -41,6 +42,11 @@ const boxedTailwindConfig = {
   },
 };
 
+const EmailTailwind = Tailwind as (props: {
+  children: ReactNode;
+  config: typeof boxedTailwindConfig;
+}) => ReactElement | null;
+
 type ConfirmEmailProps = {
   companyName: string;
   logoUrl: string;
@@ -57,7 +63,7 @@ export function ConfirmEmail({
   username,
 }: ConfirmEmailProps) {
   return (
-    <Tailwind config={boxedTailwindConfig}>
+    <EmailTailwind config={boxedTailwindConfig}>
       <Html>
         <Head />
         <Body className='m-0 bg-bg-2 text-center font-sans'>
@@ -164,7 +170,7 @@ export function ConfirmEmail({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 
