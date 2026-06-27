@@ -72,7 +72,7 @@ For Docker, Vercel, Cloudflare Workers, storage backends, and environment variab
 
 ## License
 
-[MIT](LICENSE) (c) 2026 Luma Contributors
+[Apache-2.0](LICENSE) (c) 2026 Luma Contributors
 
 ## Acknowledgements
 
