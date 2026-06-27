@@ -118,7 +118,9 @@ function LoginPageClient() {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(
     null
@@ -143,6 +145,32 @@ function LoginPageClient() {
     setRuntimeConfig(runtime ?? null);
   }, []);
 
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (!verified) return;
+
+    if (verified === '1') {
+      const verifiedUsername = searchParams.get('username');
+      if (verifiedUsername) {
+        setUsername(verifiedUsername);
+      }
+      setAuthMode('login');
+      setError(null);
+      setSuccess('Email confirmed. You can sign in now.');
+      return;
+    }
+
+    const reason = searchParams.get('reason');
+    setSuccess(null);
+    setError(
+      reason === 'exists'
+        ? 'This username or email is already registered.'
+        : reason === 'server'
+        ? 'Confirmation failed because of a server error. Please try again.'
+        : 'This confirmation link is invalid or expired.'
+    );
+  }, [searchParams]);
+
   const storageType = runtimeConfig?.STORAGE_TYPE ?? 'localstorage';
   const canShowRegister =
     isRegisterPreview || Boolean(runtimeConfig?.ENABLE_REGISTER);
@@ -165,6 +193,7 @@ function LoginPageClient() {
 
   const handleLogin = async () => {
     setError(null);
+    setSuccess(null);
 
     if (!password || (showUsernameField && !username)) return;
     if (isTurnstileEnabled && !turnstileToken) {
@@ -209,12 +238,13 @@ function LoginPageClient() {
 
   const handleRegister = async () => {
     setError(null);
+    setSuccess(null);
 
     if (isPreviewOnlyRegister) {
       return;
     }
 
-    if (!password || !username) return;
+    if (!password || !username || !email) return;
     if (isTurnstileEnabled && !turnstileToken) {
       setError('Please complete the verification challenge.');
       return;
@@ -224,6 +254,7 @@ function LoginPageClient() {
       setLoading(true);
       const payload: Record<string, unknown> = {
         username,
+        email,
         password,
       };
       if (isTurnstileEnabled) {
@@ -237,8 +268,16 @@ function LoginPageClient() {
       });
 
       if (res.ok) {
-        const redirect = searchParams.get('redirect') || '/';
-        router.replace(redirect);
+        const data = (await res.json().catch(() => ({}))) as {
+          email?: string;
+        };
+        setPassword('');
+        setEmail('');
+        setAuthMode('login');
+        setSuccess(
+          `Confirmation link sent to ${data.email || email}. Check your email.`
+        );
+        resetTurnstile();
       } else {
         const data = await res.json().catch(() => ({}));
         setError((data as { error?: string }).error ?? 'Server error.');
@@ -297,6 +336,24 @@ function LoginPageClient() {
             </div>
           )}
 
+          {authMode === 'register' && (
+            <div className='space-y-2'>
+              <label htmlFor='email' className='sr-only'>
+                Email
+              </label>
+              <input
+                id='email'
+                type='email'
+                autoComplete='email'
+                className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
+                placeholder='Enter email address'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
           <div className='space-y-2'>
             <label htmlFor='password' className='sr-only'>
               Password
@@ -336,12 +393,19 @@ function LoginPageClient() {
             <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
           )}
 
+          {success && (
+            <p className='text-sm text-emerald-700 dark:text-emerald-300'>
+              {success}
+            </p>
+          )}
+
           <button
             type='submit'
             disabled={
               loading ||
               !password ||
               (showUsernameField && !username) ||
+              (authMode === 'register' && !email) ||
               (isTurnstileEnabled && !turnstileToken)
             }
             className={`${primaryActionClassName} w-full`}
@@ -364,6 +428,7 @@ function LoginPageClient() {
                     type='button'
                     onClick={() => {
                       setError(null);
+                      setSuccess(null);
                       setAuthMode('register');
                     }}
                     disabled={loading}
@@ -379,6 +444,7 @@ function LoginPageClient() {
                     type='button'
                     onClick={() => {
                       setError(null);
+                      setSuccess(null);
                       setAuthMode('login');
                     }}
                     disabled={loading}

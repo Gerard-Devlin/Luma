@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
   username TEXT PRIMARY KEY,
   password TEXT NOT NULL,
+  email TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
@@ -59,6 +60,16 @@ CREATE TABLE IF NOT EXISTS skip_configs (
   UNIQUE(username, source, id_video)
 );
 
+CREATE TABLE IF NOT EXISTS email_registration_tokens (
+  username TEXT NOT NULL,
+  email TEXT PRIMARY KEY,
+  password TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_play_records_username ON play_records(username);
 CREATE INDEX IF NOT EXISTS idx_favorites_username ON favorites(username);
 CREATE INDEX IF NOT EXISTS idx_search_history_username ON search_history(username);
@@ -70,3 +81,5 @@ CREATE INDEX IF NOT EXISTS idx_search_history_username_keyword ON search_history
 CREATE INDEX IF NOT EXISTS idx_search_history_username_created_at ON search_history(username, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_skip_configs_username_source_id ON skip_configs(username, source, id_video);
 CREATE INDEX IF NOT EXISTS idx_search_history_username_id_created_at ON search_history(username, id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_registration_tokens_hash ON email_registration_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_email_registration_tokens_expires ON email_registration_tokens(expires_at);

@@ -167,7 +167,11 @@ export class RedisStorage implements IStorage {
     return `u:${user}:pwd`;
   }
 
-  async registerUser(userName: string, password: string): Promise<void> {
+  async registerUser(
+    userName: string,
+    password: string,
+    _email: string | null = null
+  ): Promise<void> {
     // 简单存储明文密码，生产环境应加密
     await withRetry(() => this.client.set(this.userPwdKey(userName), password));
   }

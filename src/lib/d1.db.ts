@@ -1,7 +1,13 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import {
+  Favorite,
+  IStorage,
+  PendingEmailRegistration,
+  PlayRecord,
+  SkipConfig,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -40,7 +46,8 @@ interface D1ExecResult {
 // 获取全局D1数据库实例
 async function getD1Database(): Promise<D1Database> {
   const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-  const env = getCloudflareContext().env as unknown as { DB: D1Database };
+  const context = await getCloudflareContext({ async: true });
+  const env = context.env as unknown as { DB: D1Database };
 
   return env.DB;
 }
@@ -275,12 +282,18 @@ export class D1Storage implements IStorage {
   }
 
   // 用户相关
-  async registerUser(userName: string, password: string): Promise<void> {
+  async registerUser(
+    userName: string,
+    password: string,
+    email: string | null = null
+  ): Promise<void> {
     try {
       const db = await this.getDatabase();
       await db
-        .prepare('INSERT INTO users (username, password) VALUES (?, ?)')
-        .bind(userName, password)
+        .prepare(
+          'INSERT INTO users (username, password, email) VALUES (?, ?, ?)'
+        )
+        .bind(userName, password, email)
         .run();
     } catch (err) {
       console.error('Failed to register user:', err);
@@ -299,6 +312,92 @@ export class D1Storage implements IStorage {
       return result?.password === password;
     } catch (err) {
       console.error('Failed to verify user:', err);
+      throw err;
+    }
+  }
+
+  async checkEmailExist(email: string): Promise<boolean> {
+    try {
+      const db = await this.getDatabase();
+      const result = await db
+        .prepare('SELECT 1 FROM users WHERE lower(email) = lower(?)')
+        .bind(email)
+        .first();
+
+      return result !== null;
+    } catch (err) {
+      console.error('Failed to check email existence:', err);
+      throw err;
+    }
+  }
+
+  async createEmailRegistration(
+    userName: string,
+    email: string,
+    password: string,
+    tokenHash: string,
+    expiresAt: number
+  ): Promise<void> {
+    try {
+      const db = await this.getDatabase();
+      const now = Math.floor(Date.now() / 1000);
+
+      await db
+        .prepare('DELETE FROM email_registration_tokens WHERE expires_at <= ?')
+        .bind(now)
+        .run();
+
+      await db
+        .prepare(
+          `
+          INSERT OR REPLACE INTO email_registration_tokens
+          (username, email, password, token_hash, expires_at, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `
+        )
+        .bind(userName, email, password, tokenHash, expiresAt, now)
+        .run();
+    } catch (err) {
+      console.error('Failed to create email registration:', err);
+      throw err;
+    }
+  }
+
+  async getEmailRegistrationByTokenHash(
+    tokenHash: string
+  ): Promise<PendingEmailRegistration | null> {
+    try {
+      const db = await this.getDatabase();
+      const now = Math.floor(Date.now() / 1000);
+
+      const result = await db
+        .prepare(
+          `
+          SELECT username, email, password, token_hash, expires_at, created_at
+          FROM email_registration_tokens
+          WHERE token_hash = ? AND expires_at > ?
+        `
+        )
+        .bind(tokenHash, now)
+        .first<PendingEmailRegistration>();
+
+      return result;
+    } catch (err) {
+      console.error('Failed to get email registration:', err);
+      throw err;
+    }
+  }
+
+  async deleteEmailRegistration(email: string): Promise<void> {
+    try {
+      const db = await this.getDatabase();
+
+      await db
+        .prepare('DELETE FROM email_registration_tokens WHERE email = ?')
+        .bind(email)
+        .run();
+    } catch (err) {
+      console.error('Failed to delete email registration:', err);
       throw err;
     }
   }

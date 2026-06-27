@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
+import {
+  createRegistrationVerifyUrl,
+  generateRegistrationToken,
+  isValidEmail,
+  normalizeEmail,
+  sendRegistrationEmail,
+  sha256Hex,
+} from '@/lib/email-registration';
 
 const STORAGE_TYPE =
   (process.env.NEXT_PUBLIC_STORAGE_TYPE as
@@ -12,28 +20,7 @@ const STORAGE_TYPE =
     | 'upstash'
     | undefined) || 'localstorage';
 
-async function generateSignature(
-  data: string,
-  secret: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(data);
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, messageData);
-
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+const REGISTRATION_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 
 async function verifyTurnstileToken(
   req: NextRequest,
@@ -83,20 +70,6 @@ async function verifyTurnstileToken(
   }
 }
 
-async function generateAuthCookie(username: string): Promise<string> {
-  const authData: any = {
-    role: 'user',
-    username,
-    timestamp: Date.now(),
-  };
-
-  const signingKey = process.env.PASSWORD || '';
-  const signature = await generateSignature(username, signingKey);
-  authData.signature = signature;
-
-  return encodeURIComponent(JSON.stringify(authData));
-}
-
 export async function POST(req: NextRequest) {
   try {
     if (STORAGE_TYPE === 'localstorage') {
@@ -124,9 +97,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { username, password, turnstileToken } = body ?? {};
+    const rawUsername = body?.username;
+    const rawEmail = body?.email;
+    const rawPassword = body?.password;
+    const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
+    const email =
+      typeof rawEmail === 'string' ? normalizeEmail(rawEmail) : '';
+    const password = typeof rawPassword === 'string' ? rawPassword : '';
 
-    const turnstilePassed = await verifyTurnstileToken(req, turnstileToken);
+    const turnstilePassed = await verifyTurnstileToken(
+      req,
+      body?.turnstileToken
+    );
     if (!turnstilePassed) {
       return NextResponse.json(
         { error: 'Turnstile verification failed. Please refresh and try again.' },
@@ -134,13 +116,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!username || typeof username !== 'string') {
+    if (!username) {
       return NextResponse.json(
         { error: 'Username is required.' },
         { status: 400 }
       );
     }
-    if (!password || typeof password !== 'string') {
+
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { error: 'Please enter a valid email address.' },
+        { status: 400 }
+      );
+    }
+
+    if (!password) {
       return NextResponse.json(
         { error: 'Password is required.' },
         { status: 400 }
@@ -155,35 +152,63 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const exist = await db.checkUserExist(username);
-      if (exist) {
+      const [userExists, emailExists] = await Promise.all([
+        db.checkUserExist(username),
+        db.checkEmailExist(email),
+      ]);
+
+      if (userExists) {
         return NextResponse.json(
           { error: 'User already exists.' },
           { status: 400 }
         );
       }
 
-      await db.registerUser(username, password);
+      if (emailExists) {
+        return NextResponse.json(
+          { error: 'Email is already registered.' },
+          { status: 400 }
+        );
+      }
 
-      config.UserConfig.Users.push({
+      const token = generateRegistrationToken();
+      const tokenHash = await sha256Hex(token);
+      const expiresAt =
+        Math.floor(Date.now() / 1000) + REGISTRATION_TOKEN_TTL_SECONDS;
+
+      await db.createEmailRegistration(
         username,
-        role: 'user',
-      });
-      await db.saveAdminConfig(config);
+        email,
+        password,
+        tokenHash,
+        expiresAt
+      );
 
-      const response = NextResponse.json({ ok: true });
-      const cookieValue = await generateAuthCookie(username);
-      const expires = new Date();
-      expires.setDate(expires.getDate() + 7);
-      response.cookies.set('auth', cookieValue, {
-        path: '/',
-        expires,
-        sameSite: 'lax',
-        httpOnly: false,
-        secure: false,
-      });
+      try {
+        await sendRegistrationEmail({
+          email,
+          username,
+          verifyUrl: createRegistrationVerifyUrl(req, token),
+        });
+      } catch (emailError) {
+        await db.deleteEmailRegistration(email).catch((deleteError) => {
+          console.error('Failed to clean pending registration:', deleteError);
+        });
+        console.error('Registration email failed', emailError);
+        return NextResponse.json(
+          {
+            error:
+              'Confirmation email could not be sent. Please contact the site owner.',
+          },
+          { status: 500 }
+        );
+      }
 
-      return response;
+      return NextResponse.json({
+        ok: true,
+        pendingEmailVerification: true,
+        email,
+      });
     } catch (err) {
       console.error('Database registration failed', err);
       return NextResponse.json({ error: 'Database error.' }, { status: 500 });
