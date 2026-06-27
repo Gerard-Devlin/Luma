@@ -38,7 +38,8 @@ export default function WatchHistoryRailCard({
   onClickCapture,
 }: WatchHistoryRailCardProps) {
   const clampedProgress = Math.min(100, Math.max(0, progress));
-  const visibleProgress = clampedProgress > 0 ? Math.max(clampedProgress, 14) : 0;
+  const visibleProgress =
+    clampedProgress > 0 ? Math.max(clampedProgress, 14) : 0;
   const showProgress = clampedProgress > 0;
   const rootClick = batchMode ? onToggleSelection : onClick;
 
@@ -71,7 +72,7 @@ export default function WatchHistoryRailCard({
           )}
           <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/18 to-transparent' />
           {showProgress ? (
-            <div className='absolute bottom-3 left-1/2 h-1 w-[82%] -translate-x-1/2 overflow-hidden rounded-full bg-[var(--ui-glass-row-hover)] shadow-[0_0_0_1px_var(--ui-glass-border)]'>
+            <div className='absolute bottom-3 left-1/2 h-1.5 w-[82%] -translate-x-1/2 overflow-hidden rounded-full bg-black/35 backdrop-blur-md'>
               <div
                 className='h-full rounded-full bg-zinc-100/95'
                 style={{ width: `${visibleProgress}%` }}

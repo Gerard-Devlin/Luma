@@ -197,12 +197,177 @@ interface PlayerResolveResponse {
 interface TmdbEmbedProgressState {
   storageId: string;
   episode: number;
-  basePlayTime: number;
+  playTime: number;
   totalTime: number;
+  hasExactTime: boolean;
   startedAt: number | null;
   lastSavedPlayTime: number;
   lastSavedAt: number;
   origin: string;
+}
+
+interface TmdbEmbedProgressMessage {
+  kind: string;
+  currentTime: number | null;
+  duration: number | null;
+}
+
+const TMDB_EMBED_PROGRESS_EVENT_NAMES = new Set([
+  'durationchange',
+  'play',
+  'playing',
+  'pause',
+  'paused',
+  'progress',
+  'ready',
+  'seeked',
+  'time',
+  'timeupdate',
+  'video:timeupdate',
+  'player:timeupdate',
+  'update',
+  'ended',
+  'complete',
+]);
+
+const TMDB_EMBED_TIME_KEYS = [
+  'currentTime',
+  'current_time',
+  'playTime',
+  'play_time',
+  'position',
+  'seconds',
+  'time',
+  'timestamp',
+];
+
+const TMDB_EMBED_DURATION_KEYS = [
+  'duration',
+  'totalTime',
+  'total_time',
+  'length',
+];
+
+function normalizeNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function parseMessagePayload(data: unknown): unknown {
+  if (typeof data !== 'string') return data;
+  const trimmed = data.trim();
+  if (!trimmed) return data;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return data;
+  }
+}
+
+function findNestedNumber(
+  input: unknown,
+  keys: string[],
+  depth = 0
+): number | null {
+  if (depth > 4 || input === null || input === undefined) return null;
+  const direct = normalizeNumber(input);
+  if (direct !== null && depth > 0) return direct;
+  if (typeof input !== 'object') return null;
+
+  const record = input as Record<string, unknown>;
+  for (const key of keys) {
+    const value = normalizeNumber(record[key]);
+    if (value !== null) return value;
+  }
+
+  for (const key of ['value', 'payload', 'data', 'detail', 'state', 'player']) {
+    const value = findNestedNumber(record[key], keys, depth + 1);
+    if (value !== null) return value;
+  }
+
+  const args = record.args;
+  if (Array.isArray(args)) {
+    for (const item of args) {
+      const value = findNestedNumber(item, keys, depth + 1);
+      if (value !== null) return value;
+    }
+  }
+
+  return null;
+}
+
+function findNestedString(input: unknown, depth = 0): string {
+  if (depth > 3 || input === null || input === undefined) return '';
+  if (typeof input === 'string') return input;
+  if (typeof input !== 'object') return '';
+
+  const record = input as Record<string, unknown>;
+  for (const key of ['event', 'type', 'action', 'name', 'method']) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+
+  for (const key of ['value', 'payload', 'data', 'detail', 'state']) {
+    const value = findNestedString(record[key], depth + 1);
+    if (value) return value;
+  }
+
+  return '';
+}
+
+function extractTmdbEmbedProgressMessage(
+  rawData: unknown
+): TmdbEmbedProgressMessage | null {
+  const data = parseMessagePayload(rawData);
+  const eventName = findNestedString(data).toLowerCase();
+  const currentTime = findNestedNumber(data, TMDB_EMBED_TIME_KEYS);
+  const duration = findNestedNumber(data, TMDB_EMBED_DURATION_KEYS);
+
+  if (!eventName && currentTime === null && duration === null) {
+    return null;
+  }
+
+  if (
+    eventName &&
+    !TMDB_EMBED_PROGRESS_EVENT_NAMES.has(eventName) &&
+    currentTime === null &&
+    duration === null
+  ) {
+    return null;
+  }
+
+  return {
+    kind: eventName || 'timeupdate',
+    currentTime,
+    duration,
+  };
+}
+
+function getUrlOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+}
+
+function addResumeParamsToEmbedUrl(url: string, resumeTime: number): string {
+  if (!url || !Number.isFinite(resumeTime) || resumeTime < 2) return url;
+  try {
+    const nextUrl = new URL(url);
+    const seconds = String(Math.floor(resumeTime));
+    // Different embed providers use different names; unknown params are ignored.
+    ['start', 'startAt', 't', 'time', 'resume', 'resumeTime'].forEach((key) => {
+      nextUrl.searchParams.set(key, seconds);
+    });
+    return nextUrl.toString();
+  } catch {
+    return url;
+  }
 }
 
 function PlayPageClient() {
@@ -237,7 +402,9 @@ function PlayPageClient() {
   const [loadingStage, setLoadingStage] = useState<
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
-  const [loadingMessage, setLoadingMessage] = useState('Searching playback sources...');
+  const [loadingMessage, setLoadingMessage] = useState(
+    'Searching playback sources...'
+  );
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SearchResult | null>(null);
   const [tmdbDetail, setTmdbDetail] = useState<TmdbPlayDetail | null>(null);
@@ -271,8 +438,7 @@ function PlayPageClient() {
   const [canScrollCastRight, setCanScrollCastRight] = useState(false);
   const [castRailHovered, setCastRailHovered] = useState(false);
   const collectionRailRef = useRef<HTMLDivElement | null>(null);
-  const [canScrollCollectionLeft, setCanScrollCollectionLeft] =
-    useState(false);
+  const [canScrollCollectionLeft, setCanScrollCollectionLeft] = useState(false);
   const [canScrollCollectionRight, setCanScrollCollectionRight] =
     useState(false);
   const [collectionRailHovered, setCollectionRailHovered] = useState(false);
@@ -420,6 +586,8 @@ function PlayPageClient() {
     playerPlaybackType
   );
   const playerEmbedUrlRef = useRef(playerEmbedUrl);
+  const tmdbEmbedIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const tmdbEmbedProgressRef = useRef<TmdbEmbedProgressState | null>(null);
   const historyResumeKeysRef = useRef<Set<string>>(new Set());
 
   // 同步最新值到 refs
@@ -457,6 +625,7 @@ function PlayPageClient() {
 
   // 视频播放地址
   const [videoUrl, setVideoUrl] = useState('');
+  const isTmdbEmbedPlayback = Boolean(playerEmbedUrl && !videoUrl);
 
   // 总集数
   const totalEpisodes = detail?.episodes?.length || 0;
@@ -994,11 +1163,17 @@ function PlayPageClient() {
       videoCoverRef.current ||
       '';
     const year =
-      detailData?.year || searchParams.get('year') || videoYearRef.current || '';
+      detailData?.year ||
+      searchParams.get('year') ||
+      videoYearRef.current ||
+      '';
     const episodeCount =
       resolved.mediaType === 'movie'
         ? 1
-        : Math.max(1, resolved.seasonDetail?.episodeCount || resolved.episodeCount);
+        : Math.max(
+            1,
+            resolved.seasonDetail?.episodeCount || resolved.episodeCount
+          );
     const activeUrl = resolved.directUrl || resolved.embedUrl || '';
 
     return {
@@ -1077,7 +1252,144 @@ function PlayPageClient() {
     resolved: PlayerResolveResponse,
     detailData: TmdbPlayDetail | null
   ): string => {
-    return detailData?.backdrop || detailData?.poster || videoCoverRef.current || '';
+    return (
+      detailData?.backdrop || detailData?.poster || videoCoverRef.current || ''
+    );
+  };
+
+  const buildTmdbPlaybackRecord = (
+    resolved: PlayerResolveResponse,
+    detailData: TmdbPlayDetail | null,
+    progress: { playTime?: number; totalTime?: number } = {}
+  ): PlayRecord | null => {
+    const title = (
+      detailData?.title ||
+      videoTitleRef.current ||
+      searchParams.get('title') ||
+      `TMDB ${resolved.tmdbId}`
+    ).trim();
+    if (!title) return null;
+
+    const runtimeSeconds = getTmdbResolvedRuntimeSeconds(resolved, detailData);
+    const playTime = Math.max(0, Math.floor(progress.playTime || 0));
+    const totalTime = Math.max(
+      0,
+      Math.floor(progress.totalTime || runtimeSeconds || 0)
+    );
+
+    return {
+      title,
+      source_name: resolved.sourceName || resolved.provider.label,
+      year: detailData?.year || videoYearRef.current || '',
+      cover: getTmdbResolvedHistoryImage(resolved, detailData),
+      index: resolved.mediaType === 'tv' ? resolved.episode : 1,
+      total_episodes:
+        resolved.mediaType === 'tv'
+          ? Math.max(
+              1,
+              resolved.seasonDetail?.episodeCount ||
+                resolved.episodeCount ||
+                resolved.episode
+            )
+          : 1,
+      play_time: playTime,
+      total_time: totalTime,
+      save_time: Date.now(),
+      search_title: title,
+    };
+  };
+
+  const saveTmdbEmbedPlayProgress = async (force = false) => {
+    const state = tmdbEmbedProgressRef.current;
+    if (!state || !tmdbModeRef.current || !currentIdRef.current) return;
+
+    const now = Date.now();
+    let playTime = state.playTime;
+    if (
+      !state.hasExactTime &&
+      state.startedAt !== null &&
+      !Number.isNaN(state.startedAt)
+    ) {
+      playTime += Math.max(0, (now - state.startedAt) / 1000);
+    }
+
+    const flooredPlayTime = Math.max(0, Math.floor(playTime));
+    const flooredTotalTime = Math.max(0, Math.floor(state.totalTime || 0));
+    if (
+      !force &&
+      flooredPlayTime <= state.lastSavedPlayTime &&
+      now - state.lastSavedAt < 15000
+    ) {
+      return;
+    }
+    if (flooredPlayTime < 1 && flooredTotalTime < 1) return;
+
+    const recordTitle =
+      (tmdbModeRef.current ? tmdbDetail?.title : '') ||
+      videoTitleRef.current ||
+      detailRef.current?.title ||
+      '';
+    if (!recordTitle || !detailRef.current?.source_name) return;
+
+    try {
+      await savePlayRecord('tmdb', state.storageId, {
+        title: recordTitle,
+        source_name: detailRef.current.source_name,
+        year: detailRef.current.year || videoYearRef.current || '',
+        cover: detailRef.current.poster || videoCoverRef.current || '',
+        index: state.episode,
+        total_episodes: detailRef.current.episodes.length || 1,
+        play_time: flooredPlayTime,
+        total_time: flooredTotalTime,
+        save_time: Date.now(),
+        search_title: recordTitle,
+      });
+      state.playTime = flooredPlayTime;
+      state.startedAt = state.hasExactTime ? null : now;
+      state.lastSavedPlayTime = flooredPlayTime;
+      state.lastSavedAt = now;
+      lastSaveTimeRef.current = now;
+    } catch (err) {
+      console.error('Failed to save TMDB embed playback progress:', err);
+    }
+  };
+
+  const postTmdbEmbedResume = () => {
+    const iframeWindow = tmdbEmbedIframeRef.current?.contentWindow;
+    const state = tmdbEmbedProgressRef.current;
+    if (!iframeWindow || !state || state.playTime < 2) return;
+
+    const targetOrigin = state.origin || '*';
+    const seconds = Math.floor(state.playTime);
+    [
+      { type: 'seek', time: seconds },
+      { type: 'seekTo', time: seconds },
+      { event: 'seek', currentTime: seconds },
+      { method: 'setCurrentTime', value: seconds },
+      { method: 'seekTo', value: seconds },
+      { command: 'seek', seconds },
+      { action: 'seek', currentTime: seconds },
+      { name: 'setCurrentTime', args: [seconds] },
+      { event: 'player:seek', data: { currentTime: seconds } },
+      {
+        context: 'player.js',
+        version: '0.0.11',
+        method: 'setCurrentTime',
+        value: seconds,
+      },
+      {
+        context: 'player.js',
+        version: '0.0.11',
+        method: 'seekTo',
+        value: seconds,
+      },
+    ].forEach((message) => {
+      try {
+        iframeWindow.postMessage(message, targetOrigin);
+      } catch {
+        // Ignore providers that reject a message shape.
+      }
+    });
   };
 
   const saveTmdbPlaybackSnapshot = async (
@@ -1118,29 +1430,31 @@ function PlayPageClient() {
       existingRecord && existingRecord.index === resolved.episode
         ? existingRecord
         : null;
-    const runtimeSeconds = getTmdbResolvedRuntimeSeconds(resolved, detailData);
+    const nextRecord = buildTmdbPlaybackRecord(resolved, detailData, {
+      playTime: existingSameEpisode?.play_time || 0,
+      totalTime: existingSameEpisode?.total_time || undefined,
+    });
+    if (!nextRecord) return;
 
     try {
-      await savePlayRecord('tmdb', storageId, {
-        title,
-        source_name: resolved.sourceName || resolved.provider.label,
-        year: detailData?.year || videoYearRef.current || '',
-        cover: getTmdbResolvedHistoryImage(resolved, detailData),
-        index: resolved.mediaType === 'tv' ? resolved.episode : 1,
-        total_episodes:
-          resolved.mediaType === 'tv'
-            ? Math.max(
-                1,
-                resolved.seasonDetail?.episodeCount ||
-                  resolved.episodeCount ||
-                  resolved.episode
-              )
-            : 1,
-        play_time: existingSameEpisode?.play_time || 0,
-        total_time: runtimeSeconds || existingSameEpisode?.total_time || 0,
-        save_time: Date.now(),
-        search_title: title,
-      });
+      await savePlayRecord('tmdb', storageId, nextRecord);
+      if (!resolved.directUrl && resolved.embedUrl) {
+        tmdbEmbedProgressRef.current = {
+          storageId,
+          episode: nextRecord.index,
+          playTime: nextRecord.play_time,
+          totalTime: nextRecord.total_time,
+          hasExactTime: false,
+          startedAt: null,
+          lastSavedPlayTime: nextRecord.play_time,
+          lastSavedAt: Date.now(),
+          origin: getUrlOrigin(resolved.embedUrl),
+        };
+        resumeTimeRef.current = nextRecord.play_time;
+        if (nextRecord.play_time > 1) {
+          window.setTimeout(postTmdbEmbedResume, 0);
+        }
+      }
     } catch (err) {
       console.error('Failed to save TMDB watch snapshot:', err);
     }
@@ -1161,9 +1475,7 @@ function PlayPageClient() {
     setPlayerProvider(resolved.provider.id);
     setPlayerPlaybackType(resolved.playbackType);
     setTmdbEpisodes(
-      resolved.mediaType === 'tv'
-        ? resolved.seasonDetail?.episodes || []
-        : []
+      resolved.mediaType === 'tv' ? resolved.seasonDetail?.episodes || [] : []
     );
     setCurrentSource('tmdb');
     setCurrentId(resolved.storageId);
@@ -1172,7 +1484,14 @@ function PlayPageClient() {
     setVideoCover(syntheticDetail.poster);
     setDetail(syntheticDetail);
     setCurrentEpisodeIndex(nextEpisodeIndex);
-    setPlayerEmbedUrl(resolved.directUrl ? '' : resolved.embedUrl || '');
+    setPlayerEmbedUrl(
+      resolved.directUrl
+        ? ''
+        : addResumeParamsToEmbedUrl(
+            resolved.embedUrl || '',
+            resumeTimeRef.current || 0
+          )
+    );
     setVideoUrl(resolved.directUrl || '');
     setNeedPrefer(false);
     syncTmdbPlayerUrl(resolved, detailData);
@@ -1417,7 +1736,10 @@ function PlayPageClient() {
       };
 
       const previousHandler = globalWindow.__onGCastApiAvailable;
-      globalWindow.__onGCastApiAvailable = (available: boolean, ...args: any[]) => {
+      globalWindow.__onGCastApiAvailable = (
+        available: boolean,
+        ...args: any[]
+      ) => {
         if (typeof previousHandler === 'function') {
           previousHandler(available, ...args);
         }
@@ -1439,7 +1761,9 @@ function PlayPageClient() {
       }
 
       window.setTimeout(() => {
-        finish(Boolean(globalWindow.cast?.framework && globalWindow.chrome?.cast));
+        finish(
+          Boolean(globalWindow.cast?.framework && globalWindow.chrome?.cast)
+        );
       }, 6000);
     });
 
@@ -1477,10 +1801,15 @@ function PlayPageClient() {
         }
         if (!session) return false;
 
-        const mediaInfo = new chromeCast.media.MediaInfo(url, getCastMimeType(url));
+        const mediaInfo = new chromeCast.media.MediaInfo(
+          url,
+          getCastMimeType(url)
+        );
         const metadata = new chromeCast.media.GenericMediaMetadata();
         metadata.title = videoTitleRef.current
-          ? `${videoTitleRef.current} - Episode ${currentEpisodeIndexRef.current + 1}`
+          ? `${videoTitleRef.current} - Episode ${
+              currentEpisodeIndexRef.current + 1
+            }`
           : `Episode ${currentEpisodeIndexRef.current + 1}`;
         if (videoCoverRef.current) {
           metadata.images = [new chromeCast.Image(videoCoverRef.current)];
@@ -1557,8 +1886,7 @@ function PlayPageClient() {
     const currentTime = player.currentTime || 0;
     const globalWindow = typeof window !== 'undefined' ? (window as any) : null;
     const nativeBridge =
-      globalWindow?.LumaNative ||
-      globalWindow?.['Neo' + 'Moon' + 'TVNative'];
+      globalWindow?.LumaNative || globalWindow?.['Neo' + 'Moon' + 'TVNative'];
     if (nativeBridge) {
       try {
         // Android WebView wrapper: player cast button should trigger native DLNA device picker.
@@ -1609,7 +1937,11 @@ function PlayPageClient() {
       return;
     }
 
-    if (!preferGoogleCast && castReadyNow && (await startGoogleCast(url, currentTime))) {
+    if (
+      !preferGoogleCast &&
+      castReadyNow &&
+      (await startGoogleCast(url, currentTime))
+    ) {
       player.notice.show = 'Connected to cast device';
       player.pause();
       return;
@@ -1792,7 +2124,8 @@ function PlayPageClient() {
       }
 
       const container =
-        artPlayerRef.current.template?.$video?.parentElement || video.parentElement;
+        artPlayerRef.current.template?.$video?.parentElement ||
+        video.parentElement;
       if (!container) {
         throw new Error('Unable to find the video container');
       }
@@ -1828,7 +2161,13 @@ function PlayPageClient() {
         }
 
         if (video.readyState >= video.HAVE_CURRENT_DATA) {
-          sourceCtx.drawImage(video, 0, 0, sourceCanvas.width, sourceCanvas.height);
+          sourceCtx.drawImage(
+            video,
+            0,
+            0,
+            sourceCanvas.width,
+            sourceCanvas.height
+          );
         }
       }
 
@@ -1859,7 +2198,13 @@ function PlayPageClient() {
       if (isFirefox && sourceCanvas && sourceCtx) {
         const captureVideoFrame = () => {
           if (video.readyState >= video.HAVE_CURRENT_DATA) {
-            sourceCtx!.drawImage(video, 0, 0, sourceCanvas!.width, sourceCanvas!.height);
+            sourceCtx!.drawImage(
+              video,
+              0,
+              0,
+              sourceCanvas!.width,
+              sourceCanvas!.height
+            );
           }
           frameRequestId = requestAnimationFrame(captureVideoFrame);
         };
@@ -1959,7 +2304,9 @@ function PlayPageClient() {
             );
           }
           if (anime4kRef.current.canvas.parentNode) {
-            anime4kRef.current.canvas.parentNode.removeChild(anime4kRef.current.canvas);
+            anime4kRef.current.canvas.parentNode.removeChild(
+              anime4kRef.current.canvas
+            );
           }
         }
 
@@ -2173,6 +2520,7 @@ function PlayPageClient() {
               targetIndex >= 0 &&
               targetIndex !== currentEpisodeIndexRef.current
             ) {
+              resumeTimeRef.current = targetTime;
               void switchTmdbPlayback({ episode: targetIndex + 1 });
               return;
             }
@@ -2246,6 +2594,7 @@ function PlayPageClient() {
     if (tmdbModeRef.current) {
       const nextEpisode = Math.max(1, episodeNumber + 1);
       if (currentEpisodeIndexRef.current + 1 === nextEpisode) return;
+      saveTmdbEmbedPlayProgress(true);
       void switchTmdbPlayback({ episode: nextEpisode });
       return;
     }
@@ -2264,6 +2613,7 @@ function PlayPageClient() {
     const idx = currentEpisodeIndexRef.current;
     if (tmdbModeRef.current) {
       if (idx > 0) {
+        saveTmdbEmbedPlayProgress(true);
         void switchTmdbPlayback({ episode: idx });
       }
       return;
@@ -2282,6 +2632,7 @@ function PlayPageClient() {
     if (tmdbModeRef.current) {
       const total = tmdbEpisodes.length || totalEpisodes || 1;
       if (idx < total - 1) {
+        saveTmdbEmbedPlayProgress(true);
         void switchTmdbPlayback({ episode: idx + 2 });
       }
       return;
@@ -2450,15 +2801,89 @@ function PlayPageClient() {
   };
 
   useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        !tmdbEmbedIframeRef.current ||
+        event.source !== tmdbEmbedIframeRef.current.contentWindow
+      ) {
+        return;
+      }
+
+      const parsed = extractTmdbEmbedProgressMessage(event.data);
+      if (!parsed) return;
+
+      const state = tmdbEmbedProgressRef.current;
+      if (!state) return;
+
+      if (parsed.duration !== null && parsed.duration > 0) {
+        state.totalTime = Math.floor(parsed.duration);
+      }
+
+      if (parsed.currentTime !== null && parsed.currentTime >= 0) {
+        state.playTime = parsed.currentTime;
+        state.hasExactTime = true;
+        state.startedAt = null;
+      } else if (
+        ['play', 'playing', 'ready'].includes(parsed.kind) &&
+        state.startedAt === null
+      ) {
+        state.startedAt = Date.now();
+      } else if (
+        ['pause', 'paused', 'ended', 'complete'].includes(parsed.kind)
+      ) {
+        saveTmdbEmbedPlayProgress(true);
+        state.startedAt = null;
+      }
+
+      if (
+        parsed.currentTime !== null ||
+        parsed.duration !== null ||
+        ['pause', 'paused', 'ended', 'complete'].includes(parsed.kind)
+      ) {
+        const now = Date.now();
+        const interval =
+          process.env.NEXT_PUBLIC_STORAGE_TYPE === 'upstash'
+            ? 20000
+            : process.env.NEXT_PUBLIC_STORAGE_TYPE === 'd1'
+            ? 10000
+            : 5000;
+        if (now - lastSaveTimeRef.current > interval) {
+          saveTmdbEmbedPlayProgress(false);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [tmdbDetail]);
+
+  useEffect(() => {
+    if (!isTmdbEmbedPlayback) return;
+
+    const interval = window.setInterval(
+      () => {
+        saveTmdbEmbedPlayProgress(false);
+      },
+      process.env.NEXT_PUBLIC_STORAGE_TYPE === 'upstash' ? 20000 : 10000
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isTmdbEmbedPlayback, playerEmbedUrl, tmdbDetail]);
+
+  useEffect(() => {
     // 页面即将卸载时保存播放进度
     const handleBeforeUnload = () => {
       saveCurrentPlayProgress();
+      saveTmdbEmbedPlayProgress(true);
     };
 
     // 页面可见性变化时保存播放进度
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         saveCurrentPlayProgress();
+        saveTmdbEmbedPlayProgress(true);
       }
     };
 
@@ -3124,7 +3549,9 @@ function PlayPageClient() {
                     pendingAnime4KInitRef.current = true;
                     void cleanupAnime4K();
                   }
-                  (artPlayerRef.current as any)?.__cleanupFullscreenOrientation?.();
+                  (
+                    artPlayerRef.current as any
+                  )?.__cleanupFullscreenOrientation?.();
                   resumeTimeRef.current = artPlayerRef.current.currentTime;
                   if (
                     artPlayerRef.current.video &&
@@ -3558,7 +3985,10 @@ function PlayPageClient() {
 
       playerInstance.on('fullscreen', handleFullscreenStateChange);
       playerInstance.on('fullscreenWeb', handleFullscreenStateChange);
-      document.addEventListener('fullscreenchange', handleDocumentFullscreenChange);
+      document.addEventListener(
+        'fullscreenchange',
+        handleDocumentFullscreenChange
+      );
       if ((playerInstance.video as any)?.addEventListener) {
         (playerInstance.video as any).addEventListener(
           'webkitbeginfullscreen',
@@ -4058,12 +4488,10 @@ function PlayPageClient() {
     (tmdbDetail?.recommendations || []).filter(
       (item) =>
         !(
-          item.id === tmdbDetail?.id &&
-          item.mediaType === tmdbDetail?.mediaType
+          item.id === tmdbDetail?.id && item.mediaType === tmdbDetail?.mediaType
         )
     ) || [];
   const playBackground = tmdbDetail?.backdrop || tmdbDetail?.poster || '';
-  const isTmdbEmbedPlayback = Boolean(playerEmbedUrl && !videoUrl);
   const seasonOptions =
     tmdbMode && tmdbMediaType === 'tv'
       ? Array.from(
@@ -4183,7 +4611,9 @@ function PlayPageClient() {
     }
 
     if (!resolved) {
-      setRecommendedDetailError('Failed to load details. Please try again later.');
+      setRecommendedDetailError(
+        'Failed to load details. Please try again later.'
+      );
       setRecommendedDetailLoading(false);
       return;
     }
@@ -4203,7 +4633,8 @@ function PlayPageClient() {
       title: playTarget.title,
       mediaType: playTarget.mediaType,
       year: playTarget.year || '',
-      poster: recommendedDetailData?.poster || recommendedDetailData?.backdrop || '',
+      poster:
+        recommendedDetailData?.poster || recommendedDetailData?.backdrop || '',
       score: recommendedDetailData?.score || '',
     });
     window.location.assign(targetUrl);
@@ -4393,8 +4824,12 @@ function PlayPageClient() {
                       title={`${displayTitle} player`}
                       allow='autoplay; encrypted-media; picture-in-picture; fullscreen'
                       allowFullScreen
+                      ref={tmdbEmbedIframeRef}
                       referrerPolicy='origin'
-                      onLoad={() => setIsVideoLoading(false)}
+                      onLoad={() => {
+                        setIsVideoLoading(false);
+                        postTmdbEmbedResume();
+                      }}
                       className='h-full w-full rounded-[var(--ui-radius-card)] border-0 bg-black'
                     />
                   ) : null}
@@ -4440,7 +4875,6 @@ function PlayPageClient() {
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
 
@@ -4484,7 +4918,10 @@ function PlayPageClient() {
                       favorited ? 'Remove from favorites' : 'Add to favorites'
                     }
                   >
-                    <FavoriteIcon filled={favorited} burstKey={favoriteBurstKey} />
+                    <FavoriteIcon
+                      filled={favorited}
+                      burstKey={favoriteBurstKey}
+                    />
                   </button>
                 </div>
 
@@ -4606,7 +5043,10 @@ function PlayPageClient() {
                           className={`absolute left-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             castRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'
@@ -4633,7 +5073,10 @@ function PlayPageClient() {
                           className={`absolute right-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             castRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'
@@ -4740,7 +5183,10 @@ function PlayPageClient() {
                           className={`absolute left-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             collectionRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'
@@ -4767,7 +5213,10 @@ function PlayPageClient() {
                           className={`absolute right-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             collectionRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'
@@ -4864,7 +5313,10 @@ function PlayPageClient() {
                           className={`absolute left-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             recommendedRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'
@@ -4891,7 +5343,10 @@ function PlayPageClient() {
                           className={`absolute right-0 top-0 bottom-0 z-[600] hidden w-16 items-center justify-center transition-opacity duration-200 md:flex ${
                             recommendedRailHovered ? 'opacity-100' : 'opacity-0'
                           }`}
-                          style={{ background: 'transparent', pointerEvents: 'none' }}
+                          style={{
+                            background: 'transparent',
+                            pointerEvents: 'none',
+                          }}
                         >
                           <div
                             className='absolute inset-0 flex items-center justify-center'

@@ -1500,11 +1500,20 @@ export default function VideoCard({
   const cardActionButtonClassName =
     'inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition-all duration-300 ease-out hover:bg-black/60 hover:shadow-[0_10px_28px_rgba(0,0,0,0.36)]';
 
+  const clampedProgress = Math.min(100, Math.max(0, progress || 0));
+  const visibleProgress =
+    clampedProgress > 0 ? Math.max(clampedProgress, 14) : 0;
+  const showProgress = config.showProgress && progress !== undefined;
+  const cardActionPositionClassName =
+    displayVariant === 'poster-info' && showProgress
+      ? 'top-3 right-3'
+      : 'bottom-3 right-3';
+
   const cardActionButtons =
     config.showHeart || config.showCheckCircle ? (
       <div
         data-card-action='true'
-        className='absolute bottom-3 right-3 z-10 flex gap-2 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:translate-y-0'
+        className={`absolute ${cardActionPositionClassName} z-10 flex gap-2 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:translate-y-0`}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -1542,6 +1551,24 @@ export default function VideoCard({
       </div>
     ) : null;
 
+  const progressBar = showProgress ? (
+    <div className='mt-1 h-1 w-full overflow-hidden rounded-full bg-black/35 backdrop-blur-md'>
+      <div
+        className='h-full rounded-full bg-zinc-100/95 transition-all duration-500 ease-out'
+        style={{ width: `${visibleProgress}%` }}
+      />
+    </div>
+  ) : null;
+
+  const posterInfoProgressOverlay = showProgress ? (
+    <div className='absolute bottom-3 left-1/2 z-10 h-1.5 w-[82%] -translate-x-1/2 overflow-hidden rounded-full bg-black/35 backdrop-blur-md'>
+      <div
+        className='h-full rounded-full bg-zinc-100/95 transition-all duration-500 ease-out'
+        style={{ width: `${visibleProgress}%` }}
+      />
+    </div>
+  ) : null;
+
   const cardBody =
     displayVariant === 'poster-info' ? (
       <PosterInfoCard
@@ -1552,7 +1579,12 @@ export default function VideoCard({
         rating={config.showRating ? rate : ''}
         variant='listing'
         onImageLoaded={() => setIsLoading(true)}
-        overlay={cardActionButtons}
+        overlay={
+          <>
+            {cardActionButtons}
+            {posterInfoProgressOverlay}
+          </>
+        }
       />
     ) : (
       <>
@@ -1600,14 +1632,7 @@ export default function VideoCard({
           )}
         </div>
 
-        {config.showProgress && progress !== undefined && (
-          <div className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'>
-            <div
-              className='h-full bg-blue-500 transition-all duration-500 ease-out'
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
+        {progressBar}
 
         <div className='mt-2 text-center'>
           <div className='relative'>
