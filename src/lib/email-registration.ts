@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { render } from '@react-email/render/edge';
+import { render } from 'react-email';
 
 import { ConfirmEmail } from '@/emails/confirm-email';
 
