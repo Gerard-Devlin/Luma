@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { render } from 'react-email';
+import { render } from '@react-email/render';
 
 import { ConfirmEmail } from '@/emails/confirm-email';
 
@@ -117,15 +117,20 @@ async function createRegistrationEmailHtml({
   const logoUrl = new URL('/logo.png', verifyUrl).toString();
   const siteUrl = new URL('/', verifyUrl).toString();
 
-  return render(
-    React.createElement(ConfirmEmail, {
-      companyName: siteName,
-      logoUrl,
-      siteUrl,
-      url: verifyUrl,
-      username,
-    })
-  );
+  try {
+    return await render(
+      React.createElement(ConfirmEmail, {
+        companyName: siteName,
+        logoUrl,
+        siteUrl,
+        url: verifyUrl,
+        username,
+      })
+    );
+  } catch (error) {
+    console.error('React Email render failed:', error);
+    throw new Error('Failed to render confirmation email');
+  }
 }
 
 export async function sendRegistrationEmail({
@@ -136,12 +141,19 @@ export async function sendRegistrationEmail({
   const resendKey = process.env.AUTH_RESEND_KEY || process.env.RESEND_API_KEY;
 
   if (!resendKey) {
+    console.error('Registration email is missing AUTH_RESEND_KEY/RESEND_API_KEY');
     throw new Error('Email service is not configured');
   }
 
   const siteName = process.env.SITE_NAME || 'Luma';
   const from =
     process.env.RESEND_FROM_EMAIL || `${siteName} <onboarding@resend.dev>`;
+  const html = await createRegistrationEmailHtml({
+    siteName,
+    username,
+    verifyUrl,
+  });
+  const text = createRegistrationEmailText({ siteName, username, verifyUrl });
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -153,12 +165,8 @@ export async function sendRegistrationEmail({
       from,
       to: [email],
       subject: `Confirm your ${siteName} account`,
-      text: createRegistrationEmailText({ siteName, username, verifyUrl }),
-      html: await createRegistrationEmailHtml({
-        siteName,
-        username,
-        verifyUrl,
-      }),
+      text,
+      html,
     }),
   });
 
