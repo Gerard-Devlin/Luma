@@ -50,7 +50,6 @@ const EmailTailwind = Tailwind as (props: {
 type ConfirmEmailProps = {
   companyName: string;
   logoUrl: string;
-  siteUrl: string;
   url: string;
   username: string;
 };
@@ -58,7 +57,6 @@ type ConfirmEmailProps = {
 export function ConfirmEmail({
   companyName,
   logoUrl,
-  siteUrl,
   url,
   username,
 }: ConfirmEmailProps) {
@@ -73,16 +71,7 @@ export function ConfirmEmail({
               <Section className='bg-bg mobile:px-2 px-6 py-4'>
                 <Section className='mb-3 px-6'>
                   <Row>
-                    <Column className='w-1/2 py-[7px] align-middle'>
-                      <Link href={siteUrl} className='inline-block'>
-                        <Img
-                          src={logoUrl}
-                          alt=''
-                          width={23}
-                          className='block'
-                        />
-                      </Link>
-                    </Column>
+                    <Column className='w-1/2 py-[7px] align-middle' />
                     <Column
                       align='right'
                       className='w-1/2 py-[7px] align-middle'
@@ -177,7 +166,6 @@ export function ConfirmEmail({
 ConfirmEmail.PreviewProps = {
   companyName: 'Luma',
   logoUrl: 'https://example.com/logo.png',
-  siteUrl: 'https://example.com',
   url: 'https://example.com/api/register/confirm?token=preview',
   username: 'Devlin',
 } satisfies ConfirmEmailProps;

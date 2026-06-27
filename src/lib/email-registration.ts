@@ -115,14 +115,12 @@ async function createRegistrationEmailHtml({
   verifyUrl: string;
 }): Promise<string> {
   const logoUrl = new URL('/logo.png', verifyUrl).toString();
-  const siteUrl = new URL('/', verifyUrl).toString();
 
   try {
     return await render(
       React.createElement(ConfirmEmail, {
         companyName: siteName,
         logoUrl,
-        siteUrl,
         url: verifyUrl,
         username,
       })
