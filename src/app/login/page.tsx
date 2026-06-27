@@ -1,26 +1,23 @@
 'use client';
 
-import {
-  AlertCircle,
-  CheckCircle,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
 
-import { checkForUpdates, CURRENT_VERSION, UpdateStatus } from '@/lib/version';
-
 import { useSite } from '@/components/SiteProvider';
+import { checkForUpdates, CURRENT_VERSION, UpdateStatus } from '@/lib/version';
 
 type RuntimeConfig = {
   STORAGE_TYPE?: string;
   ENABLE_REGISTER?: boolean;
 };
 
+type AuthMode = 'login' | 'register';
+
 const GrainGradient = dynamic(
-  () =>
-    import('@paper-design/shaders-react').then((mod) => mod.GrainGradient),
+  () => import('@paper-design/shaders-react').then((mod) => mod.GrainGradient),
   { ssr: false }
 );
 
@@ -45,7 +42,9 @@ function VersionDisplay() {
 
   return (
     <button
-      onClick={() => window.open('https://github.com/Gerard-Devlin/Luma', '_blank')}
+      onClick={() =>
+        window.open('https://github.com/Gerard-Devlin/Luma', '_blank')
+      }
       className='ui-glass-control fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:text-white'
     >
       <span className='font-mono'>v{CURRENT_VERSION}</span>
@@ -116,32 +115,47 @@ function GrainGradientBackdrop() {
 function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [shouldAskUsername, setShouldAskUsername] = useState(false);
-  const [enableRegister, setEnableRegister] = useState(false);
+  const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(
+    null
+  );
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
   const isTurnstileEnabled = Boolean(turnstileSiteKey);
+  const isRegisterPreview =
+    process.env.NEXT_PUBLIC_LOGIN_PREVIEW_REGISTER === 'true';
   const { siteName } = useSite();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const runtimeConfig = (
-        window as typeof window & {
-          RUNTIME_CONFIG?: RuntimeConfig;
-        }
-      ).RUNTIME_CONFIG;
-      const storageType = runtimeConfig?.STORAGE_TYPE;
-      setShouldAskUsername(
-        storageType !== undefined && storageType !== 'localstorage'
-      );
-      setEnableRegister(Boolean(runtimeConfig?.ENABLE_REGISTER));
-    }
+    if (typeof window === 'undefined') return;
+
+    const runtime = (
+      window as typeof window & {
+        RUNTIME_CONFIG?: RuntimeConfig;
+      }
+    ).RUNTIME_CONFIG;
+
+    setRuntimeConfig(runtime ?? null);
   }, []);
+
+  const storageType = runtimeConfig?.STORAGE_TYPE ?? 'localstorage';
+  const canShowRegister =
+    isRegisterPreview || Boolean(runtimeConfig?.ENABLE_REGISTER);
+  const showUsernameField =
+    authMode === 'register' || storageType !== 'localstorage';
+  const isPreviewOnlyRegister =
+    isRegisterPreview && storageType === 'localstorage';
+
+  useEffect(() => {
+    if (authMode === 'register' && !canShowRegister) {
+      setAuthMode('login');
+    }
+  }, [authMode, canShowRegister]);
 
   const resetTurnstile = useCallback(() => {
     if (!isTurnstileEnabled) return;
@@ -149,11 +163,10 @@ function LoginPageClient() {
     setTurnstileKey((prev) => prev + 1);
   }, [isTurnstileEnabled]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError(null);
 
-    if (!password || (shouldAskUsername && !username)) return;
+    if (!password || (showUsernameField && !username)) return;
     if (isTurnstileEnabled && !turnstileToken) {
       setError('Please complete the verification challenge.');
       return;
@@ -163,7 +176,7 @@ function LoginPageClient() {
       setLoading(true);
       const payload: Record<string, unknown> = {
         password,
-        ...(shouldAskUsername ? { username } : {}),
+        ...(showUsernameField ? { username } : {}),
       };
       if (isTurnstileEnabled) {
         payload.turnstileToken = turnstileToken;
@@ -196,6 +209,11 @@ function LoginPageClient() {
 
   const handleRegister = async () => {
     setError(null);
+
+    if (isPreviewOnlyRegister) {
+      return;
+    }
+
     if (!password || !username) return;
     if (isTurnstileEnabled && !turnstileToken) {
       setError('Please complete the verification challenge.');
@@ -234,19 +252,34 @@ function LoginPageClient() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (authMode === 'register') {
+      await handleRegister();
+      return;
+    }
+
+    await handleLogin();
+  };
+
+  const primaryActionClassName =
+    'inline-flex justify-center rounded-lg bg-white py-3 text-base font-semibold text-black shadow-lg shadow-black/20 ring-1 ring-white/70 transition-all duration-200 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50';
+
   return (
-    <main className='relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-16 text-white'>
+    <main className='relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-12 text-white'>
       <GrainGradientBackdrop />
 
-      <div className='relative z-10 w-full max-w-md rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 p-10 shadow-2xl backdrop-blur-xl dark:border dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-900/40'>
+      <div className='relative z-10 w-full max-w-sm rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 p-8 shadow-2xl backdrop-blur-xl dark:border dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-900/40'>
         <img
           src='/logo.png'
           alt={siteName}
-          className='mx-auto mb-8 h-16 w-auto drop-shadow-sm'
+          className='mx-auto mb-6 h-14 w-auto drop-shadow-sm'
         />
-        <form onSubmit={handleSubmit} className='space-y-8'>
-          {shouldAskUsername && (
-            <div>
+
+        <form onSubmit={handleSubmit} className='space-y-5'>
+          {showUsernameField && (
+            <div className='space-y-2'>
               <label htmlFor='username' className='sr-only'>
                 Username
               </label>
@@ -255,30 +288,36 @@ function LoginPageClient() {
                 type='text'
                 autoComplete='username'
                 className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
-                placeholder='Enter username'
+                placeholder={
+                  authMode === 'register' ? 'Choose a username' : 'Enter username'
+                }
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
           )}
 
-          <div>
+          <div className='space-y-2'>
             <label htmlFor='password' className='sr-only'>
               Password
             </label>
             <input
               id='password'
               type='password'
-              autoComplete='current-password'
+              autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
               className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
-              placeholder='Enter access password'
+              placeholder={
+                authMode === 'register'
+                  ? 'Create a password'
+                  : 'Enter access password'
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
           {isTurnstileEnabled && (
-            <div className='flex justify-center'>
+            <div className='flex justify-center pt-1'>
               <Turnstile
                 key={turnstileKey}
                 sitekey={turnstileSiteKey}
@@ -297,47 +336,59 @@ function LoginPageClient() {
             <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
           )}
 
-          {shouldAskUsername && enableRegister ? (
-            <div className='flex gap-4'>
-              <button
-                type='button'
-                onClick={handleRegister}
-                disabled={
-                  !password ||
-                  !username ||
-                  loading ||
-                  (isTurnstileEnabled && !turnstileToken)
-                }
-                className='inline-flex flex-1 justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-              >
-                {loading ? 'Registering...' : 'Register'}
-              </button>
-              <button
-                type='submit'
-                disabled={
-                  !password ||
-                  loading ||
-                  (shouldAskUsername && !username) ||
-                  (isTurnstileEnabled && !turnstileToken)
-                }
-                className='inline-flex flex-1 justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </div>
-          ) : (
-            <button
-              type='submit'
-              disabled={
-                !password ||
-                loading ||
-                (shouldAskUsername && !username) ||
-                (isTurnstileEnabled && !turnstileToken)
-              }
-              className='inline-flex w-full justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
+          <button
+            type='submit'
+            disabled={
+              loading ||
+              !password ||
+              (showUsernameField && !username) ||
+              (isTurnstileEnabled && !turnstileToken)
+            }
+            className={`${primaryActionClassName} w-full`}
+          >
+            {loading
+              ? authMode === 'login'
+                ? 'Signing in...'
+                : 'Signing up...'
+              : authMode === 'login'
+              ? 'Sign in'
+              : 'Sign up'}
+          </button>
+
+          {canShowRegister && (
+            <p className='pt-1 text-center text-sm text-zinc-500 dark:text-zinc-400'>
+              {authMode === 'login' ? (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setError(null);
+                      setAuthMode('register');
+                    }}
+                    disabled={loading}
+                    className='font-semibold text-zinc-900 underline underline-offset-4 transition-colors hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-100 dark:hover:text-white'
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setError(null);
+                      setAuthMode('login');
+                    }}
+                    disabled={loading}
+                    className='font-semibold text-zinc-900 underline underline-offset-4 transition-colors hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-100 dark:hover:text-white'
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
           )}
         </form>
       </div>

@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 
-
 const STORAGE_TYPE =
   (process.env.NEXT_PUBLIC_STORAGE_TYPE as
     | 'localstorage'
@@ -102,21 +101,27 @@ export async function POST(req: NextRequest) {
   try {
     if (STORAGE_TYPE === 'localstorage') {
       return NextResponse.json(
-        { error: '当前模式不支持注册' },
+        { error: 'Registration is not supported in the current mode.' },
         { status: 400 }
       );
     }
 
     const config = await getConfig();
     if (!config.UserConfig.AllowRegister) {
-      return NextResponse.json({ error: '当前未开放注册' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Registration is currently disabled.' },
+        { status: 400 }
+      );
     }
 
     let body: any = {};
     try {
       body = await req.json();
     } catch (error) {
-      return NextResponse.json({ error: '请求体格式错误' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body.' },
+        { status: 400 }
+      );
     }
 
     const { username, password, turnstileToken } = body ?? {};
@@ -124,26 +129,38 @@ export async function POST(req: NextRequest) {
     const turnstilePassed = await verifyTurnstileToken(req, turnstileToken);
     if (!turnstilePassed) {
       return NextResponse.json(
-        { error: 'Turnstile 验证失败，请刷新后重试' },
+        { error: 'Turnstile verification failed. Please refresh and try again.' },
         { status: 400 }
       );
     }
 
     if (!username || typeof username !== 'string') {
-      return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Username is required.' },
+        { status: 400 }
+      );
     }
     if (!password || typeof password !== 'string') {
-      return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Password is required.' },
+        { status: 400 }
+      );
     }
 
     if (username === process.env.USERNAME) {
-      return NextResponse.json({ error: '用户已存在' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User already exists.' },
+        { status: 400 }
+      );
     }
 
     try {
       const exist = await db.checkUserExist(username);
       if (exist) {
-        return NextResponse.json({ error: '用户已存在' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'User already exists.' },
+          { status: 400 }
+        );
       }
 
       await db.registerUser(username, password);
@@ -168,11 +185,11 @@ export async function POST(req: NextRequest) {
 
       return response;
     } catch (err) {
-      console.error('数据库注册失败', err);
-      return NextResponse.json({ error: '数据库错误' }, { status: 500 });
+      console.error('Database registration failed', err);
+      return NextResponse.json({ error: 'Database error.' }, { status: 500 });
     }
   } catch (error) {
-    console.error('注册接口异常', error);
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    console.error('Registration API error', error);
+    return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

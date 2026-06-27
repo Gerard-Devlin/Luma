@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 
-
-// Storage type defaults to localstorage when env is missing
 const STORAGE_TYPE =
   (process.env.NEXT_PUBLIC_STORAGE_TYPE as
     | 'localstorage'
@@ -113,7 +111,10 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json();
     } catch (error) {
-      return NextResponse.json({ error: '请求体格式错误' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body.' },
+        { status: 400 }
+      );
     }
 
     const { username, password, turnstileToken } = body ?? {};
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
     const turnstilePassed = await verifyTurnstileToken(req, turnstileToken);
     if (!turnstilePassed) {
       return NextResponse.json(
-        { error: 'Turnstile 验证失败，请刷新后重试' },
+        { error: 'Turnstile verification failed. Please refresh and try again.' },
         { status: 400 }
       );
     }
@@ -143,12 +144,15 @@ export async function POST(req: NextRequest) {
       }
 
       if (typeof password !== 'string') {
-        return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Password is required.' },
+          { status: 400 }
+        );
       }
 
       if (password !== envPassword) {
         return NextResponse.json(
-          { ok: false, error: '密码错误' },
+          { ok: false, error: 'Incorrect password.' },
           { status: 401 }
         );
       }
@@ -174,10 +178,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (!username || typeof username !== 'string') {
-      return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Username is required.' },
+        { status: 400 }
+      );
     }
     if (!password || typeof password !== 'string') {
-      return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Password is required.' },
+        { status: 400 }
+      );
     }
 
     if (
@@ -203,20 +213,23 @@ export async function POST(req: NextRequest) {
 
       return response;
     } else if (username === process.env.USERNAME) {
-      return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Incorrect username or password.' },
+        { status: 401 }
+      );
     }
 
     const config = await getConfig();
     const user = config.UserConfig.Users.find((u) => u.username === username);
     if (user && user.banned) {
-      return NextResponse.json({ error: '用户被封禁' }, { status: 401 });
+      return NextResponse.json({ error: 'User is banned.' }, { status: 401 });
     }
 
     try {
       const pass = await db.verifyUser(username, password);
       if (!pass) {
         return NextResponse.json(
-          { error: '用户名或密码错误' },
+          { error: 'Incorrect username or password.' },
           { status: 401 }
         );
       }
@@ -240,11 +253,11 @@ export async function POST(req: NextRequest) {
 
       return response;
     } catch (err) {
-      console.error('数据库验证失败', err);
-      return NextResponse.json({ error: '数据库错误' }, { status: 500 });
+      console.error('Database verification failed', err);
+      return NextResponse.json({ error: 'Database error.' }, { status: 500 });
     }
   } catch (error) {
-    console.error('登录接口异常', error);
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    console.error('Login API error', error);
+    return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }
