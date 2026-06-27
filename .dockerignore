@@ -1,0 +1,9 @@
+.env
+.env*.local
+.env.docker
+.env.docker.*
+node_modules
+.next
+.git
+.github
+*.log

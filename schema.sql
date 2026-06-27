@@ -1,0 +1,72 @@
+CREATE TABLE IF NOT EXISTS users (
+  username TEXT PRIMARY KEY,
+  password TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS play_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL,
+  key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  cover TEXT NOT NULL,
+  year TEXT NOT NULL,
+  index_episode INTEGER NOT NULL,
+  total_episodes INTEGER NOT NULL,
+  play_time INTEGER NOT NULL,
+  total_time INTEGER NOT NULL,
+  save_time INTEGER NOT NULL,
+  search_title TEXT,
+  UNIQUE(username, key)
+);
+
+CREATE TABLE IF NOT EXISTS favorites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL,
+  key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  cover TEXT NOT NULL,
+  year TEXT NOT NULL,
+  total_episodes INTEGER NOT NULL,
+  save_time INTEGER NOT NULL,
+  UNIQUE(username, key)
+);
+
+CREATE TABLE IF NOT EXISTS search_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL,
+  keyword TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  UNIQUE(username, keyword)
+);
+
+CREATE TABLE IF NOT EXISTS admin_config (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  config TEXT NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS skip_configs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL,
+  source TEXT NOT NULL,
+  id_video TEXT NOT NULL,
+  enable INTEGER NOT NULL DEFAULT 0,
+  intro_time INTEGER NOT NULL DEFAULT 0,
+  outro_time INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(username, source, id_video)
+);
+
+CREATE INDEX IF NOT EXISTS idx_play_records_username ON play_records(username);
+CREATE INDEX IF NOT EXISTS idx_favorites_username ON favorites(username);
+CREATE INDEX IF NOT EXISTS idx_search_history_username ON search_history(username);
+CREATE INDEX IF NOT EXISTS idx_play_records_username_key ON play_records(username, key);
+CREATE INDEX IF NOT EXISTS idx_play_records_username_save_time ON play_records(username, save_time DESC);
+CREATE INDEX IF NOT EXISTS idx_favorites_username_key ON favorites(username, key);
+CREATE INDEX IF NOT EXISTS idx_favorites_username_save_time ON favorites(username, save_time DESC);
+CREATE INDEX IF NOT EXISTS idx_search_history_username_keyword ON search_history(username, keyword);
+CREATE INDEX IF NOT EXISTS idx_search_history_username_created_at ON search_history(username, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_skip_configs_username_source_id ON skip_configs(username, source, id_video);
+CREATE INDEX IF NOT EXISTS idx_search_history_username_id_created_at ON search_history(username, id, created_at DESC);

@@ -1,0 +1,60 @@
+# Single-container mode: run Luma + Redis in one container.
+# Note: this is less resilient than the two-container compose setup.
+
+ARG NODE_IMAGE=node:20-alpine
+
+FROM ${NODE_IMAGE} AS deps
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+FROM ${NODE_IMAGE} AS builder
+ARG STORAGE_TYPE=redis
+ARG BUILD_REDIS_URL=redis://127.0.0.1:6379
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+ENV NEXT_PUBLIC_STORAGE_TYPE=${STORAGE_TYPE}
+ENV REDIS_URL=${BUILD_REDIS_URL}
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN find ./src/app -type f \( -name "*.ts" -o -name "*.tsx" \) -print0 \
+  | xargs -0 sed -i "s/export const runtime = 'edge';/export const runtime = 'nodejs';/g"
+ENV DOCKER_ENV=true
+RUN sed -i "/const inter = Inter({ subsets: \['latin'] });/a export const dynamic = 'force-dynamic';" src/app/layout.tsx
+RUN apk add --no-cache redis \
+  && redis-server --daemonize yes --bind 127.0.0.1 --port 6379 \
+  && pnpm run build \
+  && redis-cli -h 127.0.0.1 -p 6379 shutdown
+
+FROM ${NODE_IMAGE} AS runner
+ARG STORAGE_TYPE=redis
+
+RUN apk add --no-cache redis \
+  && addgroup -g 1001 -S nodejs \
+  && adduser -u 1001 -S nextjs -G nodejs \
+  && mkdir -p /data
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+ENV DOCKER_ENV=true
+ENV NEXT_PUBLIC_STORAGE_TYPE=${STORAGE_TYPE}
+ENV REDIS_URL=redis://127.0.0.1:6379
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/start.js ./start.js
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/config.json ./config.json
+COPY --chown=nextjs:nodejs docker/start-single.sh ./start-single.sh
+
+RUN chown -R nextjs:nodejs /data /app \
+  && chmod +x /app/start-single.sh
+
+VOLUME ["/data"]
+USER nextjs
+EXPOSE 3000
+CMD ["/app/start-single.sh"]

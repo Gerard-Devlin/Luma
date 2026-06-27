@@ -1,0 +1,55 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# production builds
+dist/
+build/
+
+# local environment files
+.env
+.env*.local
+.dev.vars
+.env.docker
+!.env.example
+!.env.docker.example
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# test and coverage output
+coverage/
+
+# Cloudflare / OpenNext output
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
+
+# generated files
+src/lib/runtime.ts
+public/manifest.json
+sitemap.xml
+sitemap-*.xml
+
+# temporary files
+tmp/
+temp/
+devtmp*

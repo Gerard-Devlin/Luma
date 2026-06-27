@@ -1,0 +1,34 @@
+services:
+  luma:
+    image: ${LUMA_IMAGE:-luma:multi}
+    container_name: luma
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.docker
+    environment:
+      NEXT_PUBLIC_STORAGE_TYPE: ${NEXT_PUBLIC_STORAGE_TYPE:-redis}
+      REDIS_URL: ${REDIS_URL:-redis://luma-redis:6379}
+      DOCKER_ENV: 'true'
+    depends_on:
+      - luma-redis
+    networks:
+      - luma-network
+
+  luma-redis:
+    image: redis:7-alpine
+    container_name: luma-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    networks:
+      - luma-network
+
+volumes:
+  redis-data:
+
+networks:
+  luma-network:
+    driver: bridge

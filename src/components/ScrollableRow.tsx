@@ -1,0 +1,156 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+interface ScrollableRowProps {
+  children: React.ReactNode;
+  scrollDistance?: number;
+}
+
+export default function ScrollableRow({
+  children,
+  scrollDistance = 1000,
+}: ScrollableRowProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollCheckFrameRef = useRef<number | null>(null);
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const { scrollWidth, clientWidth, scrollLeft } = node;
+    const threshold = 1;
+    const canScrollRight = scrollWidth - (scrollLeft + clientWidth) > threshold;
+    const canScrollLeft = scrollLeft > threshold;
+
+    setShowRightScroll((prev) => (prev === canScrollRight ? prev : canScrollRight));
+    setShowLeftScroll((prev) => (prev === canScrollLeft ? prev : canScrollLeft));
+  }, []);
+
+  const scheduleScrollCheck = useCallback(() => {
+    if (scrollCheckFrameRef.current !== null) return;
+    scrollCheckFrameRef.current = window.requestAnimationFrame(() => {
+      scrollCheckFrameRef.current = null;
+      checkScroll();
+    });
+  }, [checkScroll]);
+
+  useEffect(() => {
+    scheduleScrollCheck();
+
+    window.addEventListener('resize', scheduleScrollCheck);
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleScrollCheck();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', scheduleScrollCheck);
+      resizeObserver.disconnect();
+      if (scrollCheckFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollCheckFrameRef.current);
+        scrollCheckFrameRef.current = null;
+      }
+    };
+  }, [children, scheduleScrollCheck]);
+
+  const handleScrollRightClick = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({
+        left: scrollDistance,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const handleScrollLeftClick = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({
+        left: -scrollDistance,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  return (
+    <div
+      className='relative'
+      onMouseEnter={() => {
+        setIsHovered(true);
+        scheduleScrollCheck();
+      }}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        ref={containerRef}
+        className='flex space-x-6 overflow-x-auto scrollbar-hide py-1 sm:py-2 pb-12 sm:pb-14 px-4 sm:px-6'
+        onScroll={scheduleScrollCheck}
+      >
+        {children}
+      </div>
+      {showLeftScroll && (
+        <div
+          className={`hidden sm:flex absolute left-0 top-0 bottom-0 w-16 items-center justify-center z-[600] transition-opacity duration-200 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            background: 'transparent',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            className='absolute inset-0 flex items-center justify-center'
+            style={{
+              top: '40%',
+              bottom: '60%',
+              left: '-4.5rem',
+              pointerEvents: 'auto',
+            }}
+          >
+            <button
+              onClick={handleScrollLeftClick}
+              className='w-12 h-12 bg-white/95 rounded-full shadow-lg flex items-center justify-center hover:bg-white border border-gray-200 transition-transform hover:scale-105 dark:bg-gray-800/90 dark:hover:bg-gray-700 dark:border-gray-600'
+            >
+              <ChevronLeft className='w-6 h-6 text-gray-600 dark:text-gray-300' />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showRightScroll && (
+        <div
+          className={`hidden sm:flex absolute right-0 top-0 bottom-0 w-16 items-center justify-center z-[600] transition-opacity duration-200 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            background: 'transparent',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            className='absolute inset-0 flex items-center justify-center'
+            style={{
+              top: '40%',
+              bottom: '60%',
+              right: '-4.5rem',
+              pointerEvents: 'auto',
+            }}
+          >
+            <button
+              onClick={handleScrollRightClick}
+              className='w-12 h-12 bg-white/95 rounded-full shadow-lg flex items-center justify-center hover:bg-white border border-gray-200 transition-transform hover:scale-105 dark:bg-gray-800/90 dark:hover:bg-gray-700 dark:border-gray-600'
+            >
+              <ChevronRight className='w-6 h-6 text-gray-600 dark:text-gray-300' />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

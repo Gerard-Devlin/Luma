@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "luma",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "luma"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_STORAGE_TYPE": "d1",
+    "SITE_NAME": "Luma",
+    "NEXT_PUBLIC_ENABLE_REGISTER": "false",
+    "NEXT_PUBLIC_SEARCH_MAX_PAGE": "5",
+    "USERNAME": "Devlin"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "luma-db",
+      "database_id": "a67aa619-3224-49f9-b62c-060ce531bd1e"
+    }
+  ]
+}
