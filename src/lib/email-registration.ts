@@ -1,3 +1,8 @@
+import * as React from 'react';
+import { render } from '@react-email/render/edge';
+
+import { ConfirmEmail } from '@/emails/confirm-email';
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type RegistrationEmailInput = {
@@ -86,6 +91,52 @@ export async function sha256Hex(value: string): Promise<string> {
     .join('');
 }
 
+function createRegistrationEmailText({
+  siteName,
+  username,
+  verifyUrl,
+}: {
+  siteName: string;
+  username: string;
+  verifyUrl: string;
+}): string {
+  return [
+    `Confirm your ${siteName} account`,
+    '',
+    `Hi ${username},`,
+    '',
+    `Click this link to finish creating your ${siteName} account:`,
+    verifyUrl,
+    '',
+    'This link expires in 24 hours and can only be used once.',
+    '',
+    `If you did not create a ${siteName} account, you can safely ignore this email.`,
+  ].join('\n');
+}
+
+async function createRegistrationEmailHtml({
+  siteName,
+  username,
+  verifyUrl,
+}: {
+  siteName: string;
+  username: string;
+  verifyUrl: string;
+}): Promise<string> {
+  const logoUrl = new URL('/logo.png', verifyUrl).toString();
+  const siteUrl = new URL('/', verifyUrl).toString();
+
+  return render(
+    React.createElement(ConfirmEmail, {
+      companyName: siteName,
+      logoUrl,
+      siteUrl,
+      url: verifyUrl,
+      username,
+    })
+  );
+}
+
 export async function sendRegistrationEmail({
   email,
   username,
@@ -98,10 +149,8 @@ export async function sendRegistrationEmail({
   }
 
   const siteName = process.env.SITE_NAME || 'Luma';
-  const safeSiteName = escapeHtml(siteName);
-  const safeUsername = escapeHtml(username);
-  const safeVerifyUrl = escapeHtml(verifyUrl);
-  const from = process.env.RESEND_FROM_EMAIL || `${siteName} <onboarding@resend.dev>`;
+  const from =
+    process.env.RESEND_FROM_EMAIL || `${siteName} <onboarding@resend.dev>`;
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -113,29 +162,12 @@ export async function sendRegistrationEmail({
       from,
       to: [email],
       subject: `Confirm your ${siteName} account`,
-      text: [
-        `Hi ${username},`,
-        '',
-        `Click this link to finish creating your ${siteName} account:`,
+      text: createRegistrationEmailText({ siteName, username, verifyUrl }),
+      html: await createRegistrationEmailHtml({
+        siteName,
+        username,
         verifyUrl,
-        '',
-        'This link expires in 24 hours.',
-      ].join('\n'),
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-          <h2 style="margin: 0 0 16px;">Confirm your ${safeSiteName} account</h2>
-          <p>Hi ${safeUsername},</p>
-          <p>Click the button below to finish creating your account.</p>
-          <p>
-            <a href="${safeVerifyUrl}" style="display: inline-block; padding: 10px 16px; border-radius: 8px; background: #111827; color: #ffffff; text-decoration: none;">
-              Confirm account
-            </a>
-          </p>
-          <p>If the button does not work, open this link:</p>
-          <p><a href="${safeVerifyUrl}">${safeVerifyUrl}</a></p>
-          <p style="color: #6b7280;">This link expires in 24 hours.</p>
-        </div>
-      `,
+      }),
     }),
   });
 
