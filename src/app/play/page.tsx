@@ -65,6 +65,7 @@ import type {
   DanmakuSelection,
   DanmakuSettings,
 } from '@/lib/danmaku/types';
+import type { PlayRecord } from '@/lib/db.client';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -191,6 +192,17 @@ interface PlayerResolveResponse {
   storageId: string;
   episodeCount: number;
   seasonDetail: TmdbSeasonDetail | null;
+}
+
+interface TmdbEmbedProgressState {
+  storageId: string;
+  episode: number;
+  basePlayTime: number;
+  totalTime: number;
+  startedAt: number | null;
+  lastSavedPlayTime: number;
+  lastSavedAt: number;
+  origin: string;
 }
 
 function PlayPageClient() {

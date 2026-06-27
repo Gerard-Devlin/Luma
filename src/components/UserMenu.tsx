@@ -25,10 +25,13 @@ const AVATAR_SHADER_COMPACT_SIZE = 28;
 const AVATAR_SHADER_WIDTH = 1280;
 const AVATAR_SHADER_HEIGHT = 720;
 
-const MeshGradient = dynamic(
-  () => import('@paper-design/shaders-react').then((mod) => mod.MeshGradient),
+const GrainGradient = dynamic(
+  () => import('@paper-design/shaders-react').then((mod) => mod.GrainGradient),
   { ssr: false }
 );
+
+const USER_GRAIN_BASE_HUES = [267, 288, 195, 250];
+const USER_GRAIN_BASE_LIGHTNESSES = [50, 83, 50, 50];
 
 type UserAvatarSize = 'default' | 'compact';
 
@@ -83,27 +86,30 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
   return `#${toHexChannel(red)}${toHexChannel(green)}${toHexChannel(blue)}`;
 }
 
-function getUserMeshColors(username?: string): string[] {
+function getUserGrainColors(username?: string): string[] {
   const seed = hashString((username || 'default').trim().toLowerCase());
-  const baseHue = seed % 360;
-  const hueOffsets = [0, 28, 112, 216];
+  const hueShift = seed % 360;
 
-  return hueOffsets.map((offset, index) => {
-    const hueJitter = ((seed >>> (index * 5 + 7)) % 28) - 14;
-    const saturation = 72 + ((seed >>> (index * 3 + 4)) % 18);
-    const lightness = [82, 52, 56, 66][index] + ((seed >>> index) % 8);
-    return hslToHex(baseHue + offset + hueJitter, saturation, lightness);
+  return USER_GRAIN_BASE_HUES.map((baseHue, index) => {
+    const hueJitter = ((seed >>> (index * 5 + 7)) % 18) - 9;
+    const saturation = 90 + ((seed >>> (index * 3 + 4)) % 11);
+    const lightnessJitter = ((seed >>> (index * 4 + 2)) % 9) - 4;
+    const lightness = Math.max(
+      42,
+      Math.min(88, USER_GRAIN_BASE_LIGHTNESSES[index] + lightnessJitter)
+    );
+    return hslToHex(baseHue + hueShift + hueJitter, saturation, lightness);
   });
 }
 
-function getUserMeshFallbackStyle(colors: string[]): CSSProperties {
+function getUserGrainFallbackStyle(colors: string[]): CSSProperties {
   return {
     background: `
       radial-gradient(circle at 26% 24%, ${colors[0]} 0%, transparent 34%),
       radial-gradient(circle at 72% 28%, ${colors[1]} 0%, transparent 38%),
       radial-gradient(circle at 36% 78%, ${colors[2]} 0%, transparent 42%),
       radial-gradient(circle at 78% 72%, ${colors[3]} 0%, transparent 36%),
-      linear-gradient(135deg, ${colors[0]}, ${colors[1]} 46%, ${colors[3]})
+      linear-gradient(#000000, #000000)
     `,
   };
 }
@@ -115,13 +121,15 @@ function UserShaderAvatar({
   username?: string;
   size?: UserAvatarSize;
 }) {
-  const colors = useMemo(() => getUserMeshColors(username), [username]);
+  const colors = useMemo(() => getUserGrainColors(username), [username]);
   const visualSize =
-    size === 'compact' ? AVATAR_SHADER_COMPACT_SIZE : AVATAR_SHADER_DEFAULT_SIZE;
+    size === 'compact'
+      ? AVATAR_SHADER_COMPACT_SIZE
+      : AVATAR_SHADER_DEFAULT_SIZE;
   const shaderScale = visualSize / AVATAR_SHADER_HEIGHT;
   const fallbackStyle = useMemo(
     () => ({
-      ...getUserMeshFallbackStyle(colors),
+      ...getUserGrainFallbackStyle(colors),
       height: visualSize,
       width: visualSize,
     }),
@@ -133,7 +141,7 @@ function UserShaderAvatar({
       className='relative flex shrink-0 items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%_at_50%_50%)]'
       style={fallbackStyle}
     >
-      <MeshGradient
+      <GrainGradient
         className='absolute left-1/2 top-1/2 max-w-none'
         width={AVATAR_SHADER_WIDTH}
         height={AVATAR_SHADER_HEIGHT}
@@ -142,11 +150,12 @@ function UserShaderAvatar({
           transformOrigin: 'center',
         }}
         colors={colors}
-        distortion={0.8}
-        swirl={0.35}
-        grainMixer={1}
-        grainOverlay={0.4}
-        speed={0.52}
+        colorBack='#000000'
+        softness={0.5}
+        intensity={0.62}
+        noise={0.25}
+        shape='corners'
+        speed={1.3}
         maxPixelCount={AVATAR_SHADER_WIDTH * AVATAR_SHADER_HEIGHT}
       />
     </span>
