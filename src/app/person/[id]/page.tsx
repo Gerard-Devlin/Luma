@@ -48,6 +48,15 @@ interface CreditRailSection {
   showAllHref?: string;
 }
 
+type PersonCreditSectionKey = 'movie' | 'tv' | 'producer' | 'director';
+
+const SECTION_TITLES: Record<PersonCreditSectionKey, string> = {
+  movie: 'Movies',
+  tv: 'Series',
+  producer: 'Producer',
+  director: 'Director',
+};
+
 const PRODUCER_ROLE_RE =
   /\b(executive producer|co-producer|associate producer|line producer|producer)\b|制片|监制|出品/i;
 const DIRECTOR_ROLE_RE = /\b(series director|director)\b|导演/i;
@@ -470,7 +479,7 @@ export default function PersonDetailPage() {
 
   const selectedSection = useMemo(() => {
     const section = (searchParams.get('section') || '').trim().toLowerCase();
-    if (section === 'movie' || section === 'tv') return section;
+    if (section in SECTION_TITLES) return section as PersonCreditSectionKey;
     return '';
   }, [searchParams]);
 
@@ -493,10 +502,24 @@ export default function PersonDetailPage() {
       });
     }
     if (producerCredits.length > 0) {
-      list.push({ key: 'producer', title: 'Producer', items: producerCredits });
+      list.push({
+        key: 'producer',
+        title: 'Producer',
+        items: producerCredits,
+        showAllHref: detail
+          ? `/person/${detail.id}?section=producer`
+          : undefined,
+      });
     }
     if (directorCredits.length > 0) {
-      list.push({ key: 'director', title: 'Director', items: directorCredits });
+      list.push({
+        key: 'director',
+        title: 'Director',
+        items: directorCredits,
+        showAllHref: detail
+          ? `/person/${detail.id}?section=director`
+          : undefined,
+      });
     }
 
     if (!list.length && detail?.credits?.length) {
@@ -523,8 +546,26 @@ export default function PersonDetailPage() {
         items: showCredits,
       };
     }
+    if (selectedSection === 'producer') {
+      return {
+        title: 'Producer',
+        items: producerCredits,
+      };
+    }
+    if (selectedSection === 'director') {
+      return {
+        title: 'Director',
+        items: directorCredits,
+      };
+    }
     return null;
-  }, [movieCredits, selectedSection, showCredits]);
+  }, [
+    directorCredits,
+    movieCredits,
+    producerCredits,
+    selectedSection,
+    showCredits,
+  ]);
 
   return (
     <PageLayout activePath='/search' forceShowBackButton>
@@ -535,13 +576,14 @@ export default function PersonDetailPage() {
               <PersonHeaderSkeleton />
               {selectedSection ? (
                 <SectionGridSkeleton
-                  title={selectedSection === 'movie' ? 'Movies' : 'Series'}
+                  title={SECTION_TITLES[selectedSection]}
                 />
               ) : (
                 <>
                   <RailSkeleton title='Movies' showSeeAll />
                   <RailSkeleton title='Series' showSeeAll />
-                  <RailSkeleton title='Producer' />
+                  <RailSkeleton title='Producer' showSeeAll />
+                  <RailSkeleton title='Director' showSeeAll />
                 </>
               )}
             </div>
