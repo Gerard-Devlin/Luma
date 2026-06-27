@@ -163,6 +163,7 @@ const MobileHeader = ({
               </>
             ) : null}
             <UserMenu
+              avatarSize='compact'
               triggerClassName='m-0 flex h-full w-11 items-center justify-center border-0 bg-transparent text-zinc-200 shadow-none transition-colors hover:text-white'
             />
           </div>

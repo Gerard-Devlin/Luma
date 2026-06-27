@@ -3,9 +3,11 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { KeyRound, LogOut, Shield, User, X } from 'lucide-react';
+import { KeyRound, LogOut, Shield, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
@@ -18,12 +20,143 @@ interface AuthInfo {
 
 const MENU_PANEL_GAP = 8;
 const MENU_PANEL_MIN_TOP = 68;
+const AVATAR_SHADER_DEFAULT_SIZE = 44;
+const AVATAR_SHADER_COMPACT_SIZE = 28;
+const AVATAR_SHADER_WIDTH = 1280;
+const AVATAR_SHADER_HEIGHT = 720;
+
+const MeshGradient = dynamic(
+  () => import('@paper-design/shaders-react').then((mod) => mod.MeshGradient),
+  { ssr: false }
+);
+
+type UserAvatarSize = 'default' | 'compact';
 
 interface UserMenuProps {
   triggerClassName?: string;
+  avatarSize?: UserAvatarSize;
 }
 
-export const UserMenu: React.FC<UserMenuProps> = ({ triggerClassName }) => {
+function hashString(value: string): number {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function toHexChannel(value: number): string {
+  return Math.round(value).toString(16).padStart(2, '0');
+}
+
+function hslToHex(hue: number, saturation: number, lightness: number): string {
+  const normalizedHue = (((hue % 360) + 360) % 360) / 360;
+  const normalizedSaturation = saturation / 100;
+  const normalizedLightness = lightness / 100;
+
+  const hueToRgb = (p: number, q: number, t: number) => {
+    let normalizedT = t;
+    if (normalizedT < 0) normalizedT += 1;
+    if (normalizedT > 1) normalizedT -= 1;
+    if (normalizedT < 1 / 6) return p + (q - p) * 6 * normalizedT;
+    if (normalizedT < 1 / 2) return q;
+    if (normalizedT < 2 / 3) {
+      return p + (q - p) * (2 / 3 - normalizedT) * 6;
+    }
+    return p;
+  };
+
+  const q =
+    normalizedLightness < 0.5
+      ? normalizedLightness * (1 + normalizedSaturation)
+      : normalizedLightness +
+        normalizedSaturation -
+        normalizedLightness * normalizedSaturation;
+  const p = 2 * normalizedLightness - q;
+  const red = hueToRgb(p, q, normalizedHue + 1 / 3) * 255;
+  const green = hueToRgb(p, q, normalizedHue) * 255;
+  const blue = hueToRgb(p, q, normalizedHue - 1 / 3) * 255;
+
+  return `#${toHexChannel(red)}${toHexChannel(green)}${toHexChannel(blue)}`;
+}
+
+function getUserMeshColors(username?: string): string[] {
+  const seed = hashString((username || 'default').trim().toLowerCase());
+  const baseHue = seed % 360;
+  const hueOffsets = [0, 28, 112, 216];
+
+  return hueOffsets.map((offset, index) => {
+    const hueJitter = ((seed >>> (index * 5 + 7)) % 28) - 14;
+    const saturation = 72 + ((seed >>> (index * 3 + 4)) % 18);
+    const lightness = [82, 52, 56, 66][index] + ((seed >>> index) % 8);
+    return hslToHex(baseHue + offset + hueJitter, saturation, lightness);
+  });
+}
+
+function getUserMeshFallbackStyle(colors: string[]): CSSProperties {
+  return {
+    background: `
+      radial-gradient(circle at 26% 24%, ${colors[0]} 0%, transparent 34%),
+      radial-gradient(circle at 72% 28%, ${colors[1]} 0%, transparent 38%),
+      radial-gradient(circle at 36% 78%, ${colors[2]} 0%, transparent 42%),
+      radial-gradient(circle at 78% 72%, ${colors[3]} 0%, transparent 36%),
+      linear-gradient(135deg, ${colors[0]}, ${colors[1]} 46%, ${colors[3]})
+    `,
+  };
+}
+
+function UserShaderAvatar({
+  username,
+  size = 'default',
+}: {
+  username?: string;
+  size?: UserAvatarSize;
+}) {
+  const colors = useMemo(() => getUserMeshColors(username), [username]);
+  const visualSize =
+    size === 'compact' ? AVATAR_SHADER_COMPACT_SIZE : AVATAR_SHADER_DEFAULT_SIZE;
+  const shaderScale = visualSize / AVATAR_SHADER_HEIGHT;
+  const fallbackStyle = useMemo(
+    () => ({
+      ...getUserMeshFallbackStyle(colors),
+      height: visualSize,
+      width: visualSize,
+    }),
+    [colors, visualSize]
+  );
+
+  return (
+    <span
+      className='relative flex shrink-0 items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%_at_50%_50%)]'
+      style={fallbackStyle}
+    >
+      <MeshGradient
+        className='absolute left-1/2 top-1/2 max-w-none'
+        width={AVATAR_SHADER_WIDTH}
+        height={AVATAR_SHADER_HEIGHT}
+        style={{
+          transform: `translate(-50%, -50%) scale(${shaderScale})`,
+          transformOrigin: 'center',
+        }}
+        colors={colors}
+        distortion={0.8}
+        swirl={0.35}
+        grainMixer={1}
+        grainOverlay={0.4}
+        speed={0.52}
+        maxPixelCount={AVATAR_SHADER_WIDTH * AVATAR_SHADER_HEIGHT}
+      />
+    </span>
+  );
+}
+
+export const UserMenu: React.FC<UserMenuProps> = ({
+  triggerClassName,
+  avatarSize = 'default',
+}) => {
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const triggerRef = useRef<HTMLDivElement | null>(null);
@@ -350,7 +483,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ triggerClassName }) => {
 
         {/* 菜单项 */}
         <div className='pt-1'>
-
           {/* 管理面板按钮 */}
           {showAdminPanel && (
             <button
@@ -381,7 +513,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ triggerClassName }) => {
             <LogOut className='h-3.5 w-3.5' />
             <span className='font-medium'>Sign Out</span>
           </button>
-
         </div>
       </motion.div>
     </>
@@ -398,7 +529,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ triggerClassName }) => {
       <div className='ui-glass-dialog fixed top-1/2 left-1/2 z-[1001] w-[calc(100%-1rem)] sm:w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6'>
         {/* 标题栏 */}
         <div className='flex items-center justify-between mb-6'>
-          <h3 className='text-lg font-semibold text-zinc-100'>Change Password</h3>
+          <h3 className='text-lg font-semibold text-zinc-100'>
+            Change Password
+          </h3>
           <button
             onClick={handleCloseChangePassword}
             className='flex h-8 w-8 items-center justify-center rounded-full p-1 text-zinc-400 transition-colors hover:bg-[var(--ui-glass-row-hover)]'
@@ -482,21 +615,23 @@ export const UserMenu: React.FC<UserMenuProps> = ({ triggerClassName }) => {
         ref={triggerRef}
         onMouseEnter={handleHoverOpenMenu}
         onMouseLeave={scheduleCloseMenu}
-        className='relative m-0'
+        className={`relative m-0 flex items-center justify-center ${
+          avatarSize === 'compact' ? 'h-full w-11' : ''
+        }`}
       >
         <button
           onClick={handleMenuClick}
           onFocus={handleMenuFocus}
           onPointerDown={handleMenuPointerDown}
-          className={
+          className={`${
             triggerClassName ||
-            `ui-glass-control m-0 inline-flex h-11 w-11 items-center justify-center ${
-              isOpen ? 'ui-glass-control-active' : ''
+            `border border-white/15 bg-transparent transition-transform duration-160 hover:scale-105 focus-visible:ring-2 focus-visible:ring-white/30 ${
+              isOpen ? 'scale-105 border-white/25' : ''
             }`
-          }
+          } m-0 inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full p-0 shadow-none outline-none focus-visible:outline-none`}
           aria-label='User Menu'
         >
-          <User className='h-5 w-5 shrink-0' />
+          <UserShaderAvatar username={authInfo?.username} size={avatarSize} />
         </button>
         {updateStatus === UpdateStatus.HAS_UPDATE && (
           <div className='absolute top-[2px] right-[2px] w-2 h-2 bg-yellow-500 rounded-full'></div>

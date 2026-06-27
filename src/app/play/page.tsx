@@ -4198,12 +4198,12 @@ function PlayPageClient() {
   };
   const episodePanel =
     tmdbMode && tmdbMediaType === 'tv' ? (
-      <div className='pointer-events-none absolute bottom-0 right-0 z-[720] flex flex-col items-end gap-2'>
+      <div className='pointer-events-none absolute bottom-0 left-0 right-0 z-[720] flex flex-col items-end gap-2 md:left-auto'>
         <div
-          className={`pointer-events-auto w-full max-w-[min(92vw,430px)] origin-bottom-right transition-all duration-200 ease-out sm:w-[430px] ${
+          className={`pointer-events-auto absolute right-0 top-[calc(100%+0.5rem)] w-full origin-top-right transition-all duration-200 ease-out md:static md:w-[430px] md:origin-bottom-right ${
             episodePanelOpen
               ? 'translate-y-0 scale-100 opacity-100'
-              : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0'
+              : 'pointer-events-none -translate-y-2 scale-[0.98] opacity-0 md:translate-y-3'
           }`}
         >
           <section
@@ -4332,7 +4332,9 @@ function PlayPageClient() {
           </span>
           <ChevronRight
             className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${
-              episodePanelOpen ? '-rotate-90' : 'rotate-90'
+              episodePanelOpen
+                ? 'rotate-90 md:-rotate-90'
+                : 'rotate-0 md:rotate-90'
             }`}
           />
         </button>
