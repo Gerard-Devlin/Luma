@@ -1,7 +1,13 @@
 ﻿/* eslint-disable no-console */
 'use client';
 
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import type { PlayRecord } from '@/lib/db.client';
 import {
@@ -10,19 +16,24 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import {
+  type TmdbDetailMediaType,
+  fetchTmdbDetailWithClientCache,
+} from '@/lib/tmdb-detail.client';
+import {
   buildTmdbHistoryPlayUrl,
   filterTmdbHistoryRecords,
   formatTmdbHistorySubtitle,
   parseStorageKey,
+  parseTmdbStorageId,
 } from '@/lib/tmdb-history';
+import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+
 import {
   glassDialogCancelClass,
   glassDialogContentClass,
   glassDialogDangerActionClass,
   glassDialogDescriptionClass,
 } from '@/components/dialogStyles';
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
-
 import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 import {
   AlertDialog,
@@ -41,6 +52,138 @@ interface ContinueWatchingProps {
 }
 
 const LONG_PRESS_DURATION_MS = 420;
+const HISTORY_BACKDROP_RESOLVE_CONCURRENCY = 3;
+
+interface HistoryImageEntry {
+  cacheKey: string;
+  image: string;
+}
+
+interface HistoryTmdbDetail {
+  backdrop?: string | null;
+}
+
+const historyBackdropCache = new Map<string, string>();
+const historyBackdropPending = new Map<string, Promise<string>>();
+
+function inferTmdbMediaType(
+  record: PlayRecord & { key: string }
+): TmdbDetailMediaType {
+  const { id } = parseStorageKey(record.key);
+  const parsed = parseTmdbStorageId(id);
+  if (parsed && parsed.season !== null) return 'tv';
+  return record.total_episodes && record.total_episodes > 1 ? 'tv' : 'movie';
+}
+
+function getOppositeMediaType(
+  mediaType: TmdbDetailMediaType
+): TmdbDetailMediaType {
+  return mediaType === 'movie' ? 'tv' : 'movie';
+}
+
+function buildHistoryBackdropCacheKey(record: PlayRecord & { key: string }) {
+  return [
+    record.key,
+    record.title || '',
+    record.search_title || '',
+    record.year || '',
+    record.total_episodes || 0,
+    record.cover || '',
+  ].join('|');
+}
+
+async function fetchHistoryBackdropByRequest(input: {
+  id?: string;
+  title?: string;
+  mediaType: TmdbDetailMediaType;
+  year?: string;
+  poster?: string;
+}): Promise<string> {
+  const detail = await fetchTmdbDetailWithClientCache<HistoryTmdbDetail>({
+    id: input.id,
+    title: input.title,
+    mediaType: input.mediaType,
+    year: input.year,
+    poster: input.poster,
+  });
+  return (detail.backdrop || '').trim();
+}
+
+async function fetchHistoryBackdrop(
+  record: PlayRecord & { key: string }
+): Promise<string> {
+  const fallbackImage = (record.cover || '').trim();
+  const title = (record.search_title || record.title || '').trim();
+  const year = (record.year || '').trim();
+  const mediaType = inferTmdbMediaType(record);
+  const { source, id } = parseStorageKey(record.key);
+  const parsedTmdbId = source === 'tmdb' ? parseTmdbStorageId(id)?.tmdbId : '';
+  const numericTmdbId =
+    parsedTmdbId || (source === 'tmdb' && /^\d+$/.test(id) ? id : '');
+  const mediaTypes: TmdbDetailMediaType[] = [
+    mediaType,
+    getOppositeMediaType(mediaType),
+  ];
+
+  if (numericTmdbId) {
+    for (const candidateType of mediaTypes) {
+      try {
+        const backdrop = await fetchHistoryBackdropByRequest({
+          id: numericTmdbId,
+          mediaType: candidateType,
+          poster: fallbackImage,
+        });
+        if (backdrop) return backdrop;
+      } catch {
+        // Fall through to the next candidate.
+      }
+    }
+  }
+
+  if (title) {
+    for (const candidateType of mediaTypes) {
+      try {
+        const backdrop = await fetchHistoryBackdropByRequest({
+          title,
+          mediaType: candidateType,
+          year,
+          poster: fallbackImage,
+        });
+        if (backdrop) return backdrop;
+      } catch {
+        // Keep the history rail resilient for unusual records.
+      }
+    }
+  }
+
+  return fallbackImage;
+}
+
+function resolveHistoryBackdrop(record: PlayRecord & { key: string }) {
+  const cacheKey = buildHistoryBackdropCacheKey(record);
+  const cached = historyBackdropCache.get(cacheKey);
+  if (cached !== undefined) return Promise.resolve(cached);
+
+  const pending = historyBackdropPending.get(cacheKey);
+  if (pending) return pending;
+
+  const request = fetchHistoryBackdrop(record)
+    .then((image) => {
+      historyBackdropCache.set(cacheKey, image);
+      return image;
+    })
+    .catch(() => {
+      const fallbackImage = (record.cover || '').trim();
+      historyBackdropCache.set(cacheKey, fallbackImage);
+      return fallbackImage;
+    })
+    .finally(() => {
+      historyBackdropPending.delete(cacheKey);
+    });
+
+  historyBackdropPending.set(cacheKey, request);
+  return request;
+}
 
 export default function ContinueWatching({ className }: ContinueWatchingProps) {
   const { showMatrixLoading, navigateWithMatrixLoading } =
@@ -51,20 +194,25 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
   const [loading, setLoading] = useState(true);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [historyImageByKey, setHistoryImageByKey] = useState<
+    Record<string, HistoryImageEntry>
+  >({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
   const suppressCardClickRef = useRef(false);
 
   const updatePlayRecords = (allRecords: Record<string, PlayRecord>) => {
-    const recordsArray = Object.entries(filterTmdbHistoryRecords(allRecords)).map(
-      ([key, record]) => ({
-        ...record,
-        key,
-      })
-    );
+    const recordsArray = Object.entries(
+      filterTmdbHistoryRecords(allRecords)
+    ).map(([key, record]) => ({
+      ...record,
+      key,
+    }));
 
-    const sortedRecords = recordsArray.sort((a, b) => b.save_time - a.save_time);
+    const sortedRecords = recordsArray.sort(
+      (a, b) => b.save_time - a.save_time
+    );
     setPlayRecords(sortedRecords);
   };
 
@@ -100,6 +248,65 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
       return new Set(Array.from(prev).filter((key) => validKeys.has(key)));
     });
   }, [playRecords]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unresolvedRecords: (PlayRecord & { key: string })[] = [];
+    const cachedEntries: Record<string, HistoryImageEntry> = {};
+
+    for (const record of playRecords) {
+      const cacheKey = buildHistoryBackdropCacheKey(record);
+      if (historyImageByKey[record.key]?.cacheKey === cacheKey) continue;
+
+      const cachedImage = historyBackdropCache.get(cacheKey);
+      if (cachedImage !== undefined) {
+        cachedEntries[record.key] = { cacheKey, image: cachedImage };
+        continue;
+      }
+
+      unresolvedRecords.push(record);
+    }
+
+    if (Object.keys(cachedEntries).length) {
+      setHistoryImageByKey((prev) => ({ ...prev, ...cachedEntries }));
+    }
+
+    if (!unresolvedRecords.length) return;
+
+    let nextIndex = 0;
+    const workerCount = Math.min(
+      HISTORY_BACKDROP_RESOLVE_CONCURRENCY,
+      unresolvedRecords.length
+    );
+
+    const runWorker = async () => {
+      while (!cancelled) {
+        const record = unresolvedRecords[nextIndex];
+        nextIndex += 1;
+        if (!record) return;
+
+        const cacheKey = buildHistoryBackdropCacheKey(record);
+        const image = await resolveHistoryBackdrop(record);
+        if (cancelled) return;
+
+        setHistoryImageByKey((prev) => {
+          if (prev[record.key]?.cacheKey === cacheKey) return prev;
+          return {
+            ...prev,
+            [record.key]: { cacheKey, image },
+          };
+        });
+      }
+    };
+
+    Array.from({ length: workerCount }).forEach(() => {
+      void runWorker();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyImageByKey, playRecords]);
 
   const clearLongPressTimer = useCallback(() => {
     if (!longPressTimerRef.current) return;
@@ -189,121 +396,127 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     <>
       <MatrixLoadingOverlay visible={showMatrixLoading} />
       <section className={`mb-8 ${className || ''}`}>
-      <div className='mb-4 flex items-center justify-between'>
-        <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-          Continue Watching
-        </h2>
-        {!loading && playRecords.length > 0 ? (
-          isBatchMode ? (
-            <div className='flex items-center gap-3'>
+        <div className='mb-4 flex items-center justify-between'>
+          <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+            Continue Watching
+          </h2>
+          {!loading && playRecords.length > 0 ? (
+            isBatchMode ? (
+              <div className='flex items-center gap-3'>
+                <button
+                  type='button'
+                  className='text-sm text-red-500 transition-colors hover:text-red-600 disabled:cursor-not-allowed disabled:text-gray-400'
+                  disabled={selectedKeys.size === 0}
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  {`Delete (${selectedKeys.size})`}
+                </button>
+                <button
+                  type='button'
+                  className='text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  onClick={() => {
+                    setIsBatchMode(false);
+                    setSelectedKeys(new Set());
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
               <button
                 type='button'
-                className='text-sm text-red-500 transition-colors hover:text-red-600 disabled:cursor-not-allowed disabled:text-gray-400'
-                disabled={selectedKeys.size === 0}
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                {`Delete (${selectedKeys.size})`}
-              </button>
-              <button
-                type='button'
-                className='text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 onClick={() => {
-                  setIsBatchMode(false);
-                  setSelectedKeys(new Set());
+                  navigateWithMatrixLoading('/my');
                 }}
+                className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
+              >
+                <span>See All</span>
+                <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
+                  ›
+                </span>
+              </button>
+            )
+          ) : null}
+        </div>
+        <div className='-mx-1 overflow-x-auto pb-4 pt-1 scrollbar-hide'>
+          <div className='flex min-w-max gap-5 px-1'>
+            {loading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className='w-[clamp(280px,24vw,520px)] shrink-0'
+                  >
+                    <div className='skeleton-card-surface relative aspect-[16/9] w-full overflow-hidden animate-pulse'></div>
+                    <div className='skeleton-surface mt-2 h-4 rounded animate-pulse'></div>
+                    <div className='skeleton-surface mt-1 h-3 rounded animate-pulse'></div>
+                  </div>
+                ))
+              : playRecords.map((record) => {
+                  const isSelected = selectedKeys.has(record.key);
+                  const cacheKey = buildHistoryBackdropCacheKey(record);
+                  const resolvedImage = historyImageByKey[record.key];
+                  return (
+                    <WatchHistoryRailCard
+                      key={record.key}
+                      title={record.title || record.search_title || 'Untitled'}
+                      subtitle={formatTmdbHistorySubtitle(record.key, record)}
+                      poster={
+                        resolvedImage?.cacheKey === cacheKey
+                          ? resolvedImage.image
+                          : undefined
+                      }
+                      progress={getProgress(record)}
+                      selected={isSelected}
+                      batchMode={isBatchMode}
+                      onClick={() =>
+                        navigateWithMatrixLoading(
+                          buildTmdbHistoryPlayUrl(record.key, record)
+                        )
+                      }
+                      onToggleSelection={() => toggleSelection(record.key)}
+                      onPointerDown={(event) =>
+                        handleLongPressStart(record.key, event.pointerType)
+                      }
+                      onPointerUp={handleLongPressEnd}
+                      onPointerLeave={handleLongPressEnd}
+                      onPointerCancel={handleLongPressEnd}
+                      onClickCapture={handleCardClickCapture}
+                    />
+                  );
+                })}
+          </div>
+        </div>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className={glassDialogContentClass}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete selected items?</AlertDialogTitle>
+              <AlertDialogDescription className={glassDialogDescriptionClass}>
+                {`This will delete ${selectedKeys.size} history item${
+                  selectedKeys.size === 1 ? '' : 's'
+                }.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={deleting}
+                className={glassDialogCancelClass}
               >
                 Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type='button'
-              onClick={() => {
-                navigateWithMatrixLoading('/my');
-              }}
-              className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
-            >
-              <span>See All</span>
-              <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-                ›
-              </span>
-            </button>
-          )
-        ) : null}
-      </div>
-      <div className='-mx-1 overflow-x-auto pb-4 pt-1 scrollbar-hide'>
-        <div className='flex min-w-max gap-5 px-1'>
-        {loading
-          ? Array.from({ length: 6 }).map((_, index) => (
-                <div
-                  key={index}
-                  className='w-[clamp(280px,24vw,520px)] shrink-0'
-                >
-                  <div className='skeleton-card-surface relative aspect-[16/9] w-full overflow-hidden animate-pulse'></div>
-                  <div className='skeleton-surface mt-2 h-4 rounded animate-pulse'></div>
-                  <div className='skeleton-surface mt-1 h-3 rounded animate-pulse'></div>
-                </div>
-              ))
-          : playRecords.map((record) => {
-              const isSelected = selectedKeys.has(record.key);
-              return (
-                <WatchHistoryRailCard
-                  key={record.key}
-                  title={record.title || record.search_title || 'Untitled'}
-                  subtitle={formatTmdbHistorySubtitle(record.key, record)}
-                  poster={record.cover}
-                  progress={getProgress(record)}
-                  selected={isSelected}
-                  batchMode={isBatchMode}
-                  onClick={() =>
-                    navigateWithMatrixLoading(
-                      buildTmdbHistoryPlayUrl(record.key, record)
-                    )
-                  }
-                  onToggleSelection={() => toggleSelection(record.key)}
-                  onPointerDown={(event) =>
-                    handleLongPressStart(record.key, event.pointerType)
-                  }
-                  onPointerUp={handleLongPressEnd}
-                  onPointerLeave={handleLongPressEnd}
-                  onPointerCancel={handleLongPressEnd}
-                  onClickCapture={handleCardClickCapture}
-                />
-              );
-            })}
-        </div>
-      </div>
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className={glassDialogContentClass}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete selected items?</AlertDialogTitle>
-            <AlertDialogDescription className={glassDialogDescriptionClass}>
-              {`This will delete ${selectedKeys.size} history item${
-                selectedKeys.size === 1 ? '' : 's'
-              }.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={deleting}
-              className={glassDialogCancelClass}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={(event) => {
-                event.preventDefault();
-                void handleConfirmDelete();
-              }}
-              className={glassDialogDangerActionClass}
-            >
-              {deleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleConfirmDelete();
+                }}
+                className={glassDialogDangerActionClass}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </section>
     </>
   );

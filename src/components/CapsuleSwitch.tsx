@@ -1,6 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface CapsuleSwitchProps {
   options: { label: string; value: string }[];
@@ -8,8 +6,6 @@ interface CapsuleSwitchProps {
   onChange: (value: string) => void;
   className?: string;
 }
-
-const INDICATOR_HORIZONTAL_INSET = 1;
 
 const CapsuleSwitch: React.FC<CapsuleSwitchProps> = ({
   options,
@@ -27,43 +23,40 @@ const CapsuleSwitch: React.FC<CapsuleSwitchProps> = ({
   const activeIndex = options.findIndex((opt) => opt.value === active);
 
   // 更新指示器位置
-  const updateIndicatorPosition = () => {
-    if (
-      activeIndex >= 0 &&
-      buttonRefs.current[activeIndex] &&
-      containerRef.current
-    ) {
-      const button = buttonRefs.current[activeIndex];
-      const container = containerRef.current;
-      if (button && container) {
-        const buttonRect = button.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        if (buttonRect.width > 0) {
-          setIndicatorStyle({
-            left:
-              buttonRect.left - containerRect.left + INDICATOR_HORIZONTAL_INSET,
-            width: Math.max(
-              buttonRect.width - INDICATOR_HORIZONTAL_INSET * 2,
-              0
-            ),
-          });
-        }
-      }
+  const updateIndicatorPosition = useCallback(() => {
+    if (activeIndex < 0) {
+      setIndicatorStyle({ left: 0, width: 0 });
+      return;
     }
-  };
+
+    const button = buttonRefs.current[activeIndex];
+    if (!button || button.offsetWidth <= 0) return;
+
+    setIndicatorStyle({
+      left: button.offsetLeft,
+      width: button.offsetWidth,
+    });
+  }, [activeIndex]);
 
   // 组件挂载时立即计算初始位置
   useEffect(() => {
     const timeoutId = setTimeout(updateIndicatorPosition, 0);
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [updateIndicatorPosition]);
 
   // 监听选中项变化
   useEffect(() => {
-    const timeoutId = setTimeout(updateIndicatorPosition, 0);
-    return () => clearTimeout(timeoutId);
-  }, [activeIndex]);
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => updateIndicatorPosition());
+    observer.observe(container);
+    buttonRefs.current.forEach((button) => {
+      if (button) observer.observe(button);
+    });
+
+    return () => observer.disconnect();
+  }, [options.length, updateIndicatorPosition]);
 
   return (
     <div
