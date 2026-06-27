@@ -29,6 +29,8 @@
 - **Movie and TV discovery**: Browse movies, series, curated categories, years, ratings, and runtime filters.
 - **Favorites and continue watching**: Save favorites, watch history, playback progress, and resume points.
 - **Multiple storage backends**: localStorage, Redis, Cloudflare D1, and Upstash Redis.
+- **User management and verified registration**: Manage users from `/admin`, store accounts in D1 or Redis, and require email confirmation before new accounts are activated.
+- **Polished transactional email**: Send branded verification emails with Resend and React Email templates, including site logo, confirmation CTA, fallback link, and GitHub link.
 - **Runtime admin panel**: Manage site settings, users, providers, categories, and system options from `/admin`.
 - **PWA ready**: Offline cache, home-screen installation, and a mobile-friendly experience.
 - **Responsive layout**: Desktop sidebar, mobile bottom navigation, and large-screen content rails.
@@ -60,15 +62,16 @@ For Docker, Vercel, Cloudflare Workers, storage backends, and environment variab
 
 ## Tech Stack
 
-| Area               | Main Dependencies                                                      |
-| ------------------ | ---------------------------------------------------------------------- |
-| Framework          | [Next.js 14](https://nextjs.org/) App Router                           |
-| UI and Styling     | [Tailwind CSS 3](https://tailwindcss.com/), next-themes, Framer Motion |
-| Language           | TypeScript 4                                                           |
-| Data and Storage   | localStorage, Redis, Cloudflare D1, Upstash Redis                      |
-| Content Enrichment | TMDB API, category feeds, image proxy                                  |
-| Code Quality       | ESLint, Prettier, Jest                                                 |
-| Deployment         | Docker, Vercel, Cloudflare Workers, OpenNext                           |
+| Area               | Main Dependencies                                                        |
+| ------------------ | ------------------------------------------------------------------------ |
+| Framework          | [Next.js 14](https://nextjs.org/) App Router                             |
+| UI and Styling     | [Tailwind CSS 3](https://tailwindcss.com/), next-themes, Framer Motion   |
+| Language           | TypeScript 4                                                             |
+| Data and Storage   | localStorage, Redis, Cloudflare D1, Upstash Redis                        |
+| Auth and Email     | Username/password login, verified email registration, Resend, React Email |
+| Content Enrichment | TMDB API, category feeds, image proxy                                    |
+| Code Quality       | ESLint, Prettier, Jest                                                   |
+| Deployment         | Docker, Vercel, Cloudflare Workers, OpenNext                             |
 
 ## License
 
