@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 import MobileBottomNav from './MobileBottomNav';
@@ -17,9 +18,10 @@ const MobileNavController = ({
   showBackButton = false,
   useHeroHeaderStyle = false,
 }: MobileNavControllerProps) => {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const showTopSearch = !activePath?.startsWith('/search');
+  const showTopSearch = pathname !== '/search';
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);
   }, []);

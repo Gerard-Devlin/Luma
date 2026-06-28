@@ -3,11 +3,9 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { KeyRound, LogOut, Shield, X } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { KeyRound, LogOut, Shield, User, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
@@ -20,148 +18,12 @@ interface AuthInfo {
 
 const MENU_PANEL_GAP = 8;
 const MENU_PANEL_MIN_TOP = 68;
-const AVATAR_SHADER_DEFAULT_SIZE = 44;
-const AVATAR_SHADER_COMPACT_SIZE = 28;
-const AVATAR_SHADER_WIDTH = 1280;
-const AVATAR_SHADER_HEIGHT = 720;
-
-const GrainGradient = dynamic(
-  () => import('@paper-design/shaders-react').then((mod) => mod.GrainGradient),
-  { ssr: false }
-);
-
-const USER_GRAIN_BASE_HUES = [267, 288, 195, 250];
-const USER_GRAIN_BASE_LIGHTNESSES = [50, 83, 50, 50];
 
 type UserAvatarSize = 'default' | 'compact';
 
 interface UserMenuProps {
   triggerClassName?: string;
   avatarSize?: UserAvatarSize;
-}
-
-function hashString(value: string): number {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-}
-
-function toHexChannel(value: number): string {
-  return Math.round(value).toString(16).padStart(2, '0');
-}
-
-function hslToHex(hue: number, saturation: number, lightness: number): string {
-  const normalizedHue = (((hue % 360) + 360) % 360) / 360;
-  const normalizedSaturation = saturation / 100;
-  const normalizedLightness = lightness / 100;
-
-  const hueToRgb = (p: number, q: number, t: number) => {
-    let normalizedT = t;
-    if (normalizedT < 0) normalizedT += 1;
-    if (normalizedT > 1) normalizedT -= 1;
-    if (normalizedT < 1 / 6) return p + (q - p) * 6 * normalizedT;
-    if (normalizedT < 1 / 2) return q;
-    if (normalizedT < 2 / 3) {
-      return p + (q - p) * (2 / 3 - normalizedT) * 6;
-    }
-    return p;
-  };
-
-  const q =
-    normalizedLightness < 0.5
-      ? normalizedLightness * (1 + normalizedSaturation)
-      : normalizedLightness +
-        normalizedSaturation -
-        normalizedLightness * normalizedSaturation;
-  const p = 2 * normalizedLightness - q;
-  const red = hueToRgb(p, q, normalizedHue + 1 / 3) * 255;
-  const green = hueToRgb(p, q, normalizedHue) * 255;
-  const blue = hueToRgb(p, q, normalizedHue - 1 / 3) * 255;
-
-  return `#${toHexChannel(red)}${toHexChannel(green)}${toHexChannel(blue)}`;
-}
-
-function getUserGrainColors(username?: string): string[] {
-  const seed = hashString((username || 'default').trim().toLowerCase());
-  const hueShift = seed % 360;
-
-  return USER_GRAIN_BASE_HUES.map((baseHue, index) => {
-    const hueJitter = ((seed >>> (index * 5 + 7)) % 18) - 9;
-    const saturation = 90 + ((seed >>> (index * 3 + 4)) % 11);
-    const lightnessJitter = ((seed >>> (index * 4 + 2)) % 9) - 4;
-    const lightness = Math.max(
-      42,
-      Math.min(88, USER_GRAIN_BASE_LIGHTNESSES[index] + lightnessJitter)
-    );
-    return hslToHex(baseHue + hueShift + hueJitter, saturation, lightness);
-  });
-}
-
-function getUserGrainFallbackStyle(colors: string[]): CSSProperties {
-  return {
-    background: `
-      radial-gradient(circle at 26% 24%, ${colors[0]} 0%, transparent 34%),
-      radial-gradient(circle at 72% 28%, ${colors[1]} 0%, transparent 38%),
-      radial-gradient(circle at 36% 78%, ${colors[2]} 0%, transparent 42%),
-      radial-gradient(circle at 78% 72%, ${colors[3]} 0%, transparent 36%),
-      linear-gradient(#000000, #000000)
-    `,
-  };
-}
-
-function UserShaderAvatar({
-  username,
-  size = 'default',
-}: {
-  username?: string;
-  size?: UserAvatarSize;
-}) {
-  const colors = useMemo(() => getUserGrainColors(username), [username]);
-  const visualSize =
-    size === 'compact'
-      ? AVATAR_SHADER_COMPACT_SIZE
-      : AVATAR_SHADER_DEFAULT_SIZE;
-  const shaderScale = visualSize / AVATAR_SHADER_HEIGHT;
-  const fallbackStyle = useMemo(
-    () => ({
-      ...getUserGrainFallbackStyle(colors),
-      height: visualSize,
-      width: visualSize,
-    }),
-    [colors, visualSize]
-  );
-
-  return (
-    <span
-      className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%_at_50%_50%)] ${
-        size === 'compact' ? 'border border-[var(--ui-glass-border-hover)]' : ''
-      }`}
-      style={fallbackStyle}
-    >
-      <GrainGradient
-        className='absolute left-1/2 top-1/2 max-w-none'
-        width={AVATAR_SHADER_WIDTH}
-        height={AVATAR_SHADER_HEIGHT}
-        style={{
-          transform: `translate(-50%, -50%) scale(${shaderScale})`,
-          transformOrigin: 'center',
-        }}
-        colors={colors}
-        colorBack='#000000'
-        softness={0.5}
-        intensity={0.62}
-        noise={0.25}
-        shape='wave'
-        speed={1.3}
-        maxPixelCount={AVATAR_SHADER_WIDTH * AVATAR_SHADER_HEIGHT}
-      />
-    </span>
-  );
 }
 
 export const UserMenu: React.FC<UserMenuProps> = ({
@@ -642,7 +504,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           } m-0 inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full p-0 shadow-none outline-none focus-visible:outline-none`}
           aria-label='User Menu'
         >
-          <UserShaderAvatar username={authInfo?.username} size={avatarSize} />
+          <User className='h-5 w-5 shrink-0' />
         </button>
         {updateStatus === UpdateStatus.HAS_UPDATE && (
           <div className='absolute top-[2px] right-[2px] w-2 h-2 bg-yellow-500 rounded-full'></div>
