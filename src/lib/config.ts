@@ -87,7 +87,9 @@ function mergeUsersFromStorage(
 }
 
 function dropLegacyConfigFields(adminConfig: AdminConfig): void {
-  delete (adminConfig as Record<string, unknown>)['Custom' + 'Categories'];
+  delete (adminConfig as unknown as Record<string, unknown>)[
+    'Custom' + 'Categories'
+  ];
 }
 
 function createAdminConfig(

@@ -13,7 +13,7 @@ import { ThemeProvider } from '../components/ThemeProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
-// 动态生成 metadata，支持配置更新后的标题变化
+// Generate metadata from the active site configuration.
 export async function generateMetadata(): Promise<Metadata> {
   let siteName = process.env.SITE_NAME || 'Luma';
   if (
@@ -63,7 +63,7 @@ export default async function RootLayout({
     enableRegister = config.UserConfig.AllowRegister;
   }
 
-  // 将运行时配置注入到全局 window 对象，供客户端在运行时读取
+  // Expose runtime flags on window.RUNTIME_CONFIG for client components.
   const runtimeConfig = {
     STORAGE_TYPE: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
     ENABLE_REGISTER: enableRegister,
@@ -76,7 +76,7 @@ export default async function RootLayout({
           name='viewport'
           content='width=device-width, initial-scale=1.0, viewport-fit=cover'
         />
-        {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
+        {/* Serialize runtime flags directly into the initial document. */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script
           dangerouslySetInnerHTML={{
