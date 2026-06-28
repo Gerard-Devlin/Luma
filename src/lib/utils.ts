@@ -202,8 +202,8 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
         reject(new Error('Failed to load video metadata'));
       };
 
-      let actualLoadSpeed = '未知';
-      let hasSpeedCalculated = true;
+      const actualLoadSpeed = '未知';
+      const hasSpeedCalculated = true;
       let hasMetadataLoaded = false;
 
       // 检查是否可以返回结果
