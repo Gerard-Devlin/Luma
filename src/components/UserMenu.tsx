@@ -138,7 +138,9 @@ function UserShaderAvatar({
 
   return (
     <span
-      className='relative flex shrink-0 items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%_at_50%_50%)]'
+      className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%_at_50%_50%)] ${
+        size === 'compact' ? 'border border-[var(--ui-glass-border-hover)]' : ''
+      }`}
       style={fallbackStyle}
     >
       <GrainGradient
@@ -154,7 +156,7 @@ function UserShaderAvatar({
         softness={0.5}
         intensity={0.62}
         noise={0.25}
-        shape='corners'
+        shape='wave'
         speed={1.3}
         maxPixelCount={AVATAR_SHADER_WIDTH * AVATAR_SHADER_HEIGHT}
       />

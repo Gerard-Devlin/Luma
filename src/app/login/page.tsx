@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Github } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
@@ -45,12 +45,13 @@ function VersionDisplay() {
       onClick={() =>
         window.open('https://github.com/Gerard-Devlin/Luma', '_blank')
       }
-      className='ui-glass-control fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:text-white'
+      className='ui-glass-control fixed bottom-4 left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 whitespace-nowrap px-3 py-2 text-xs text-zinc-300 hover:text-white'
     >
-      <span className='font-mono'>v{CURRENT_VERSION}</span>
+      <Github className='h-3.5 w-3.5 shrink-0' />
+      <span className='shrink-0 font-mono'>v{CURRENT_VERSION}</span>
       {!isChecking && updateStatus !== UpdateStatus.FETCH_FAILED && (
         <div
-          className={`flex items-center gap-1.5 ${
+          className={`flex shrink-0 items-center gap-1.5 ${
             updateStatus === UpdateStatus.HAS_UPDATE
               ? 'text-yellow-300'
               : updateStatus === UpdateStatus.NO_UPDATE
@@ -60,14 +61,16 @@ function VersionDisplay() {
         >
           {updateStatus === UpdateStatus.HAS_UPDATE && (
             <>
-              <AlertCircle className='h-3.5 w-3.5' />
-              <span className='text-xs font-semibold'>Update available</span>
+              <AlertCircle className='h-3.5 w-3.5 shrink-0' />
+              <span className='shrink-0 text-xs font-semibold'>
+                Update available
+              </span>
             </>
           )}
           {updateStatus === UpdateStatus.NO_UPDATE && (
             <>
-              <CheckCircle className='h-3.5 w-3.5' />
-              <span className='text-xs font-semibold'>Up to date</span>
+              <CheckCircle className='h-3.5 w-3.5 shrink-0' />
+              <span className='shrink-0 text-xs font-semibold'>Up to date</span>
             </>
           )}
         </div>
