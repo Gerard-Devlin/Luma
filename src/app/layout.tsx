@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 
@@ -8,7 +6,6 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 
 import { getConfig } from '@/lib/config';
 import { DEFAULT_ANNOUNCEMENT } from '@/lib/legal';
-import RuntimeConfig from '@/lib/runtime';
 
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { SiteProvider } from '../components/SiteProvider';
@@ -56,12 +53,6 @@ export default async function RootLayout({
   let announcement =
     process.env.ANNOUNCEMENT || DEFAULT_ANNOUNCEMENT;
   let enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
-  let customCategories =
-    (RuntimeConfig as any).custom_category?.map((category: any) => ({
-      name: 'name' in category ? category.name : '',
-      type: category.type,
-      query: category.query,
-    })) || ([] as Array<{ name: string; type: 'movie' | 'tv'; query: string }>);
   if (
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1' &&
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'upstash'
@@ -70,20 +61,12 @@ export default async function RootLayout({
     siteName = config.SiteConfig.SiteName;
     announcement = config.SiteConfig.Announcement;
     enableRegister = config.UserConfig.AllowRegister;
-    customCategories = config.CustomCategories.filter(
-      (category) => !category.disabled
-    ).map((category) => ({
-      name: category.name || '',
-      type: category.type,
-      query: category.query,
-    }));
   }
 
   // 将运行时配置注入到全局 window 对象，供客户端在运行时读取
   const runtimeConfig = {
     STORAGE_TYPE: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
     ENABLE_REGISTER: enableRegister,
-    CUSTOM_CATEGORIES: customCategories,
   };
 
   return (

@@ -8,11 +8,6 @@ import runtimeConfig from './runtime';
 
 interface ConfigFileStruct {
   cache_time?: number;
-  custom_category?: {
-    name?: string;
-    type: 'movie' | 'tv';
-    query: string;
-  }[];
 }
 
 let fileConfig: ConfigFileStruct;
@@ -33,16 +28,6 @@ function getDefaultUserConfig(
     AllowRegister: process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true',
     Users: users,
   };
-}
-
-function getFileCustomCategories(): AdminConfig['CustomCategories'] {
-  return (fileConfig.custom_category || []).map((category) => ({
-    name: category.name,
-    type: category.type,
-    query: category.query,
-    from: 'config',
-    disabled: false,
-  }));
 }
 
 function applyEnvironmentOverrides(adminConfig: AdminConfig): AdminConfig {
@@ -101,37 +86,8 @@ function mergeUsersFromStorage(
   syncOwnerUser(adminConfig);
 }
 
-function mergeCustomCategories(
-  adminConfig: AdminConfig,
-  keepCustomCategories = true
-): void {
-  const fileCategories = getFileCustomCategories();
-  if (!keepCustomCategories) {
-    adminConfig.CustomCategories = fileCategories;
-    return;
-  }
-
-  const categoryMap = new Map(
-    (adminConfig.CustomCategories || []).map((category) => [
-      `${category.query}-${category.type}`,
-      category,
-    ])
-  );
-
-  fileCategories.forEach((category) => {
-    categoryMap.set(`${category.query}-${category.type}`, category);
-  });
-
-  const fileCategoryKeys = new Set(
-    fileCategories.map((category) => `${category.query}-${category.type}`)
-  );
-  categoryMap.forEach((category, key) => {
-    if (!fileCategoryKeys.has(key)) {
-      category.from = 'custom';
-    }
-  });
-
-  adminConfig.CustomCategories = Array.from(categoryMap.values());
+function dropLegacyConfigFields(adminConfig: AdminConfig): void {
+  delete (adminConfig as Record<string, unknown>)['Custom' + 'Categories'];
 }
 
 function createAdminConfig(
@@ -140,7 +96,6 @@ function createAdminConfig(
   return {
     SiteConfig: getDefaultSiteConfig(),
     UserConfig: getDefaultUserConfig(users),
-    CustomCategories: getFileCustomCategories(),
   };
 }
 
@@ -212,10 +167,9 @@ async function initConfig() {
           ...adminConfig.UserConfig,
           Users: adminConfig.UserConfig.Users || [],
         };
-        adminConfig.CustomCategories = adminConfig.CustomCategories || [];
-        mergeCustomCategories(adminConfig);
         mergeUsersFromStorage(adminConfig, userNames);
         applyEnvironmentOverrides(adminConfig);
+        dropLegacyConfigFields(adminConfig);
       } else {
         const allUsers = userNames.map((username) => ({
           username,
@@ -264,9 +218,9 @@ export async function getConfig(): Promise<AdminConfig> {
       ...adminConfig.UserConfig,
       Users: adminConfig.UserConfig.Users || [],
     };
-    adminConfig.CustomCategories = getFileCustomCategories();
     applyEnvironmentOverrides(adminConfig);
     syncOwnerUser(adminConfig);
+    dropLegacyConfigFields(adminConfig);
     cachedConfig = adminConfig;
   } else {
     await initConfig();
@@ -276,7 +230,6 @@ export async function getConfig(): Promise<AdminConfig> {
 }
 
 export async function resetConfig() {
-  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
   const storage = getStorage();
   const userNames = await getStorageUserNames(storage);
 
@@ -299,8 +252,7 @@ export async function resetConfig() {
 
   cachedConfig.SiteConfig = adminConfig.SiteConfig;
   cachedConfig.UserConfig = adminConfig.UserConfig;
-  cachedConfig.CustomCategories =
-    storageType === 'redis' ? adminConfig.CustomCategories : [];
+  dropLegacyConfigFields(cachedConfig);
 }
 
 export async function getCacheTime(): Promise<number> {

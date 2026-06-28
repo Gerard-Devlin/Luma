@@ -4,7 +4,6 @@ import {
   CalendarRange,
   ChevronDown,
   Clock3,
-  Film,
   Languages,
   ListFilter,
   RotateCcw,
@@ -17,7 +16,6 @@ import { Suspense } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DiscoverCardSkeleton from '@/components/DiscoverCardSkeleton';
-import DiscoverCustomSelector from '@/components/DiscoverCustomSelector';
 import PageLayout from '@/components/PageLayout';
 import TmdbHeroBanner from '@/components/TmdbHeroBanner';
 import VideoCard from '@/components/VideoCard';
@@ -143,17 +141,15 @@ const DEFAULT_FILTERS: FilterState = {
 
 function normalizeType(
   value: string | null
-): 'movie' | 'tv' | 'show' | 'custom' {
+): 'movie' | 'tv' | 'show' {
   if (value === 'tv') return 'tv';
   if (value === 'show') return 'show';
-  if (value === 'custom') return 'custom';
   return 'movie';
 }
 
-function getPageTitle(type: 'movie' | 'tv' | 'show' | 'custom'): string {
+function getPageTitle(type: 'movie' | 'tv' | 'show'): string {
   if (type === 'tv') return 'Series';
   if (type === 'show') return 'Shows';
-  if (type === 'custom') return 'Custom';
   return 'Movies';
 }
 
@@ -203,7 +199,7 @@ function resolveDiscoverSortBy(
 function DiscoverPageClient() {
   const searchParams = useSearchParams();
   const type = normalizeType(searchParams.get('type'));
-  const media = type === 'movie' || type === 'custom' ? 'movie' : 'tv';
+  const media = type === 'movie' ? 'movie' : 'tv';
   const hasTopHero = type === 'movie' || type === 'tv' || type === 'show';
   const isTmdbType = type === 'movie' || type === 'tv' || type === 'show';
 
@@ -220,21 +216,6 @@ function DiscoverPageClient() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  const customObserverRef = useRef<IntersectionObserver | null>(null);
-  const customLoadingRef = useRef<HTMLDivElement | null>(null);
-  const customDebounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [customCategories, setCustomCategories] = useState<
-    Array<{ name: string; type: 'movie' | 'tv'; query: string }>
-  >([]);
-  const [customPrimarySelection, setCustomPrimarySelection] = useState('');
-  const [customSecondarySelection, setCustomSecondarySelection] = useState('');
-  const [customItems, setCustomItems] = useState<DiscoverItem[]>([]);
-  const [customLoading, setCustomLoading] = useState(false);
-  const [customLoadingMore, setCustomLoadingMore] = useState(false);
-  const [customCurrentPage, setCustomCurrentPage] = useState(0);
-  const [customHasMore, setCustomHasMore] = useState(true);
 
   const showObserverRef = useRef<IntersectionObserver | null>(null);
   const showLoadingRef = useRef<HTMLDivElement | null>(null);
@@ -255,37 +236,6 @@ function DiscoverPageClient() {
       setShowCountries([]);
     }
   }, [type]);
-
-  useEffect(() => {
-    const runtimeConfig = (window as any).RUNTIME_CONFIG;
-    if (runtimeConfig?.CUSTOM_CATEGORIES?.length > 0) {
-      setCustomCategories(runtimeConfig.CUSTOM_CATEGORIES);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (type !== 'custom') return;
-    if (!customCategories.length) {
-      setCustomPrimarySelection('');
-      setCustomSecondarySelection('');
-      setCustomItems([]);
-      setCustomHasMore(false);
-      return;
-    }
-    if (customPrimarySelection && customSecondarySelection) {
-      return;
-    }
-
-    const types = Array.from(new Set(customCategories.map((cat) => cat.type)));
-    const preferredType = types.includes('movie')
-      ? 'movie'
-      : (types[0] as 'movie' | 'tv');
-    const firstCategory = customCategories.find(
-      (cat) => cat.type === preferredType
-    );
-    setCustomPrimarySelection(preferredType);
-    setCustomSecondarySelection(firstCategory?.query || '');
-  }, [type, customCategories, customPrimarySelection, customSecondarySelection]);
 
   const mergedGenres = useMemo(
     () => Array.from(new Set([...filters.selectedGenres])),
@@ -395,63 +345,6 @@ function DiscoverPageClient() {
     [queryString]
   );
 
-  const loadCustomPage = useCallback(
-    async (page: number, append: boolean) => {
-      const selectedCategory = customCategories.find(
-        (cat) =>
-          cat.type === customPrimarySelection &&
-          cat.query === customSecondarySelection
-      );
-      if (!selectedCategory) {
-        if (!append) {
-          setCustomItems([]);
-          setCustomHasMore(false);
-          setCustomLoading(false);
-        }
-        return;
-      }
-
-      try {
-        if (append) {
-          setCustomLoadingMore(true);
-        } else {
-          setCustomLoading(true);
-        }
-
-        const params = new URLSearchParams({
-          media: selectedCategory.type,
-          include_adult: 'true',
-          page: String(page + 1),
-          sort_by: resolveDiscoverSortBy(sortMode, selectedCategory.type),
-        });
-        params.set('with_keywords', selectedCategory.query);
-
-        const response = await fetch(`/api/tmdb/discover?${params.toString()}`);
-        const data = (await response.json()) as DiscoverApiResponse;
-
-        if (!response.ok || data.code !== 200) {
-          throw new Error(
-            data.message || 'Failed to fetch custom categories'
-          );
-        }
-
-        setCustomItems((prev) =>
-          append ? [...prev, ...data.list] : data.list
-        );
-        setCustomHasMore(data.list.length === 25);
-      } catch {
-        if (!append) {
-          setCustomItems([]);
-          setCustomHasMore(false);
-        }
-      } finally {
-        setCustomLoading(false);
-        setCustomLoadingMore(false);
-      }
-    },
-    [customCategories, customPrimarySelection, customSecondarySelection]
-  );
-
   const loadShowPage = useCallback(
     async (page: number, append: boolean) => {
       try {
@@ -545,58 +438,6 @@ function DiscoverPageClient() {
   }, [hasMore, isLoadingMore, loading, isTmdbType]);
 
   useEffect(() => {
-    if (type !== 'custom') return;
-    if (!customPrimarySelection || !customSecondarySelection) return;
-
-    setCustomItems([]);
-    setCustomCurrentPage(0);
-    setCustomHasMore(true);
-    setCustomLoadingMore(false);
-
-    if (customDebounceRef.current) clearTimeout(customDebounceRef.current);
-    customDebounceRef.current = setTimeout(() => {
-      loadCustomPage(0, false);
-    }, 100);
-
-    return () => {
-      if (customDebounceRef.current) clearTimeout(customDebounceRef.current);
-    };
-  }, [type, customPrimarySelection, customSecondarySelection, loadCustomPage]);
-
-  useEffect(() => {
-    if (type !== 'custom') return;
-    if (customCurrentPage <= 0) return;
-    loadCustomPage(customCurrentPage, true);
-  }, [type, customCurrentPage, loadCustomPage]);
-
-  useEffect(() => {
-    if (type !== 'custom') return;
-    if (
-      !customLoadingRef.current ||
-      !customHasMore ||
-      customLoading ||
-      customLoadingMore
-    ) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        if (customHasMore && !customLoadingMore) {
-          setCustomCurrentPage((prev) => prev + 1);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(customLoadingRef.current);
-    customObserverRef.current = observer;
-
-    return () => observer.disconnect();
-  }, [type, customHasMore, customLoading, customLoadingMore]);
-
-  useEffect(() => {
     if (type !== 'show') return;
 
     setShowItems([]);
@@ -680,28 +521,6 @@ function DiscoverPageClient() {
     });
   }, []);
 
-  const handleCustomPrimaryChange = useCallback(
-    (value: string) => {
-      if (value === customPrimarySelection) return;
-      setCustomLoading(true);
-      setCustomPrimarySelection(value);
-      const firstCategory = customCategories.find((cat) => cat.type === value);
-      if (firstCategory) {
-        setCustomSecondarySelection(firstCategory.query);
-      }
-    },
-    [customCategories, customPrimarySelection]
-  );
-
-  const handleCustomSecondaryChange = useCallback(
-    (value: string) => {
-      if (value === customSecondarySelection) return;
-      setCustomLoading(true);
-      setCustomSecondarySelection(value);
-    },
-    [customSecondarySelection]
-  );
-
   const toggleShowCountry = useCallback((countryCode: string) => {
     setShowLoading(true);
     setShowCountries((prev) => {
@@ -780,21 +599,7 @@ function DiscoverPageClient() {
             </div>
 
             <div className='rounded-2xl border border-gray-200/60 bg-white/75 p-4 backdrop-blur-sm dark:border-gray-700/50 dark:bg-gray-900/50 sm:p-6'>
-	              {type === 'custom' ? (
-	                <>
-	                  <div className='mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200'>
-	                    <Film className='h-4 w-4' />
-	                    {'Custom Categories'}
-	                  </div>
-	                  <DiscoverCustomSelector
-	                    customCategories={customCategories}
-                    primarySelection={customPrimarySelection}
-                    secondarySelection={customSecondarySelection}
-	                    onPrimaryChange={handleCustomPrimaryChange}
-	                    onSecondaryChange={handleCustomSecondaryChange}
-	                  />
-	                </>
-	              ) : type === 'show' ? (
+              {type === 'show' ? (
                 <>
                   <div className='mb-4 flex items-center justify-between'>
                     <div className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-200'>
@@ -1235,22 +1040,11 @@ function DiscoverPageClient() {
 
           <div className='mt-8 overflow-visible'>
             <div className='grid grid-cols-2 justify-start gap-x-2 gap-y-8 px-0 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8 sm:px-2'>
-              {(
-                type === 'custom'
-                  ? customLoading
-                  : type === 'show'
-                  ? showLoading
-                  : loading
-              )
+              {(type === 'show' ? showLoading : loading)
                 ? skeletonData.map((index) => (
                     <DiscoverCardSkeleton key={index} />
                   ))
-                : (type === 'custom'
-                    ? customItems
-                    : type === 'show'
-                    ? showItems
-                    : items
-                  ).map((item, index) => (
+                : (type === 'show' ? showItems : items).map((item, index) => (
                     <div key={`${item.id}-${index}`} className='w-full'>
                       <VideoCard
                         from='discover'
@@ -1259,47 +1053,19 @@ function DiscoverPageClient() {
                         rate={item.rate}
                         year={item.year}
                         displayVariant='poster-info'
-                        type={
-                          type === 'custom'
-                            ? customPrimarySelection === 'movie'
-                              ? 'movie'
-                              : ''
-                            : type === 'show'
-                            ? 'tv'
-                            : media
-                        }
+                        type={type === 'show' ? 'tv' : media}
                       />
                     </div>
                   ))}
             </div>
 
-            {(type === 'custom'
-              ? customHasMore
-              : type === 'show'
-              ? showHasMore
-              : hasMore) &&
-            !(type === 'custom'
-              ? customLoading
-              : type === 'show'
-              ? showLoading
-              : loading) ? (
+            {(type === 'show' ? showHasMore : hasMore) &&
+            !(type === 'show' ? showLoading : loading) ? (
               <div
-                ref={
-                  type === 'custom'
-                    ? customLoadingRef
-                    : type === 'show'
-                    ? showLoadingRef
-                    : loadingRef
-                }
+                ref={type === 'show' ? showLoadingRef : loadingRef}
                 className='mt-12 flex justify-center py-8'
               >
-                {(
-                  type === 'custom'
-                    ? customLoadingMore
-                    : type === 'show'
-                    ? showLoadingMore
-                    : isLoadingMore
-                ) ? (
+                {(type === 'show' ? showLoadingMore : isLoadingMore) ? (
                   <div className='flex items-center gap-2'>
                     <div className='h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500' />
                     <span className='text-gray-600 dark:text-gray-300'>
@@ -1310,31 +1076,15 @@ function DiscoverPageClient() {
               </div>
             ) : null}
 
-            {!(type === 'custom'
-              ? customHasMore
-              : type === 'show'
-              ? showHasMore
-              : hasMore) &&
-            (type === 'custom'
-              ? customItems.length
-              : type === 'show'
-              ? showItems.length
-              : items.length) > 0 ? (
+            {!(type === 'show' ? showHasMore : hasMore) &&
+            (type === 'show' ? showItems.length : items.length) > 0 ? (
               <div className='py-8 text-center text-gray-500 dark:text-gray-400'>
                 {'All content loaded'}
               </div>
             ) : null}
 
-            {!(type === 'custom'
-              ? customLoading
-              : type === 'show'
-              ? showLoading
-              : loading) &&
-            (type === 'custom'
-              ? customItems.length
-              : type === 'show'
-              ? showItems.length
-              : items.length) === 0 ? (
+            {!(type === 'show' ? showLoading : loading) &&
+            (type === 'show' ? showItems.length : items.length) === 0 ? (
               <div className='py-8 text-center text-gray-500 dark:text-gray-400'>
                 {'No related content found'}
               </div>

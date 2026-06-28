@@ -811,7 +811,7 @@ function AdminPageClient() {
   const handleResetConfig = async () => {
     const { isConfirmed } = await Swal.fire({
       title: 'Reset configuration?',
-      text: 'This will reset user bans, admin settings, custom categories, and site settings to their defaults. Continue?',
+      text: 'This will reset user bans, admin settings, and site settings to their defaults. Continue?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Reset',

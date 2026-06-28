@@ -12,13 +12,6 @@ export interface AdminConfig {
       banned?: boolean;
     }[];
   };
-  CustomCategories: {
-    name?: string;
-    type: 'movie' | 'tv';
-    query: string;
-    from: 'config' | 'custom';
-    disabled?: boolean;
-  }[];
 }
 
 export interface AdminConfigResult {
