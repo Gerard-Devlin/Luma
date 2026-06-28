@@ -1,6 +1,5 @@
 'use client';
 
-import Hls from 'hls.js';
 import { useEffect, useRef } from 'react';
 
 type TrailerStreamVideoProps = {
@@ -34,8 +33,6 @@ export default function TrailerStreamVideo({
     const video = videoRef.current;
     if (!video) return;
 
-    let hlsInstance: Hls | null = null;
-
     const clearSource = () => {
       video.removeAttribute('src');
       video.load();
@@ -49,17 +46,6 @@ export default function TrailerStreamVideo({
     }
 
     if (hlsUrl) {
-      if (Hls.isSupported()) {
-        hlsInstance = new Hls({ enableWorker: true });
-        hlsInstance.loadSource(hlsUrl);
-        hlsInstance.attachMedia(video);
-
-        return () => {
-          hlsInstance?.destroy();
-          clearSource();
-        };
-      }
-
       if (canPlayNativeHls(video)) {
         video.src = hlsUrl;
         return () => {

@@ -1,11 +1,9 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
 export type TmdbPlayerProviderId = 'videasy' | 'vidsrc' | 'vidking';
-export type TmdbPlayerPlaybackType = 'embed' | 'direct';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
   label: string;
-  playbackType: TmdbPlayerPlaybackType;
   colorParam?: string;
   subtitleLangParam?: string;
   defaultParams?: Record<string, string>;
@@ -34,7 +32,6 @@ export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
   {
     id: 'videasy',
     label: 'Videasy',
-    playbackType: 'embed',
     colorParam: 'color',
     defaultParams: {
       overlay: 'true',
@@ -43,13 +40,11 @@ export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
   {
     id: 'vidsrc',
     label: 'VidSrc',
-    playbackType: 'embed',
     subtitleLangParam: 'ds_lang',
   },
   {
     id: 'vidking',
     label: 'Vidking',
-    playbackType: 'embed',
     colorParam: 'color',
     defaultParams: {
       autoPlay: 'true',

@@ -7,8 +7,6 @@ export interface AdminConfig {
     ImageProxy: string;
     DoubanProxy: string;
     DisableYellowFilter: boolean;
-    DanmakuApiBase?: string;
-    DanmakuApiToken?: string;
   };
   UserConfig: {
     AllowRegister: boolean;

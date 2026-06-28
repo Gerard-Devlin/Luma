@@ -156,9 +156,7 @@ export async function GET(request: Request) {
       {
         provider,
         providers: TMDB_PLAYER_PROVIDERS,
-        playbackType: provider.playbackType,
         embedUrl,
-        directUrl: null,
         tmdbId,
         mediaType,
         season,
