@@ -498,10 +498,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           onPointerDown={handleMenuPointerDown}
           className={`${
             triggerClassName ||
-            `border border-white/15 bg-transparent transition-transform duration-160 hover:scale-105 focus-visible:ring-2 focus-visible:ring-white/30 ${
-              isOpen ? 'scale-105 border-white/25' : ''
-            }`
-          } m-0 inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full p-0 shadow-none outline-none focus-visible:outline-none`}
+            `ui-glass-control ${isOpen ? 'ui-glass-control-active' : ''}`
+          } m-0 inline-flex h-11 w-11 items-center justify-center p-0 outline-none focus-visible:outline-none`}
           aria-label='User Menu'
         >
           <User className='h-5 w-5 shrink-0' />
