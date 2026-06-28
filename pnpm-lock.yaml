@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@react-email/render':
-        specifier: 2.0.9
-        version: 2.0.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@headlessui/react':
         specifier: ^2.2.4
         version: 2.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -19,34 +16,28 @@ importers:
         version: 2.2.0(react@18.3.1)
       '@opennextjs/cloudflare':
         specifier: latest
-        version: 1.20.0(next@14.2.33(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(wrangler@4.105.0)
+        version: 1.20.1(next@14.2.33(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(wrangler@4.105.0)
       '@paper-design/shaders-react':
         specifier: ^0.0.76
         version: 0.0.76(@types/react@18.3.26)(react@18.3.1)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.0(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@react-email/render':
+        specifier: 2.0.9
+        version: 2.0.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@upstash/redis':
         specifier: ^1.25.0
         version: 1.35.5
       '@vidstack/react':
         specifier: ^1.12.13
         version: 1.12.13(@types/react@18.3.26)(react@18.3.1)
-      anime4k-webgpu:
-        specifier: ^1.0.0
-        version: 1.0.0(@webgpu/types@0.1.69)
-      artplayer:
-        specifier: ^5.2.3
-        version: 5.3.0
       clsx:
         specifier: ^2.0.0
         version: 2.1.1
       framer-motion:
         specifier: ^12.18.1
         version: 12.23.22(@emotion/is-prop-valid@1.2.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      hls.js:
-        specifier: ^1.6.6
-        version: 1.6.13
       lucide-react:
         specifier: ^0.438.0
         version: 0.438.0(react@18.3.1)
@@ -1976,8 +1967,8 @@ packages:
     peerDependencies:
       next: '>=15.5.18 <16 || >=16.2.6'
 
-  '@opennextjs/cloudflare@1.20.0':
-    resolution: {integrity: sha512-gbCIRNv4DYU5HgPQEsmyP/v+5zGZkMSGN2bYb04XfSibxiGjwNoTmtRxj/j0yOB70DLe3Xkh5f0eouXshXZtkw==}
+  '@opennextjs/cloudflare@1.20.1':
+    resolution: {integrity: sha512-T7yRoEmIdDQada0itRQmQ3cb9o9tWVg1193MviPWRX7XJulOQ6adz45ZgrJuzEPiwi+kMGnj9kozlNBlRNQZcw==}
     hasBin: true
     peerDependencies:
       next: '>=15.5.18 <16 || >=16.2.6'
@@ -2858,6 +2849,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -3009,9 +3001,6 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
-  '@webgpu/types@0.1.69':
-    resolution: {integrity: sha512-RPmm6kgRbI8e98zSD3RVACvnuktIja5+yLgDAkTmxLr90BEwdTXRQWNLF3ETTTyH/8mKhznZuN5AveXYFEsMGQ==}
-
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
 
@@ -3113,11 +3102,6 @@ packages:
 
   ajv@8.17.1:
     resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
-
-  anime4k-webgpu@1.0.0:
-    resolution: {integrity: sha512-syZZyDRHYukFnDLxdES4AuMHzKwxlu5Lo52yhEEc1hwKQmvza8DGC62/VDPrrWOu4KArU5jh/0yFJQBwetGuxg==}
-    peerDependencies:
-      '@webgpu/types': ^0.1.38
 
   ansi-colors@4.1.3:
     resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
@@ -3230,9 +3214,6 @@ packages:
   arrify@1.0.1:
     resolution: {integrity: sha512-3CYzex9M9FGQjCGMGyi6/31c8GJbgb0qGyrx5HWxPd0aCwh4cB2YjMb2Xf9UuoogrMrlO9cTqnB5rI5GHZTcUA==}
     engines: {node: '>=0.10.0'}
-
-  artplayer@5.3.0:
-    resolution: {integrity: sha512-yExO39MpEg4P+bxgChxx1eJfiUPE4q1QQRLCmqGhlsj+ANuaoEkR8hF93LdI5ZyrAcIbJkuEndxEiUoKobifDw==}
 
   ast-types-flow@0.0.8:
     resolution: {integrity: sha512-OH/2E5Fg20h2aPrbe+QL8JZQFko0YZaF+j4mnQ7BGhfavO7OpSLa8a0y9sBwomHdSbkhTS8TQNayBfnW5DwbvQ==}
@@ -4460,6 +4441,7 @@ packages:
   git-raw-commits@2.0.11:
     resolution: {integrity: sha512-VnctFhw+xfj8Va1xtfEqCUD2XDrbAPSJx+hSrE5K7fGdjZruW7XV+QOrN7LF/RJyvspRiD2I0asWsxFp0ya26A==}
     engines: {node: '>=10'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   glob-parent@5.1.2:
@@ -4476,10 +4458,12 @@ packages:
   glob@10.3.10:
     resolution: {integrity: sha512-fa46+tv1Ak0UPK1TOy/pZrIybNNt4HCv7SDzwyfiOZkvZLEbjsZkJBPtDHVshZjbecAoAGSC20MjLDG/qr679g==}
     engines: {node: '>=16 || 14 >=14.17'}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@12.0.0:
@@ -4493,7 +4477,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -4572,9 +4556,6 @@ packages:
   hasown@2.0.4:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
-
-  hls.js@1.6.13:
-    resolution: {integrity: sha512-hNEzjZNHf5bFrUNvdS4/1RjIanuJ6szpWNfTaX5I6WfGynWXGT7K/YQLYtemSvFExzeMdgdE4SsyVLJbd5PcZA==}
 
   hosted-git-info@2.8.9:
     resolution: {integrity: sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw==}
@@ -5505,6 +5486,7 @@ packages:
   next@14.2.33:
     resolution: {integrity: sha512-GiKHLsD00t4ACm1p00VgrI0rUFAC9cRDGReKyERlM57aeEZkOQGcZTpIbsGn0b562FTPJWmYfKwplfO9EaT6ng==}
     engines: {node: '>=18.17.0'}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -5626,9 +5608,6 @@ packages:
   onetime@5.1.2:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
     engines: {node: '>=6'}
-
-  option-validator@2.0.6:
-    resolution: {integrity: sha512-tmZDan2LRIRQyhUGvkff68/O0R8UmF+Btmiiz0SmSw2ng3CfPZB9wJlIjHpe/MKUZqyIZkVIXCrwr1tIN+0Dzg==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -7009,6 +6988,7 @@ packages:
 
   whatwg-encoding@1.0.5:
     resolution: {integrity: sha512-b5lim54JOPN9HtzvK9HFXvBma/rnfFeqsic0hSpjtDbVxR3dJKLc+KB4V6GgiGOvl7CY/KNh8rxSo9DKQrnUEw==}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@2.3.0:
     resolution: {integrity: sha512-M4yMwr6mAnQz76TbJm914+gPpB/nCwvZbJU28cUD6dR004SAxDLOOSUaB1JDRqLtaOV/vi0IC5lEAGFgrjGv/g==}
@@ -9500,7 +9480,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.0(next@14.2.33(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(wrangler@4.105.0)':
+  '@opennextjs/cloudflare@1.20.1(next@14.2.33(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(wrangler@4.105.0)':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@dotenvx/dotenvx': 1.31.0
@@ -10623,8 +10603,6 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@webgpu/types@0.1.69': {}
-
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
@@ -10718,10 +10696,6 @@ snapshots:
       fast-uri: 3.1.0
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
-
-  anime4k-webgpu@1.0.0(@webgpu/types@0.1.69):
-    dependencies:
-      '@webgpu/types': 0.1.69
 
   ansi-colors@4.1.3: {}
 
@@ -10848,10 +10822,6 @@ snapshots:
       is-array-buffer: 3.0.5
 
   arrify@1.0.1: {}
-
-  artplayer@5.3.0:
-    dependencies:
-      option-validator: 2.0.6
 
   ast-types-flow@0.0.8: {}
 
@@ -12450,8 +12420,6 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hls.js@1.6.13: {}
-
   hosted-git-info@2.8.9: {}
 
   hosted-git-info@4.1.0:
@@ -13743,10 +13711,6 @@ snapshots:
   onetime@5.1.2:
     dependencies:
       mimic-fn: 2.1.0
-
-  option-validator@2.0.6:
-    dependencies:
-      kind-of: 6.0.3
 
   optionator@0.9.4:
     dependencies:

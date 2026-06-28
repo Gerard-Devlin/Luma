@@ -33,6 +33,7 @@
   --ui-glass-control-bg-active: rgb(9 9 11 / 0.68);
   --ui-glass-panel-bg: rgb(9 9 11 / 0.68);
   --ui-glass-panel-strong-bg: rgb(9 9 11 / 0.78);
+  --ui-glass-season-menu-bg: rgb(9 9 11 / 0.78);
   --ui-glass-dialog-bg: rgb(9 9 11 / 0.76);
   --ui-glass-overlay-bg: rgb(0 0 0 / 0.72);
   --ui-glass-border: rgb(82 82 91 / 0.52);
@@ -44,6 +45,13 @@
   --ui-glass-input-bg: rgb(9 9 11 / 0.38);
   --ui-glass-input-bg-disabled: rgb(24 24 27 / 0.34);
   --ui-glass-shortcut-bg: rgb(9 9 11 / 0.42);
+  --ui-surface-media-bg: rgb(9 9 11 / 0.82);
+  --ui-surface-media-empty-bg: rgb(24 24 27 / 0.72);
+  --ui-text-strong: rgb(255 255 255);
+  --ui-text-primary: rgb(244 244 245);
+  --ui-text-secondary: rgb(228 228 231);
+  --ui-text-muted: rgb(161 161 170);
+  --ui-text-subtle: rgb(113 113 122);
   --ui-shadow-control: 0 8px 18px rgb(0 0 0 / 0.22);
   --ui-shadow-panel: 0 12px 30px rgb(0 0 0 / 0.45);
   --ui-shadow-dialog: 0 30px 80px rgb(0 0 0 / 0.45);
@@ -53,6 +61,13 @@
   --ui-radius-card: 12px;
   --ui-radius-row: 12px;
   --ui-radius-input: 10px;
+  --ui-space-episode-list-inset: 0.125rem;
+  --ui-size-episode-trigger-height: 2.5rem;
+  --ui-size-episode-trigger-icon: 1.125rem;
+  --ui-size-episode-trigger-chevron: 0.875rem;
+  --ui-space-episode-trigger-x: 0.75rem;
+  --ui-space-episode-trigger-gap: 0.5rem;
+  --ui-space-season-menu-gap: 0.5rem;
   --ui-blur-glass: 24px;
   --ui-blur-glass-strong: 32px;
 }
@@ -224,6 +239,80 @@
     border-color: var(--ui-glass-border-hover);
     background: var(--ui-glass-row-hover);
     color: white;
+  }
+
+  .ui-token-text-strong {
+    color: var(--ui-text-strong);
+  }
+
+  .ui-token-text-primary {
+    color: var(--ui-text-primary);
+  }
+
+  .ui-token-text-secondary {
+    color: var(--ui-text-secondary);
+  }
+
+  .ui-token-text-muted {
+    color: var(--ui-text-muted);
+  }
+
+  .ui-token-text-subtle {
+    color: var(--ui-text-subtle);
+  }
+
+  .ui-token-media-surface {
+    border: 1px solid var(--ui-glass-border);
+    border-radius: calc(var(--ui-radius-row) - 4px);
+    background: var(--ui-surface-media-bg);
+  }
+
+  .ui-token-media-empty {
+    background: var(--ui-surface-media-empty-bg);
+    color: var(--ui-text-subtle);
+  }
+
+  .ui-episode-row {
+    border: 1px solid transparent;
+  }
+
+  .ui-episode-list {
+    padding-inline: var(--ui-space-episode-list-inset);
+    padding-top: var(--ui-space-episode-list-inset);
+  }
+
+  .ui-episode-trigger {
+    height: var(--ui-size-episode-trigger-height);
+    gap: var(--ui-space-episode-trigger-gap);
+    padding-inline: var(--ui-space-episode-trigger-x);
+  }
+
+  .ui-episode-trigger-icon {
+    width: var(--ui-size-episode-trigger-icon);
+    height: var(--ui-size-episode-trigger-icon);
+  }
+
+  .ui-episode-trigger-chevron {
+    width: var(--ui-size-episode-trigger-chevron);
+    height: var(--ui-size-episode-trigger-chevron);
+  }
+
+  .ui-episode-row[data-active='true'] {
+    border-color: var(--ui-glass-border);
+  }
+
+  .ui-episode-row[data-active='true'] .ui-episode-title {
+    color: var(--ui-text-strong);
+  }
+
+  .ui-season-menu {
+    margin-top: var(--ui-space-season-menu-gap);
+    border: 1px solid var(--ui-glass-border-strong);
+    border-radius: var(--ui-radius-panel);
+    background: var(--ui-glass-season-menu-bg);
+    box-shadow: var(--ui-shadow-panel);
+    backdrop-filter: blur(var(--ui-blur-glass));
+    -webkit-backdrop-filter: blur(var(--ui-blur-glass));
   }
 }
 

@@ -371,6 +371,7 @@ function PlayPageClient() {
   } | null>(null);
   const seasonMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const seasonMenuRef = useRef<HTMLDivElement | null>(null);
+  const episodeListRef = useRef<HTMLDivElement | null>(null);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const castRailRef = useRef<HTMLDivElement | null>(null);
   const [canScrollCastLeft, setCanScrollCastLeft] = useState(false);
@@ -1789,10 +1790,21 @@ function PlayPageClient() {
       return;
     }
 
-    const rect = button.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const firstEpisodeRow = episodeListRef.current?.querySelector<HTMLElement>(
+      '[data-episode-row="true"]'
+    );
+    const rowRect = firstEpisodeRow?.getBoundingClientRect();
+    const listRect = episodeListRef.current?.getBoundingClientRect();
+    const rect =
+      rowRect && rowRect.width > 0
+        ? rowRect
+        : listRect && listRect.width > 0
+        ? listRect
+        : buttonRect;
     setSeasonMenuRect({
       left: rect.left,
-      top: rect.bottom + 8,
+      top: buttonRect.bottom,
       width: rect.width,
     });
     setSeasonMenuOpen((open) => !open);
@@ -2057,11 +2069,11 @@ function PlayPageClient() {
                   className='ui-glass-control flex h-10 w-full items-center justify-between px-3 text-left'
                   style={{ borderRadius: 'var(--ui-radius-row)' }}
                 >
-                  <span className='truncate text-sm font-semibold text-zinc-100'>
+                  <span className='ui-token-text-primary truncate text-sm font-semibold'>
                     Season {currentSeason}
                   </span>
                   <ChevronRight
-                    className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${
+                    className={`ui-token-text-muted h-4 w-4 transition-transform duration-200 ${
                       seasonMenuOpen ? 'rotate-90' : ''
                     }`}
                   />
@@ -2070,7 +2082,8 @@ function PlayPageClient() {
             ) : null}
 
             <div
-              className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto px-0.5 pr-1 scrollbar-hide ${
+              ref={episodeListRef}
+              className={`ui-episode-list min-h-0 flex-1 space-y-1.5 overflow-y-auto scrollbar-hide ${
                 seasonOptions.length > 1 ? 'pt-2' : ''
               }`}
             >
@@ -2089,16 +2102,11 @@ function PlayPageClient() {
                         setEpisodePanelOpen(false);
                       }}
                       data-active={isActive}
-                      className='ui-glass-row group flex w-full items-stretch gap-3 border border-transparent p-2 text-left transition-colors data-[active=true]:bg-[var(--ui-glass-row-active)]'
-                      style={{
-                        borderRadius: 'var(--ui-radius-row)',
-                      }}
+                      data-episode-row='true'
+                      className='ui-glass-row ui-episode-row group flex w-full items-stretch gap-3 p-2 text-left transition-colors data-[active=true]:bg-[var(--ui-glass-row-active)]'
                     >
                       <div
-                        className='relative min-h-20 w-28 flex-shrink-0 self-stretch overflow-hidden bg-zinc-900 sm:w-32'
-                        style={{
-                          borderRadius: 'calc(var(--ui-radius-row) - 4px)',
-                        }}
+                        className='ui-token-media-surface relative min-h-20 w-28 flex-shrink-0 self-stretch overflow-hidden sm:w-32'
                       >
                         {episode.still ? (
                           <img
@@ -2107,7 +2115,7 @@ function PlayPageClient() {
                             className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                           />
                         ) : (
-                          <div className='flex h-full w-full items-center justify-center bg-zinc-900 text-xs text-zinc-500'>
+                          <div className='ui-token-media-empty flex h-full w-full items-center justify-center text-xs'>
                             E{episode.episodeNumber}
                           </div>
                         )}
@@ -2115,19 +2123,21 @@ function PlayPageClient() {
 
                       <div className='min-w-0 flex-1 py-0.5'>
                         <div className='flex min-w-0 items-center gap-2'>
-                          <span className='shrink-0 text-[11px] font-semibold text-zinc-500'>
+                          <span className='ui-token-text-subtle shrink-0 text-[11px] font-semibold'>
                             E{episode.episodeNumber}
                           </span>
-                          <h3 className='line-clamp-1 text-sm font-semibold text-zinc-100 group-data-[active=true]:text-white'>
+                          <h3 className='ui-episode-title ui-token-text-primary line-clamp-1 text-sm font-semibold'>
                             {episode.title ||
                               `Episode ${episode.episodeNumber}`}
                           </h3>
                         </div>
                         {meta ? (
-                          <p className='mt-0.5 text-xs text-zinc-500'>{meta}</p>
+                          <p className='ui-token-text-subtle mt-0.5 text-xs'>
+                            {meta}
+                          </p>
                         ) : null}
                         {episode.overview ? (
-                          <p className='mt-1 line-clamp-1 text-xs leading-5 text-zinc-400 sm:line-clamp-2'>
+                          <p className='ui-token-text-muted mt-1 line-clamp-1 text-xs leading-5 sm:line-clamp-2'>
                             {episode.overview}
                           </p>
                         ) : null}
@@ -2137,7 +2147,7 @@ function PlayPageClient() {
                 })
               ) : (
                 <div
-                  className='ui-glass-panel p-5 text-center text-sm text-zinc-400'
+                  className='ui-glass-panel ui-token-text-muted p-5 text-center text-sm'
                   style={{ borderRadius: 'var(--ui-radius-row)' }}
                 >
                   No episodes available for this season.
@@ -2150,22 +2160,22 @@ function PlayPageClient() {
         <button
           type='button'
           onClick={() => setEpisodePanelOpen((open) => !open)}
-          className={`pointer-events-auto ui-glass-control group inline-flex h-11 items-center gap-2.5 px-4 transition-transform hover:scale-[1.02] ${
+          className={`pointer-events-auto ui-glass-control ui-episode-trigger group inline-flex items-center transition-transform hover:scale-[1.02] ${
             episodePanelOpen ? 'ui-glass-control-active' : ''
           }`}
           aria-label={episodePanelOpen ? 'Hide episodes' : 'Show episodes'}
           aria-expanded={episodePanelOpen}
         >
-          <span className='inline-flex h-5 w-5 items-center justify-center'>
-            <Film className='h-5 w-5 text-zinc-200' />
+          <span className='ui-episode-trigger-icon inline-flex items-center justify-center'>
+            <Film className='ui-token-text-secondary ui-episode-trigger-icon' />
           </span>
           <span className='flex min-w-0 items-center leading-none'>
-            <span className='whitespace-nowrap text-sm font-semibold text-zinc-100'>
+            <span className='ui-token-text-primary whitespace-nowrap text-sm font-semibold'>
               S{currentSeason} E{currentTmdbEpisodeNumber}
             </span>
           </span>
           <ChevronRight
-            className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${
+            className={`ui-token-text-muted ui-episode-trigger-chevron transition-transform duration-200 ${
               episodePanelOpen
                 ? 'rotate-90 md:-rotate-90'
                 : 'rotate-0 md:rotate-90'
@@ -2797,7 +2807,7 @@ function PlayPageClient() {
             <div
               ref={seasonMenuRef}
               role='listbox'
-              className='ui-glass-panel-strong fixed z-[3000] max-h-72 overflow-hidden p-2 shadow-[0_24px_80px_rgb(0_0_0_/_0.7)]'
+              className='ui-season-menu fixed z-[3000] max-h-72 overflow-hidden p-2'
               style={{
                 left: seasonMenuRect.left,
                 top: seasonMenuRect.top,
@@ -2825,8 +2835,8 @@ function PlayPageClient() {
                       }}
                       className={`ui-glass-row flex h-10 w-full items-center justify-between gap-3 px-4 text-left text-sm transition-colors ${
                         isActive
-                          ? 'bg-[var(--ui-glass-row-active)] text-white'
-                          : 'text-zinc-200'
+                          ? 'ui-token-text-strong bg-[var(--ui-glass-row-active)]'
+                          : 'ui-token-text-secondary'
                       }`}
                       style={{
                         borderRadius: 'var(--ui-radius-row)',
@@ -2834,7 +2844,7 @@ function PlayPageClient() {
                     >
                       <span>Season {season}</span>
                       {isActive ? (
-                        <Check className='h-5 w-5 text-zinc-100' />
+                        <Check className='ui-token-text-primary h-5 w-5' />
                       ) : (
                         <span className='h-5 w-5' aria-hidden='true' />
                       )}
