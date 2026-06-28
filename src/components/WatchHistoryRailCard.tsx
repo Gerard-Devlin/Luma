@@ -4,8 +4,6 @@ import { Check } from 'lucide-react';
 import Image from 'next/image';
 import { MouseEventHandler, PointerEventHandler } from 'react';
 
-import { processImageUrl } from '@/lib/utils';
-
 interface WatchHistoryRailCardProps {
   title: string;
   subtitle: string;
@@ -59,7 +57,7 @@ export default function WatchHistoryRailCard({
         <div className='relative aspect-[16/9] w-full'>
           {poster ? (
             <Image
-              src={processImageUrl(poster)}
+              src={poster}
               alt={title}
               fill
               unoptimized

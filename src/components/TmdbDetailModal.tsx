@@ -25,8 +25,6 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { isFutureReleaseDate } from '@/lib/tmdbRelease';
-import { processImageUrl } from '@/lib/utils';
-
 export type TmdbDetailMediaType = 'movie' | 'tv';
 
 export interface TmdbDetailModalCastItem {
@@ -84,11 +82,7 @@ interface TmdbDetailModalProps {
 }
 
 function safeImageUrl(url: string): string {
-  try {
-    return processImageUrl(url);
-  } catch {
-    return url;
-  }
+  return url;
 }
 
 function formatRuntime(minutes: number | null): string {

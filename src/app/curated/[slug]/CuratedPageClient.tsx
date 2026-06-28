@@ -172,10 +172,9 @@ export default function CuratedPageClient() {
                 {items.map((item) => (
                   <div key={`${item.id}-${item.title}`} className='w-full'>
                     <VideoCard
-                      from='douban'
+                      from='discover'
                       title={item.title}
                       poster={item.poster}
-                      douban_id={item.id}
                       rate={item.rate}
                       year={item.year}
                       displayVariant='poster-info'

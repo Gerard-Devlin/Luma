@@ -126,8 +126,6 @@ services:
 | `UPSTASH_URL`                    | Upstash Redis REST URL                          | URL                                      | Empty                  |
 | `UPSTASH_TOKEN`                  | Upstash Redis token                             | Token                                    | Empty                  |
 | `NEXT_PUBLIC_ENABLE_REGISTER`    | Enable public registration                      | `true`, `false`                          | `false`                |
-| `NEXT_PUBLIC_SEARCH_MAX_PAGE`    | Maximum search pages to fetch                   | `1` to `50`                              | `5`                    |
-| `NEXT_PUBLIC_IMAGE_PROXY`        | Browser-side image proxy prefix                 | URL prefix                               | Empty                  |
 | `TMDB_API_KEY`                   | Server-side TMDB API key                        | TMDB key                                 | Empty                  |
 | `NEXT_PUBLIC_TMDB_API_KEY`       | Client-side fallback TMDB API key               | TMDB key                                 | Empty                  |
 | `TMDB_API_BASE_URL`              | TMDB API proxy base URL                         | URL                                      | Official TMDB API      |
@@ -141,9 +139,8 @@ The admin panel is mainly intended for non-localStorage deployments. After setti
 Owners and admins can open `/admin` to manage:
 
 - Users and permissions
-- Provider configuration
-- Home categories and site settings
-- Registration, announcements, proxies, and filtering rules
+- TMDB Discover categories and site settings
+- Registration and announcements
 
 ## Security and Privacy
 
@@ -159,6 +156,6 @@ To reduce privacy and legal risk, set `PASSWORD` before deployment and keep `NEX
 ### Important Notice
 
 - This project is intended for learning, research, and personal use only.
-- This project does not store video files. Playback content comes from third-party APIs or user-configured providers.
+- This project does not store video files. Metadata comes from TMDB, and playback uses the configured TMDB player embed.
 - Do not use deployed instances for commercial services or public distribution.
 - Users are responsible for any risk caused by deployment, sharing, or usage.

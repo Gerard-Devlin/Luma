@@ -57,9 +57,9 @@ const MobileBottomNav = ({
   ];
 
   const categoryItems = [
-    { icon: Film, label: 'Movies', href: '/douban?type=movie' },
-    { icon: Tv, label: 'Series', href: '/douban?type=tv' },
-    { icon: HeartPulse, label: 'Shows', href: '/douban?type=show' },
+    { icon: Film, label: 'Movies', href: '/discover?type=movie' },
+    { icon: Tv, label: 'Series', href: '/discover?type=tv' },
+    { icon: HeartPulse, label: 'Shows', href: '/discover?type=show' },
   ];
 
   useEffect(() => {
@@ -74,7 +74,7 @@ const MobileBottomNav = ({
 
     return (
       decodedActive === decodedItemHref ||
-      (decodedActive.startsWith('/douban') &&
+      (decodedActive.startsWith('/discover') &&
         decodedActive.includes(`type=${typeMatch}`))
     );
   };

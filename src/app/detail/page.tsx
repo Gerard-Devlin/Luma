@@ -43,7 +43,6 @@ import {
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { isFutureReleaseDate } from '@/lib/tmdbRelease';
-import { processImageUrl } from '@/lib/utils';
 import { useImdbTrailerStream } from '@/hooks/use-imdb-trailer-stream';
 
 import PageLayout from '@/components/PageLayout';
@@ -118,12 +117,7 @@ interface SeasonPickerState {
 }
 
 function safeImageUrl(url?: string): string {
-  if (!url) return '';
-  try {
-    return processImageUrl(url);
-  } catch {
-    return url;
-  }
+  return url || '';
 }
 
 function normalizeMediaType(value?: string | null): TmdbMediaType {

@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
 
-import { DoubanItem } from '@/lib/types';
-
-
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const TMDB_BACKDROP_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
@@ -236,7 +233,12 @@ function buildDiscoverParams(
   return params;
 }
 
-interface TmdbDiscoverListItem extends DoubanItem {
+interface TmdbDiscoverListItem {
+  id: string;
+  title: string;
+  poster: string;
+  rate: string;
+  year: string;
   backdrop?: string;
 }
 

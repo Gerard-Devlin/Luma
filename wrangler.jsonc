@@ -18,7 +18,6 @@
     "NEXT_PUBLIC_STORAGE_TYPE": "d1",
     "SITE_NAME": "Luma",
     "NEXT_PUBLIC_ENABLE_REGISTER": "true",
-    "NEXT_PUBLIC_SEARCH_MAX_PAGE": "5",
     "USERNAME": "Devlin"
   },
   "d1_databases": [

@@ -2,8 +2,6 @@
 
 import { Star } from 'lucide-react';
 
-import { processImageUrl } from '@/lib/utils';
-
 interface PosterInfoCardProps {
   title: string;
   poster?: string;
@@ -44,7 +42,7 @@ export default function PosterInfoCard({
       <div className='relative aspect-[2/3] overflow-hidden rounded-xl border border-white/10 bg-white/10'>
         {poster ? (
           <img
-            src={processImageUrl(poster)}
+            src={poster}
             alt={title}
             className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
             referrerPolicy='no-referrer'

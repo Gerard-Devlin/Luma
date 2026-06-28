@@ -4,8 +4,6 @@ import { X } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
-import { processImageUrl } from '@/lib/utils';
-
 interface SeasonPickerModalProps {
   open: boolean;
   title: string;
@@ -18,12 +16,7 @@ interface SeasonPickerModalProps {
 
 function safeImageUrl(url?: string): string {
   const value = (url || '').trim();
-  if (!value) return '';
-  try {
-    return processImageUrl(value);
-  } catch {
-    return value;
-  }
+  return value;
 }
 
 export default function SeasonPickerModal({

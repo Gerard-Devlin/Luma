@@ -1,6 +1,6 @@
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 
-const DoubanCardSkeleton = () => {
+const DiscoverCardSkeleton = () => {
   return (
     <div className='w-full'>
       <div className='relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-white/10'>
@@ -15,4 +15,4 @@ const DoubanCardSkeleton = () => {
   );
 };
 
-export default DoubanCardSkeleton;
+export default DiscoverCardSkeleton;

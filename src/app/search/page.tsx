@@ -17,7 +17,6 @@ import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { SearchResult } from '@/lib/types';
-import { yellowWords } from '@/lib/yellow';
 
 import Loader from '@/components/Loader';
 import PageLayout from '@/components/PageLayout';
@@ -311,21 +310,12 @@ function SearchPageClient() {
         })
         .catch(() => ({ results: [], people: [] }));
 
-      let results = Array.isArray(tmdbPayload.results)
+      const results = Array.isArray(tmdbPayload.results)
         ? tmdbPayload.results
         : [];
       const people = Array.isArray(tmdbPayload.people)
         ? tmdbPayload.people
         : [];
-      if (
-        typeof window !== 'undefined' &&
-        !(window as any).RUNTIME_CONFIG?.DISABLE_YELLOW_FILTER
-      ) {
-        results = results.filter((result: SearchResult) => {
-          const typeName = result.type_name || '';
-          return !yellowWords.some((word: string) => typeName.includes(word));
-        });
-      }
       setSearchResults(
         results.sort((a: SearchResult, b: SearchResult) => {
           const aExactMatch = a.title === trimmedQuery;
@@ -707,7 +697,6 @@ function SearchPageClient() {
                           episodes={getEpisodeCount(item)}
                           source={item.source}
                           source_name={item.source_name}
-                          douban_id={item.douban_id?.toString()}
                           query={
                             searchQuery.trim() !== item.title
                               ? searchQuery.trim()

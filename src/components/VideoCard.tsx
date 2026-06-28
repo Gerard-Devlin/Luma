@@ -35,7 +35,6 @@ import { parseTmdbStorageId } from '@/lib/tmdb-history';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 import { SearchResult } from '@/lib/types';
-import { processImageUrl } from '@/lib/utils';
 
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import PosterInfoCard from '@/components/PosterInfoCard';
@@ -63,9 +62,8 @@ interface VideoCardProps {
   progress?: number;
   year?: string;
   subtitle?: string;
-  from: 'playrecord' | 'favorite' | 'search' | 'douban';
+  from: 'playrecord' | 'favorite' | 'search' | 'discover';
   currentEpisode?: number;
-  douban_id?: string;
   onDelete?: () => void;
   rate?: string;
   items?: SearchResult[];
@@ -870,7 +868,6 @@ export default function VideoCard({
   subtitle,
   from,
   currentEpisode,
-  douban_id,
   onDelete,
   rate,
   items,
@@ -915,12 +912,8 @@ export default function VideoCard({
 
   const aggregateData = useMemo(() => {
     if (!isAggregate || !items) return null;
-    const countMap = new Map<string | number, number>();
     const episodeCountMap = new Map<number, number>();
     items.forEach((item) => {
-      if (item.douban_id && item.douban_id !== 0) {
-        countMap.set(item.douban_id, (countMap.get(item.douban_id) || 0) + 1);
-      }
       const totalEpisodes =
         typeof item.total_episodes === 'number' && item.total_episodes > 0
           ? Math.floor(item.total_episodes)
@@ -952,7 +945,6 @@ export default function VideoCard({
 
     return {
       first: items[0],
-      mostFrequentDoubanId: getMostFrequent(countMap),
       mostFrequentEpisodes: getMostFrequent(episodeCountMap) || 0,
     };
   }, [isAggregate, items]);
@@ -961,12 +953,6 @@ export default function VideoCard({
   const actualPoster = aggregateData?.first.poster ?? poster;
   const actualSource = aggregateData?.first.source ?? source;
   const actualId = aggregateData?.first.id ?? id;
-  const actualDoubanId = String(
-    aggregateData?.mostFrequentDoubanId ?? douban_id
-  );
-  const hasDoubanId =
-    Boolean(actualDoubanId) &&
-    !['undefined', 'null', '0'].includes(actualDoubanId);
   const actualEpisodes = aggregateData?.mostFrequentEpisodes ?? episodes;
   const actualYear = aggregateData?.first.year ?? year;
   const actualSourceName =
@@ -1016,7 +1002,7 @@ export default function VideoCard({
 
   // Keep favorite state synced with shared storage.
   useEffect(() => {
-    if (from === 'douban' || !actualSource || !actualId) return;
+    if (from === 'discover' || !actualSource || !actualId) return;
 
     const fetchFavoriteStatus = async () => {
       try {
@@ -1047,7 +1033,7 @@ export default function VideoCard({
     async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (from === 'douban' || !actualSource || !actualId) return;
+      if (from === 'discover' || !actualSource || !actualId) return;
       try {
         if (favorited) {
           if (from === 'favorite') {
@@ -1220,7 +1206,7 @@ export default function VideoCard({
       return;
     }
 
-    if (from === 'douban') {
+    if (from === 'discover') {
       if (detailData?.id) {
         router.push(
           buildTmdbPlayerPageUrl({
@@ -1321,7 +1307,6 @@ export default function VideoCard({
         showProgress: true,
         showHeart: true,
         showCheckCircle: true,
-        showDoubanLink: false,
         showRating: false,
       },
       favorite: {
@@ -1329,7 +1314,6 @@ export default function VideoCard({
         showProgress: false,
         showHeart: true,
         showCheckCircle: false,
-        showDoubanLink: false,
         showRating: false,
       },
       search: {
@@ -1337,20 +1321,18 @@ export default function VideoCard({
         showProgress: false,
         showHeart: !isAggregate,
         showCheckCircle: false,
-        showDoubanLink: hasDoubanId,
         showRating: false,
       },
-      douban: {
+      discover: {
         showSourceName: false,
         showProgress: false,
         showHeart: false,
         showCheckCircle: false,
-        showDoubanLink: hasDoubanId,
         showRating: !!rate,
       },
     };
     return configs[from] || configs.search;
-  }, [from, hasDoubanId, isAggregate, rate]);
+  }, [from, isAggregate, rate]);
 
   const prefetchTmdbDetail = useCallback(() => {
     if (hasScheduledPrefetchRef.current) return;
@@ -1421,7 +1403,7 @@ export default function VideoCard({
       score: tmdbTrigger.score,
     });
 
-    if (from === 'douban') {
+    if (from === 'discover') {
       window.open(detailUrl, '_blank', 'noopener,noreferrer');
       return;
     }
@@ -1592,7 +1574,7 @@ export default function VideoCard({
           {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
           {actualPoster ? (
             <Image
-              src={processImageUrl(actualPoster)}
+              src={actualPoster}
               alt={actualTitle}
               fill
               className='object-cover'
@@ -1605,23 +1587,12 @@ export default function VideoCard({
 
           {cardActionButtons}
 
-          {config.showRating &&
-            rate &&
-            (hasDoubanId ? (
-              <div
-                data-card-action='true'
-                onClick={(e) => e.stopPropagation()}
-                className='absolute top-2 left-2 bg-black/70 text-yellow-300 text-xs font-bold h-7 px-2.5 rounded-full flex items-center gap-1 shadow-md transition-transform duration-200 ease-out hover:scale-105'
-              >
-                <Star size={14} stroke='currentColor' fill='currentColor' />
-                <span>{rate}</span>
-              </div>
-            ) : (
-              <div className='absolute top-2 left-2 bg-black/70 text-yellow-300 text-xs font-bold h-7 px-2.5 rounded-full flex items-center gap-1 shadow-md'>
-                <Star size={14} stroke='currentColor' fill='currentColor' />
-                <span>{rate}</span>
-              </div>
-            ))}
+          {config.showRating && rate ? (
+            <div className='absolute top-2 left-2 bg-black/70 text-yellow-300 text-xs font-bold h-7 px-2.5 rounded-full flex items-center gap-1 shadow-md'>
+              <Star size={14} stroke='currentColor' fill='currentColor' />
+              <span>{rate}</span>
+            </div>
+          ) : null}
 
           {actualEpisodes && actualEpisodes > 1 && (
             <div className='absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md opacity-0 -translate-y-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-110'>

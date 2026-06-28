@@ -172,10 +172,9 @@ function CuratedRowSection({
                 }}
               >
                 <VideoCard
-                  from='douban'
+                  from='discover'
                   title={item.title}
                   poster={item.poster}
-                  douban_id={item.id}
                   rate={item.rate}
                   year={item.year}
                   displayVariant='poster-info'

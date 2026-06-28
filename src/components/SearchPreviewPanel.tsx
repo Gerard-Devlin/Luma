@@ -4,7 +4,7 @@ import { Star } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { SearchResult } from '@/lib/types';
-import { cn, processImageUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const TV_LABEL = 'Series';
 const MOVIE_LABEL = 'Movie';
@@ -100,7 +100,7 @@ export default function SearchPreviewPanel({
                 className='ui-glass-row group flex w-full items-center gap-2.5 px-2 py-2 text-left'
               >
                 <img
-                  src={processImageUrl(item.poster)}
+                  src={item.poster}
                   alt={item.title}
                   className='h-16 w-11 shrink-0 rounded-md object-cover ring-1 ring-[var(--ui-glass-border)]'
                   loading='lazy'

@@ -106,21 +106,6 @@ export interface SearchResult {
   score?: string;
   desc?: string;
   type_name?: string;
-  douban_id?: number;
-}
-
-export interface DoubanItem {
-  id: string;
-  title: string;
-  poster: string;
-  rate: string;
-  year: string;
-}
-
-export interface DoubanResult {
-  code: number;
-  message: string;
-  list: DoubanItem[];
 }
 
 export interface SkipConfig {

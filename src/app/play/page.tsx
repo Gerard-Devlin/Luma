@@ -44,7 +44,6 @@ import {
   type TmdbPlayerProvider,
 } from '@/lib/tmdb-player-sources';
 import { SearchResult } from '@/lib/types';
-import { processImageUrl } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 import TmdbDetailModal from '@/components/TmdbDetailModal';
@@ -2110,7 +2109,7 @@ function PlayPageClient() {
                       >
                         {episode.still ? (
                           <img
-                            src={processImageUrl(episode.still)}
+                            src={episode.still}
                             alt={episode.title}
                             className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                           />
@@ -2191,7 +2190,7 @@ function PlayPageClient() {
         {playBackground ? (
           <div className='pointer-events-none absolute inset-0 -z-10 overflow-hidden'>
             <img
-              src={processImageUrl(playBackground)}
+              src={playBackground}
               alt=''
               aria-hidden='true'
               className='h-full w-full scale-[1.02] object-cover object-center brightness-[0.38] blur-[3px]'
@@ -2287,7 +2286,7 @@ function PlayPageClient() {
                     {tmdbDetail?.logo ? (
                       <>
                         <img
-                          src={processImageUrl(tmdbDetail.logo)}
+                          src={tmdbDetail.logo}
                           alt={`${displayTitle} logo`}
                           className='mx-0 h-20 w-auto max-w-full object-contain object-left drop-shadow-[0_8px_20px_rgba(0,0,0,0.45)] md:h-24 lg:h-28'
                         />
@@ -2411,7 +2410,7 @@ function PlayPageClient() {
                             <div className='relative h-[82px] w-[82px] overflow-hidden rounded-full border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] shadow-[var(--ui-shadow-control)] sm:h-24 sm:w-24'>
                               {item.profile ? (
                                 <img
-                                  src={processImageUrl(item.profile)}
+                                  src={item.profile}
                                   alt={item.name}
                                   className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                                 />
@@ -2545,7 +2544,7 @@ function PlayPageClient() {
                             <div className='relative aspect-[2/3] overflow-hidden rounded-xl border border-white/10 bg-black/20'>
                               {item.poster ? (
                                 <img
-                                  src={processImageUrl(item.poster)}
+                                  src={item.poster}
                                   alt={item.title}
                                   className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                                 />
@@ -2675,7 +2674,7 @@ function PlayPageClient() {
                             <div className='relative aspect-[2/3] overflow-hidden rounded-xl border border-white/10 bg-black/20'>
                               {item.poster ? (
                                 <img
-                                  src={processImageUrl(item.poster)}
+                                  src={item.poster}
                                   alt={item.title}
                                   className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                                 />
@@ -2774,7 +2773,7 @@ function PlayPageClient() {
                 <div className='bg-gray-300 dark:bg-gray-700 aspect-[2/3] flex items-center justify-center rounded-xl overflow-hidden'>
                   {displayPoster ? (
                     <img
-                      src={processImageUrl(displayPoster)}
+                      src={displayPoster}
                       alt={displayTitle}
                       className='w-full h-full object-cover'
                     />

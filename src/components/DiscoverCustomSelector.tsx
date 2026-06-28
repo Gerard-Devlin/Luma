@@ -10,7 +10,7 @@ interface CustomCategory {
   query: string;
 }
 
-interface DoubanCustomSelectorProps {
+interface DiscoverCustomSelectorProps {
   customCategories: CustomCategory[];
   primarySelection?: string;
   secondarySelection?: string;
@@ -18,7 +18,7 @@ interface DoubanCustomSelectorProps {
   onSecondaryChange: (value: string) => void;
 }
 
-const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
+const DiscoverCustomSelector: React.FC<DiscoverCustomSelectorProps> = ({
   customCategories,
   primarySelection,
   secondarySelection,
@@ -440,4 +440,4 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
   );
 };
 
-export default DoubanCustomSelector;
+export default DiscoverCustomSelector;

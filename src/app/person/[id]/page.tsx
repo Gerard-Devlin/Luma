@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { processImageUrl } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
@@ -214,7 +213,7 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
                   poster={item.poster}
                   year={item.year}
                   rate={item.score}
-                  from='douban'
+                  from='discover'
                   displayVariant='poster-info'
                   type={item.mediaType}
                 />
@@ -293,7 +292,7 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
                 poster={item.poster}
                 year={item.year}
                 rate={item.score}
-                from='douban'
+                from='discover'
                 displayVariant='poster-info'
                 type={item.mediaType}
               />
@@ -598,7 +597,7 @@ export default function PersonDetailPage() {
                   <span className='relative inline-flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-800 text-xs font-medium text-zinc-200 sm:h-9 sm:w-9 sm:text-sm'>
                     {detail.profile ? (
                       <Image
-                        src={processImageUrl(detail.profile)}
+                        src={detail.profile}
                         alt={detail.name}
                         fill
                         className='object-cover'
@@ -644,7 +643,7 @@ export default function PersonDetailPage() {
                           poster={item.poster}
                           year={item.year}
                           rate={item.score}
-                          from='douban'
+                          from='discover'
                           displayVariant='poster-info'
                           type={item.mediaType}
                         />

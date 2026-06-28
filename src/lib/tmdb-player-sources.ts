@@ -1,5 +1,5 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
-export type TmdbPlayerProviderId = 'videasy' | 'vidsrc' | 'vidking';
+export type TmdbPlayerProviderId = 'videasy' | 'vidking';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
@@ -36,11 +36,6 @@ export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
     defaultParams: {
       overlay: 'true',
     },
-  },
-  {
-    id: 'vidsrc',
-    label: 'VidSrc',
-    subtitleLangParam: 'ds_lang',
   },
   {
     id: 'vidking',
@@ -99,12 +94,6 @@ function getProviderBaseUrl(
   season: number,
   episode: number
 ): string {
-  if (provider === 'vidsrc') {
-    return mediaType === 'movie'
-      ? `https://vsembed.su/embed/movie/${tmdbId}`
-      : `https://vsembed.su/embed/tv/${tmdbId}/${season}/${episode}`;
-  }
-
   if (provider === 'vidking') {
     return mediaType === 'movie'
       ? `https://www.vidking.net/embed/movie/${tmdbId}`
@@ -120,7 +109,13 @@ export function getTmdbPlayerProvider(
   value?: string | null
 ): TmdbPlayerProvider {
   const providerId = normalizeTmdbPlayerProvider(value);
-  return PROVIDER_BY_ID.get(providerId) || PROVIDER_BY_ID.get(DEFAULT_TMDB_PLAYER_PROVIDER)!;
+  const provider =
+    PROVIDER_BY_ID.get(providerId) ||
+    PROVIDER_BY_ID.get(DEFAULT_TMDB_PLAYER_PROVIDER);
+  if (!provider) {
+    throw new Error('TMDB player provider is not configured');
+  }
+  return provider;
 }
 
 export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {

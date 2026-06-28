@@ -17,7 +17,6 @@ import {
   filterTmdbHistoryRecords,
   parseStorageKey,
 } from '@/lib/tmdb-history';
-import { processImageUrl } from '@/lib/utils';
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
 import {
@@ -325,7 +324,7 @@ export default function DesktopTopHistory() {
                     className='flex min-w-0 flex-1 items-center gap-2.5 text-left'
                   >
                     <Image
-                      src={processImageUrl(item.cover)}
+                      src={item.cover}
                       alt={item.title}
                       width={44}
                       height={64}

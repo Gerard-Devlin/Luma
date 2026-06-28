@@ -31,7 +31,6 @@ import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { isFutureReleaseDate, normalizeReleaseDate } from '@/lib/tmdbRelease';
-import { processImageUrl } from '@/lib/utils';
 
 import ReleaseYearBadge from '@/components/ReleaseYearBadge';
 import SeasonPickerModal from '@/components/SeasonPickerModal';
@@ -841,11 +840,7 @@ export default function TmdbHeroBanner({
   );
 
   const safeImageUrl = useCallback((url: string): string => {
-    try {
-      return processImageUrl(url);
-    } catch {
-      return url;
-    }
+    return url;
   }, []);
 
   const handleLogoLoad = useCallback(

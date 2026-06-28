@@ -21,7 +21,6 @@ import {
 import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
-import { processImageUrl } from '@/lib/utils';
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
 import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
@@ -118,11 +117,7 @@ const POPULAR_MOVIE_CONFIG =
   } satisfies CuratedCategoryConfig);
 
 function safeImageUrl(url: string): string {
-  try {
-    return processImageUrl(url);
-  } catch {
-    return url;
-  }
+  return url;
 }
 
 function hasSeasonHint(value: string): boolean {

@@ -56,10 +56,6 @@ export default async function RootLayout({
   let announcement =
     process.env.ANNOUNCEMENT || DEFAULT_ANNOUNCEMENT;
   let enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
-  let imageProxy = process.env.NEXT_PUBLIC_IMAGE_PROXY || '';
-  let doubanProxy = process.env.NEXT_PUBLIC_DOUBAN_PROXY || '';
-  let disableYellowFilter =
-    process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true';
   let customCategories =
     (RuntimeConfig as any).custom_category?.map((category: any) => ({
       name: 'name' in category ? category.name : '',
@@ -74,9 +70,6 @@ export default async function RootLayout({
     siteName = config.SiteConfig.SiteName;
     announcement = config.SiteConfig.Announcement;
     enableRegister = config.UserConfig.AllowRegister;
-    imageProxy = config.SiteConfig.ImageProxy;
-    doubanProxy = config.SiteConfig.DoubanProxy;
-    disableYellowFilter = config.SiteConfig.DisableYellowFilter;
     customCategories = config.CustomCategories.filter(
       (category) => !category.disabled
     ).map((category) => ({
@@ -90,9 +83,6 @@ export default async function RootLayout({
   const runtimeConfig = {
     STORAGE_TYPE: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
     ENABLE_REGISTER: enableRegister,
-    IMAGE_PROXY: imageProxy,
-    DOUBAN_PROXY: doubanProxy,
-    DISABLE_YELLOW_FILTER: disableYellowFilter,
     CUSTOM_CATEGORIES: customCategories,
   };
 

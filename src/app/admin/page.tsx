@@ -28,11 +28,7 @@ const showSuccess = (message: string) =>
 interface SiteConfig {
   SiteName: string;
   Announcement: string;
-  SearchDownstreamMaxPage: number;
   SiteInterfaceCacheTime: number;
-  ImageProxy: string;
-  DoubanProxy: string;
-  DisableYellowFilter: boolean;
 }
 
 
@@ -592,11 +588,7 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
   const [siteSettings, setSiteSettings] = useState<SiteConfig>({
     SiteName: '',
     Announcement: '',
-    SearchDownstreamMaxPage: 1,
     SiteInterfaceCacheTime: 7200,
-    ImageProxy: '',
-    DoubanProxy: '',
-    DisableYellowFilter: false,
   });
   // 淇濆瓨鐘舵€?
   const [saving, setSaving] = useState(false);
@@ -613,9 +605,6 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     if (config?.SiteConfig) {
       setSiteSettings({
         ...config.SiteConfig,
-        ImageProxy: config.SiteConfig.ImageProxy || '',
-        DoubanProxy: config.SiteConfig.DoubanProxy || '',
-        DisableYellowFilter: config.SiteConfig.DisableYellowFilter || false,
       });
     }
   }, [config]);
@@ -729,24 +718,6 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       </div>
 
       {/* 鎼滅储鎺ュ彛鍙媺鍙栨渶澶ч〉鏁?*/}
-      <div>
-        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-          Maximum Search API Pages
-        </label>
-        <input
-          type='number'
-          min={1}
-          value={siteSettings.SearchDownstreamMaxPage}
-          onChange={(e) =>
-            setSiteSettings((prev) => ({
-              ...prev,
-              SearchDownstreamMaxPage: Number(e.target.value),
-            }))
-          }
-          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-        />
-      </div>
-
       {/* 绔欑偣鎺ュ彛缂撳瓨鏃堕棿 */}
       <div>
         <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
@@ -764,147 +735,6 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
           }
           className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         />
-      </div>
-
-      {/* 鍥剧墖浠ｇ悊 */}
-      <div>
-        <label
-          className={`block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 ${
-            isD1Storage || isUpstashStorage ? 'opacity-50' : ''
-          }`}
-        >
-          Image Proxy Prefix
-          {isD1Storage && (
-            <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (Change this with environment variables in D1 mode)
-            </span>
-          )}
-          {isUpstashStorage && (
-            <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (Change this with environment variables in Upstash mode)
-            </span>
-          )}
-        </label>
-        <input
-          type='text'
-          placeholder='Example: https://imageproxy.example.com/?url='
-          value={siteSettings.ImageProxy}
-          onChange={(e) =>
-            !isD1Storage &&
-            !isUpstashStorage &&
-            setSiteSettings((prev) => ({
-              ...prev,
-              ImageProxy: e.target.value,
-            }))
-          }
-          disabled={isD1Storage || isUpstashStorage}
-          className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-            isD1Storage || isUpstashStorage
-              ? 'opacity-50 cursor-not-allowed'
-              : ''
-          }`}
-        />
-        <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-          Proxies image requests to avoid CORS or access restrictions. Leave blank to disable.
-        </p>
-      </div>
-
-      {/* 璞嗙摚浠ｇ悊璁剧疆 */}
-      <div>
-        <label
-          className={`block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 ${
-            isD1Storage || isUpstashStorage ? 'opacity-50' : ''
-          }`}
-        >
-          Douban Proxy URL
-          {isD1Storage && (
-            <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (Change this with environment variables in D1 mode)
-            </span>
-          )}
-          {isUpstashStorage && (
-            <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (Change this with environment variables in Upstash mode)
-            </span>
-          )}
-        </label>
-        <input
-          type='text'
-          placeholder='Example: https://proxy.example.com/fetch?url='
-          value={siteSettings.DoubanProxy}
-          onChange={(e) =>
-            !isD1Storage &&
-            !isUpstashStorage &&
-            setSiteSettings((prev) => ({
-              ...prev,
-              DoubanProxy: e.target.value,
-            }))
-          }
-          disabled={isD1Storage || isUpstashStorage}
-          className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-            isD1Storage || isUpstashStorage
-              ? 'opacity-50 cursor-not-allowed'
-              : ''
-          }`}
-        />
-        <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-          Proxies Douban data requests to avoid CORS or access restrictions. Leave blank to use the server API.
-        </p>
-      </div>
-
-      {/* 绂佺敤榛勮壊杩囨护鍣?*/}
-      <div>
-        <div className='flex items-center justify-between'>
-          <label
-            className={`block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 ${
-              isD1Storage || isUpstashStorage ? 'opacity-50' : ''
-            }`}
-          >
-            Disable Adult Content Filter
-            {isD1Storage && (
-              <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                (Change this with environment variables in D1 mode)
-              </span>
-            )}
-            {isUpstashStorage && (
-              <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                (Change this with environment variables in Upstash mode)
-              </span>
-            )}
-          </label>
-          <button
-            type='button'
-            onClick={() =>
-              !isD1Storage &&
-              !isUpstashStorage &&
-              setSiteSettings((prev) => ({
-                ...prev,
-                DisableYellowFilter: !prev.DisableYellowFilter,
-              }))
-            }
-            disabled={isD1Storage || isUpstashStorage}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              siteSettings.DisableYellowFilter
-                ? 'bg-blue-600'
-                : 'bg-gray-200 dark:bg-gray-700'
-            } ${
-              isD1Storage || isUpstashStorage
-                ? 'opacity-50 cursor-not-allowed'
-                : ''
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                siteSettings.DisableYellowFilter
-                  ? 'translate-x-6'
-                  : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-        <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-          Disables adult content filtering and allows all content to be shown.
-        </p>
       </div>
 
       {/* 鎿嶄綔鎸夐挳 */}
@@ -981,7 +811,7 @@ function AdminPageClient() {
   const handleResetConfig = async () => {
     const { isConfirmed } = await Swal.fire({
       title: 'Reset configuration?',
-      text: 'This will reset user bans, admin settings, custom sources, and site settings to their defaults. Continue?',
+      text: 'This will reset user bans, admin settings, custom categories, and site settings to their defaults. Continue?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Reset',

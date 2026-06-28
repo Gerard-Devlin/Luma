@@ -16,11 +16,8 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { getDoubanList } from '@/lib/douban.client';
-import { DoubanItem, DoubanResult } from '@/lib/types';
-
-import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
-import DoubanCustomSelector from '@/components/DoubanCustomSelector';
+import DiscoverCardSkeleton from '@/components/DiscoverCardSkeleton';
+import DiscoverCustomSelector from '@/components/DiscoverCustomSelector';
 import PageLayout from '@/components/PageLayout';
 import TmdbHeroBanner from '@/components/TmdbHeroBanner';
 import VideoCard from '@/components/VideoCard';
@@ -45,10 +42,18 @@ interface SortOption {
 interface DiscoverApiResponse {
   code: number;
   message: string;
-  list: DoubanItem[];
+  list: DiscoverItem[];
   page: number;
   total_pages: number;
   total_results: number;
+}
+
+interface DiscoverItem {
+  id: string;
+  title: string;
+  poster: string;
+  rate: string;
+  year: string;
 }
 
 interface FilterState {
@@ -195,7 +200,7 @@ function resolveDiscoverSortBy(
   return 'popularity.desc';
 }
 
-function DoubanPageClient() {
+function DiscoverPageClient() {
   const searchParams = useSearchParams();
   const type = normalizeType(searchParams.get('type'));
   const media = type === 'movie' || type === 'custom' ? 'movie' : 'tv';
@@ -204,7 +209,7 @@ function DoubanPageClient() {
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [items, setItems] = useState<DoubanItem[]>([]);
+  const [items, setItems] = useState<DiscoverItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -225,7 +230,7 @@ function DoubanPageClient() {
   >([]);
   const [customPrimarySelection, setCustomPrimarySelection] = useState('');
   const [customSecondarySelection, setCustomSecondarySelection] = useState('');
-  const [customItems, setCustomItems] = useState<DoubanItem[]>([]);
+  const [customItems, setCustomItems] = useState<DiscoverItem[]>([]);
   const [customLoading, setCustomLoading] = useState(false);
   const [customLoadingMore, setCustomLoadingMore] = useState(false);
   const [customCurrentPage, setCustomCurrentPage] = useState(0);
@@ -235,7 +240,7 @@ function DoubanPageClient() {
   const showLoadingRef = useRef<HTMLDivElement | null>(null);
   const showDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [showCountries, setShowCountries] = useState<string[]>([]);
-  const [showItems, setShowItems] = useState<DoubanItem[]>([]);
+  const [showItems, setShowItems] = useState<DiscoverItem[]>([]);
   const [showLoading, setShowLoading] = useState(false);
   const [showLoadingMore, setShowLoadingMore] = useState(false);
   const [showCurrentPage, setShowCurrentPage] = useState(0);
@@ -413,14 +418,18 @@ function DoubanPageClient() {
           setCustomLoading(true);
         }
 
-        const data: DoubanResult = await getDoubanList({
-          tag: selectedCategory.query,
-          type: selectedCategory.type,
-          pageLimit: 25,
-          pageStart: page * 25,
+        const params = new URLSearchParams({
+          media: selectedCategory.type,
+          include_adult: 'true',
+          page: String(page + 1),
+          sort_by: resolveDiscoverSortBy(sortMode, selectedCategory.type),
         });
+        params.set('with_keywords', selectedCategory.query);
 
-        if (data.code !== 200) {
+        const response = await fetch(`/api/tmdb/discover?${params.toString()}`);
+        const data = (await response.json()) as DiscoverApiResponse;
+
+        if (!response.ok || data.code !== 200) {
           throw new Error(
             data.message || 'Failed to fetch custom categories'
           );
@@ -707,7 +716,7 @@ function DoubanPageClient() {
   const activePath = useMemo(() => {
     const params = new URLSearchParams();
     params.set('type', type);
-    return `/douban?${params.toString()}`;
+    return `/discover?${params.toString()}`;
   }, [type]);
 
   const skeletonData = useMemo(
@@ -777,7 +786,7 @@ function DoubanPageClient() {
 	                    <Film className='h-4 w-4' />
 	                    {'Custom Categories'}
 	                  </div>
-	                  <DoubanCustomSelector
+	                  <DiscoverCustomSelector
 	                    customCategories={customCategories}
                     primarySelection={customPrimarySelection}
                     secondarySelection={customSecondarySelection}
@@ -1234,7 +1243,7 @@ function DoubanPageClient() {
                   : loading
               )
                 ? skeletonData.map((index) => (
-                    <DoubanCardSkeleton key={index} />
+                    <DiscoverCardSkeleton key={index} />
                   ))
                 : (type === 'custom'
                     ? customItems
@@ -1244,10 +1253,9 @@ function DoubanPageClient() {
                   ).map((item, index) => (
                     <div key={`${item.id}-${index}`} className='w-full'>
                       <VideoCard
-                        from='douban'
+                        from='discover'
                         title={item.title}
                         poster={item.poster}
-                        douban_id={item.id}
                         rate={item.rate}
                         year={item.year}
                         displayVariant='poster-info'
@@ -1338,10 +1346,10 @@ function DoubanPageClient() {
   );
 }
 
-export default function DoubanPage() {
+export default function DiscoverPage() {
   return (
     <Suspense>
-      <DoubanPageClient />
+      <DiscoverPageClient />
     </Suspense>
   );
 }

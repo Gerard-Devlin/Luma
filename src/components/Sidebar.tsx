@@ -123,17 +123,17 @@ const Sidebar = ({
     {
       icon: Clapperboard,
       label: 'Movies',
-      href: '/douban?type=movie',
+      href: '/discover?type=movie',
     },
     {
       icon: Tv,
       label: 'Series',
-      href: '/douban?type=tv',
+      href: '/discover?type=tv',
     },
     {
       icon: HeartPulse,
       label: 'Shows',
-      href: '/douban?type=show',
+      href: '/discover?type=show',
     },
   ];
 
@@ -315,7 +315,7 @@ const Sidebar = ({
 
                       const isActive =
                         decodedActive === decodedItemHref ||
-                        (decodedActive.startsWith('/douban') &&
+                        (decodedActive.startsWith('/discover') &&
                           decodedActive.includes(`type=${typeMatch}`));
                       const Icon = item.icon;
                       return (
