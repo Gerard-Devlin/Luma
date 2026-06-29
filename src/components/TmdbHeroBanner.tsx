@@ -23,7 +23,8 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
-  getTmdbImageLanguage,
+  DEFAULT_TMDB_LANGUAGE,
+  getStableTmdbImageLanguage,
   normalizeTmdbLanguage,
 } from '@/lib/tmdb-language';
 import {
@@ -80,6 +81,14 @@ interface TmdbRawResponse {
 }
 
 interface TmdbRuntimeResponse {
+  title?: string;
+  name?: string;
+  overview?: string;
+  backdrop_path?: string | null;
+  poster_path?: string | null;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;
@@ -87,6 +96,13 @@ interface TmdbRuntimeResponse {
 }
 
 interface TmdbHeroMeta {
+  title: string;
+  overview: string;
+  year: string;
+  score: string;
+  releaseDate: string;
+  backdrop: string;
+  poster: string;
   runtime: number | null;
   seasons: number | null;
   episodes: number | null;
@@ -203,6 +219,8 @@ export interface TmdbHeroRecommendationSeed {
   title: string;
   search_title?: string;
   year?: string;
+  tmdb_id?: string;
+  media_type?: 'movie' | 'tv';
   total_episodes?: number;
   index?: number;
   play_time?: number;
@@ -239,6 +257,21 @@ function toScore(value?: number): string {
   if (typeof value !== 'number') return '';
   if (!Number.isFinite(value) || value <= 0) return '';
   return value.toFixed(1);
+}
+
+function emptyHeroMeta(): TmdbHeroMeta {
+  return {
+    title: '',
+    overview: '',
+    year: '',
+    score: '',
+    releaseDate: '',
+    backdrop: '',
+    poster: '',
+    runtime: null,
+    seasons: null,
+    episodes: null,
+  };
 }
 
 function mapRawItemToHero(item: TmdbRawItem): TmdbHeroItem | null {
@@ -666,7 +699,7 @@ export default function TmdbHeroBanner({
         const tmdbLanguage = getCurrentTmdbLanguage();
         const params = new URLSearchParams({
           api_key: TMDB_CLIENT_API_KEY,
-          include_image_language: getTmdbImageLanguage(tmdbLanguage),
+          include_image_language: getStableTmdbImageLanguage(),
         });
         const response = await fetch(
           `${TMDB_API_BASE_URL}/${mediaType}/${id}/images?${params.toString()}`,
@@ -691,11 +724,7 @@ export default function TmdbHeroBanner({
     ): Promise<TmdbHeroMeta> => {
       try {
         if (!TMDB_CLIENT_API_KEY) {
-          return {
-            runtime: null,
-            seasons: null,
-            episodes: null,
-          };
+          return emptyHeroMeta();
         }
         const tmdbLanguage = getCurrentTmdbLanguage();
         const params = new URLSearchParams({
@@ -707,11 +736,7 @@ export default function TmdbHeroBanner({
           { signal }
         );
         if (!response.ok) {
-          return {
-            runtime: null,
-            seasons: null,
-            episodes: null,
-          };
+          return emptyHeroMeta();
         }
         const data = (await response.json()) as TmdbRuntimeResponse;
         const runtime =
@@ -719,6 +744,17 @@ export default function TmdbHeroBanner({
         const seasons = data.number_of_seasons;
         const episodes = data.number_of_episodes;
         return {
+          title: (data.title || data.name || '').trim(),
+          overview: (data.overview || '').trim(),
+          year: toYear(data.release_date || data.first_air_date),
+          score: toScore(data.vote_average),
+          releaseDate: normalizeReleaseDate(data.release_date || data.first_air_date),
+          backdrop: data.backdrop_path
+            ? `${TMDB_IMAGE_BASE_URL}/original${data.backdrop_path}`
+            : '',
+          poster: data.poster_path
+            ? `${TMDB_IMAGE_BASE_URL}/w500${data.poster_path}`
+            : '',
           runtime: typeof runtime === 'number' && runtime > 0 ? runtime : null,
           seasons:
             mediaType === 'tv' && typeof seasons === 'number' && seasons > 0
@@ -730,11 +766,7 @@ export default function TmdbHeroBanner({
               : null,
         };
       } catch {
-        return {
-          runtime: null,
-          seasons: null,
-          episodes: null,
-        };
+        return emptyHeroMeta();
       }
     },
     [i18n.language]
@@ -743,6 +775,7 @@ export default function TmdbHeroBanner({
   const fetchDirectFromTmdb = useCallback(async (signal?: AbortSignal) => {
     if (!TMDB_CLIENT_API_KEY) return [];
     const tmdbLanguage = getCurrentTmdbLanguage();
+    const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
     const normalizedGenres = (withGenres || '').trim();
     const normalizedOriginCountry = (withOriginCountry || '')
@@ -756,7 +789,7 @@ export default function TmdbHeroBanner({
       mediaFilter === 'movie' ? 'movie' : 'tv';
     const params = new URLSearchParams({
       api_key: TMDB_CLIENT_API_KEY,
-      language: tmdbLanguage,
+      language: generationLanguage,
       page: '1',
     });
     if (shouldUseDiscover) {
@@ -802,6 +835,13 @@ export default function TmdbHeroBanner({
         ]);
         return {
           ...item,
+          title: meta.title || item.title,
+          overview: meta.overview || item.overview,
+          year: meta.year || item.year,
+          score: meta.score || item.score,
+          releaseDate: meta.releaseDate || item.releaseDate,
+          backdrop: meta.backdrop || item.backdrop,
+          poster: meta.poster || item.poster,
           runtime: meta.runtime,
           seasons: meta.seasons,
           episodes: meta.episodes,

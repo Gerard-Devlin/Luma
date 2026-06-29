@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import {
-  getTmdbImageLanguage,
+  DEFAULT_TMDB_LANGUAGE,
+  getStableTmdbImageLanguage,
   normalizeTmdbLanguage,
 } from '@/lib/tmdb-language';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
@@ -40,6 +41,8 @@ interface RecommendationRecordInput {
   title?: string;
   search_title?: string;
   year?: string;
+  tmdb_id?: string;
+  media_type?: TmdbMediaType;
   total_episodes?: number;
   index?: number;
   play_time?: number;
@@ -59,6 +62,7 @@ interface WeightedSeed {
   titleKey: string;
   year: string;
   preferredMediaType: TmdbMediaType;
+  tmdbId: number | null;
   weight: number;
 }
 
@@ -320,9 +324,19 @@ function getPreferredRecordTitle(record: RecommendationRecordInput): string {
 }
 
 function inferMediaType(record: RecommendationRecordInput): TmdbMediaType {
+  if (record.media_type === 'movie' || record.media_type === 'tv') {
+    return record.media_type;
+  }
   return typeof record.total_episodes === 'number' && record.total_episodes > 1
     ? 'tv'
     : 'movie';
+}
+
+function normalizeTmdbId(value?: string): number | null {
+  const normalized = (value || '').trim();
+  if (!/^\d+$/.test(normalized)) return null;
+  const id = Number(normalized);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 function getRecordWeight(record: RecommendationRecordInput, now: number): number {
@@ -404,9 +418,12 @@ function buildWeightedSeeds(
       const preferredMediaType = inferMediaType(record);
       if (!matchesMediaFilter(preferredMediaType, mediaFilter)) return;
 
+      const tmdbId = normalizeTmdbId(record.tmdb_id);
       const year = toYear(record.year);
       const weight = getRecordWeight(record, now);
-      const key = `${preferredMediaType}:${titleKey}:${year || 'unknown'}`;
+      const key = tmdbId
+        ? `${preferredMediaType}:id:${tmdbId}`
+        : `${preferredMediaType}:${titleKey}:${year || 'unknown'}`;
       const existing = seedMap.get(key);
 
       if (existing) {
@@ -419,6 +436,7 @@ function buildWeightedSeeds(
         titleKey,
         year,
         preferredMediaType,
+        tmdbId,
         weight,
       });
     });
@@ -564,7 +582,7 @@ async function fetchTmdbDetailRaw(
     params.set('append_to_response', appendToResponse);
   }
   if (appendToResponse.includes('images')) {
-    params.set('include_image_language', getTmdbImageLanguage(tmdbLanguage));
+    params.set('include_image_language', getStableTmdbImageLanguage());
   }
 
   try {
@@ -591,13 +609,15 @@ async function resolveSeedDetail(
   mediaFilter: HeroMediaFilter,
   tmdbLanguage: string
 ): Promise<ResolvedSeed | null> {
-  const resolved = await resolveSeedToTmdb(
-    seed,
-    apiKey,
-    signal,
-    mediaFilter,
-    tmdbLanguage
-  );
+  const resolved = seed.tmdbId
+    ? { id: seed.tmdbId, mediaType: seed.preferredMediaType }
+    : await resolveSeedToTmdb(
+        seed,
+        apiKey,
+        signal,
+        mediaFilter,
+        tmdbLanguage
+      );
   if (!resolved) return null;
 
   const detail = await fetchTmdbDetailRaw(
@@ -1312,6 +1332,7 @@ export async function POST(request: Request) {
 
   const mediaFilter = normalizeMediaFilter(body?.mediaType);
   const tmdbLanguage = normalizeTmdbLanguage(body?.tmdbLanguage);
+  const generationLanguage = DEFAULT_TMDB_LANGUAGE;
   const records = getRequestBodyRecords(body);
   const excludedTitleKeys = buildExcludedTitleKeys(records);
   const seeds = buildWeightedSeeds(records, mediaFilter);
@@ -1334,7 +1355,7 @@ export async function POST(request: Request) {
           apiKey,
           controller.signal,
           mediaFilter,
-          tmdbLanguage
+          generationLanguage
         )
       )
     );
@@ -1361,7 +1382,7 @@ export async function POST(request: Request) {
         mediaFilter,
         profile,
         dailyKey,
-        tmdbLanguage
+        generationLanguage
       );
     }
 

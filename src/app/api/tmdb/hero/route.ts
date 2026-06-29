@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import {
-  getTmdbImageLanguage,
+  DEFAULT_TMDB_LANGUAGE,
+  getStableTmdbImageLanguage,
   normalizeTmdbLanguage,
 } from '@/lib/tmdb-language';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
@@ -58,6 +59,14 @@ interface TmdbImagesResponse {
 }
 
 interface TmdbRuntimeResponse {
+  title?: string;
+  name?: string;
+  overview?: string;
+  backdrop_path?: string | null;
+  poster_path?: string | null;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;
@@ -65,9 +74,31 @@ interface TmdbRuntimeResponse {
 }
 
 interface TmdbHeroMeta {
+  title: string;
+  overview: string;
+  year: string;
+  score: string;
+  releaseDate: string;
+  backdrop: string;
+  poster: string;
   runtime: number | null;
   seasons: number | null;
   episodes: number | null;
+}
+
+function emptyHeroMeta(): TmdbHeroMeta {
+  return {
+    title: '',
+    overview: '',
+    year: '',
+    score: '',
+    releaseDate: '',
+    backdrop: '',
+    poster: '',
+    runtime: null,
+    seasons: null,
+    episodes: null,
+  };
 }
 
 function toYear(value?: string): string {
@@ -115,12 +146,22 @@ function mapHeroItem(
   };
 }
 
-function selectBestLogoPath(logos: TmdbLogoItem[]): string {
+function selectBestLogoPath(
+  logos: TmdbLogoItem[],
+  tmdbLanguage: string
+): string {
   if (!logos.length) return '';
 
   const getLanguagePriority = (lang?: string | null): number => {
-    if (lang === 'zh') return 4;
-    if (lang === 'en') return 3;
+    if (normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN') {
+      if (lang === 'zh') return 4;
+      if (lang === 'en') return 3;
+      if (lang === null) return 2;
+      if (lang === undefined) return 2;
+      return 1;
+    }
+    if (lang === 'en') return 4;
+    if (lang === 'zh') return 3;
     if (lang === null) return 2;
     if (lang === undefined) return 2;
     return 1;
@@ -149,7 +190,7 @@ async function fetchLogoForItem(
   try {
     const params = new URLSearchParams({
       api_key: apiKey,
-      include_image_language: getTmdbImageLanguage(tmdbLanguage),
+      include_image_language: getStableTmdbImageLanguage(),
     });
 
     const response = await fetch(
@@ -160,7 +201,7 @@ async function fetchLogoForItem(
     if (!response.ok) return '';
 
     const data = (await response.json()) as TmdbImagesResponse;
-    const logoPath = selectBestLogoPath(data.logos || []);
+    const logoPath = selectBestLogoPath(data.logos || [], tmdbLanguage);
     return logoPath ? `${TMDB_IMAGE_BASE_URL}/w500${logoPath}` : '';
   } catch {
     return '';
@@ -185,11 +226,7 @@ async function fetchHeroMetaForItem(
       { signal }
     );
     if (!response.ok) {
-      return {
-        runtime: null,
-        seasons: null,
-        episodes: null,
-      };
+      return emptyHeroMeta();
     }
 
     const data = (await response.json()) as TmdbRuntimeResponse;
@@ -198,6 +235,17 @@ async function fetchHeroMetaForItem(
     const seasons = data.number_of_seasons;
     const episodes = data.number_of_episodes;
     return {
+      title: (data.title || data.name || '').trim(),
+      overview: (data.overview || '').trim(),
+      year: toYear(data.release_date || data.first_air_date),
+      score: toScore(data.vote_average),
+      releaseDate: normalizeReleaseDate(data.release_date || data.first_air_date),
+      backdrop: data.backdrop_path
+        ? `${TMDB_IMAGE_BASE_URL}/original${data.backdrop_path}`
+        : '',
+      poster: data.poster_path
+        ? `${TMDB_IMAGE_BASE_URL}/w500${data.poster_path}`
+        : '',
       runtime: typeof runtime === 'number' && runtime > 0 ? runtime : null,
       seasons:
         mediaType === 'tv' && typeof seasons === 'number' && seasons > 0
@@ -209,11 +257,7 @@ async function fetchHeroMetaForItem(
           : null,
     };
   } catch {
-    return {
-      runtime: null,
-      seasons: null,
-      episodes: null,
-    };
+    return emptyHeroMeta();
   }
 }
 
@@ -251,6 +295,7 @@ export async function GET(request: Request) {
     searchParams.get('with_origin_country')
   );
   const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
+  const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
   const apiKey =
     process.env.TMDB_API_KEY ||
@@ -275,7 +320,7 @@ export async function GET(request: Request) {
       mediaFilter === 'movie' ? 'movie' : 'tv';
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: tmdbLanguage,
+      language: generationLanguage,
       page: '1',
     });
     if (shouldUseDiscover) {
@@ -344,6 +389,13 @@ export async function GET(request: Request) {
         ]);
         return {
           ...item,
+          title: meta.title || item.title,
+          overview: meta.overview || item.overview,
+          year: meta.year || item.year,
+          score: meta.score || item.score,
+          releaseDate: meta.releaseDate || item.releaseDate,
+          backdrop: meta.backdrop || item.backdrop,
+          poster: meta.poster || item.poster,
           runtime: meta.runtime,
           seasons: meta.seasons,
           episodes: meta.episodes,

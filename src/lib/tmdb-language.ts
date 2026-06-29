@@ -16,6 +16,10 @@ export function getTmdbImageLanguage(language?: string | null): string {
     : 'en,null';
 }
 
+export function getStableTmdbImageLanguage(): string {
+  return 'en,zh,null';
+}
+
 export function getTmdbVideoLanguage(language?: string | null): string {
   return normalizeTmdbLanguage(language) === 'zh-CN'
     ? 'zh,en,null'
