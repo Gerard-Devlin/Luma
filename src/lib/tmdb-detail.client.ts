@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getCurrentTmdbLanguage } from '@/i18n/client';
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
 
 export type TmdbDetailMediaType = 'movie' | 'tv';
 export type TmdbLogoLanguagePreference = 'zh' | 'en';
@@ -60,10 +61,10 @@ function normalizeMediaType(
 
 function normalizeLogoLanguagePreference(
   value: TmdbLogoLanguagePreference | null | undefined,
-  mediaType: TmdbDetailMediaType
+  tmdbLanguage?: string | null
 ): TmdbLogoLanguagePreference {
   if (value === 'en' || value === 'zh') return value;
-  return mediaType === 'movie' ? 'en' : 'zh';
+  return normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN' ? 'zh' : 'en';
 }
 
 function normalizeId(value?: number | string | null): number | null {
@@ -179,6 +180,7 @@ function normalizeTmdbDetailRequest(
   request: TmdbDetailClientRequest
 ): NormalizedTmdbDetailRequest {
   const mediaType = normalizeMediaType(request.mediaType);
+  const tmdbLanguage = (request.tmdbLanguage || getCurrentTmdbLanguage()).trim();
   const normalized: NormalizedTmdbDetailRequest = {
     id: normalizeId(request.id),
     title: (request.title || '').trim(),
@@ -188,9 +190,9 @@ function normalizeTmdbDetailRequest(
     score: (request.score || '').trim(),
     logoLanguagePreference: normalizeLogoLanguagePreference(
       request.logoLanguagePreference,
-      mediaType
+      tmdbLanguage
     ),
-    tmdbLanguage: (request.tmdbLanguage || getCurrentTmdbLanguage()).trim(),
+    tmdbLanguage,
     signal: request.signal,
   };
 

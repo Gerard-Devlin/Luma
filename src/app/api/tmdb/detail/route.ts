@@ -210,10 +210,10 @@ function normalizeMediaType(value: string | null): TmdbMediaType {
 
 function normalizeLogoLanguagePreference(
   value: string | null,
-  mediaType: TmdbMediaType
+  tmdbLanguage?: string | null
 ): LogoLanguagePreference {
   if (value === 'en' || value === 'zh') return value;
-  return mediaType === 'movie' ? 'en' : 'zh';
+  return normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN' ? 'zh' : 'en';
 }
 
 function normalizeYear(value: string | null): string {
@@ -1047,11 +1047,11 @@ export async function GET(request: Request) {
     searchParams.get('logoLang') ||
     searchParams.get('logo_language') ||
     searchParams.get('logo_lang');
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
   let logoLanguagePreference = normalizeLogoLanguagePreference(
     logoLanguageParam,
-    mediaType
+    tmdbLanguage
   );
-  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
 
   const rawId = Number(searchParams.get('id'));
   const hasValidId = Number.isInteger(rawId) && rawId > 0;
@@ -1102,7 +1102,7 @@ export async function GET(request: Request) {
       resolvedMediaType = resolved.mediaType;
       logoLanguagePreference = normalizeLogoLanguagePreference(
         logoLanguageParam,
-        resolvedMediaType
+        tmdbLanguage
       );
     }
 
