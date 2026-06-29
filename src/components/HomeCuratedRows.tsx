@@ -130,7 +130,7 @@ function CuratedRowSection({
   }
 
   return (
-    <section ref={sectionRef} className='mb-8'>
+    <section ref={sectionRef} className='mb-4'>
       <div className='mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>
           {t(`curated.${row.slug}`, { defaultValue: row.title })}
@@ -149,47 +149,49 @@ function CuratedRowSection({
         </Link>
       </div>
 
-      <ScrollableRow>
-        {loading
-          ? Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={`${row.slug}-skeleton-${index}`}
-                className='min-w-[160px] w-40 sm:min-w-[180px] sm:w-44'
-              >
-                <div className='relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-white/10'>
-                  <div className='skeleton-card-surface h-full w-full animate-pulse' />
-                  <div className='absolute bottom-2.5 right-2.5 h-6 w-12 rounded-md bg-black/55' />
+      <div className='-mb-12 sm:-mb-14'>
+        <ScrollableRow>
+          {loading
+            ? Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={`${row.slug}-skeleton-${index}`}
+                  className='min-w-[160px] w-40 sm:min-w-[180px] sm:w-44'
+                >
+                  <div className='relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/10 bg-white/10'>
+                    <div className='skeleton-card-surface h-full w-full animate-pulse' />
+                    <div className='absolute bottom-2.5 right-2.5 h-6 w-12 rounded-md bg-black/55' />
+                  </div>
+                  <div className='mt-3 h-16'>
+                    <div className='h-4 w-28 animate-pulse rounded bg-white/15 sm:w-36' />
+                    <div className='mt-2 h-3.5 w-12 animate-pulse rounded bg-white/10' />
+                  </div>
                 </div>
-                <div className='mt-3 h-16'>
-                  <div className='h-4 w-28 animate-pulse rounded bg-white/15 sm:w-36' />
-                  <div className='mt-2 h-3.5 w-12 animate-pulse rounded bg-white/10' />
+              ))
+            : items.map((item, index) => (
+                <div
+                  key={`${row.slug}-${item.id}`}
+                  className={`min-w-[160px] w-40 transform-gpu transition-all duration-500 ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none motion-reduce:opacity-100 sm:min-w-[180px] sm:w-44 ${
+                    hasRevealedItems ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                  }`}
+                  style={{
+                    transitionDelay: hasRevealedItems ? `${Math.min(index, 11) * 55}ms` : '0ms',
+                  }}
+                >
+                  <VideoCard
+                    from='discover'
+                    id={item.id}
+                    source='tmdb'
+                    title={item.title}
+                    poster={item.poster}
+                    rate={item.rate}
+                    year={item.year}
+                    displayVariant='poster-info'
+                    type={row.mediaType}
+                  />
                 </div>
-              </div>
-            ))
-          : items.map((item, index) => (
-              <div
-                key={`${row.slug}-${item.id}`}
-                className={`min-w-[160px] w-40 transform-gpu transition-all duration-500 ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none motion-reduce:opacity-100 sm:min-w-[180px] sm:w-44 ${
-                  hasRevealedItems ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-                }`}
-                style={{
-                  transitionDelay: hasRevealedItems ? `${Math.min(index, 11) * 55}ms` : '0ms',
-                }}
-              >
-                <VideoCard
-                  from='discover'
-                  id={item.id}
-                  source='tmdb'
-                  title={item.title}
-                  poster={item.poster}
-                  rate={item.rate}
-                  year={item.year}
-                  displayVariant='poster-info'
-                  type={row.mediaType}
-                />
-              </div>
-            ))}
-      </ScrollableRow>
+              ))}
+        </ScrollableRow>
+      </div>
     </section>
   );
 }
@@ -247,7 +249,7 @@ export default function HomeCuratedRows() {
     <>
       <MatrixLoadingOverlay visible={showMatrixLoading} />
 
-      <div className='mb-4'>
+      <div className='mb-3'>
         {HOME_CURATED_ROWS.slice(0, visibleCount).map((row) => (
           <CuratedRowSection
             key={row.slug}

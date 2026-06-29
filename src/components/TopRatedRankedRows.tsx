@@ -412,7 +412,7 @@ function RankedSection({
   }
 
   return (
-    <section className='mb-10'>
+    <section className='mb-6'>
       <div className='mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>{title}</h2>
         <Link
