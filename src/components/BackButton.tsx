@@ -1,4 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface BackButtonProps {
   variant?: 'default' | 'floating';
@@ -6,6 +7,7 @@ interface BackButtonProps {
 }
 
 export function BackButton({ variant = 'default', className }: BackButtonProps) {
+  const { t } = useTranslation();
   const buttonClassName = className
     ? className
     : variant === 'floating'
@@ -17,7 +19,7 @@ export function BackButton({ variant = 'default', className }: BackButtonProps) 
       type='button'
       onClick={() => window.history.back()}
       className={buttonClassName}
-      aria-label='Back'
+      aria-label={t('common.back')}
     >
       <ArrowLeft className='h-5 w-5 shrink-0' />
     </button>

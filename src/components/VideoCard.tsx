@@ -895,7 +895,7 @@ export default function VideoCard({
   type = '',
   displayVariant = 'default',
 }: VideoCardProps) {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -1702,9 +1702,9 @@ export default function VideoCard({
           onPointerDown={(event) => event.stopPropagation()}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>{'Confirm deletion?'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('my.confirmDeletion')}</AlertDialogTitle>
             <AlertDialogDescription className={glassDialogDescriptionClass}>
-              {'This watch history record will be deleted.'}
+              {t('home.deleteWatchHistoryItem')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1712,7 +1712,7 @@ export default function VideoCard({
               disabled={deleteLoading}
               className={glassDialogCancelClass}
             >
-              {'Cancel'}
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deleteLoading}
@@ -1722,7 +1722,7 @@ export default function VideoCard({
               }}
               className={glassDialogDangerActionClass}
             >
-              {deleteLoading ? 'Deleting...' : 'Delete'}
+              {deleteLoading ? t('common.deleting') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1738,9 +1738,9 @@ export default function VideoCard({
           onPointerDown={(event) => event.stopPropagation()}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>{'Remove from favorites?'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('my.removeFavoriteTitle')}</AlertDialogTitle>
             <AlertDialogDescription className={glassDialogDescriptionClass}>
-              {'This title will be removed from your favorites.'}
+              {t('my.removeFavoriteDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1748,7 +1748,7 @@ export default function VideoCard({
               disabled={favoriteDeleteLoading}
               className={glassDialogCancelClass}
             >
-              {'Cancel'}
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={favoriteDeleteLoading}
@@ -1758,7 +1758,9 @@ export default function VideoCard({
               }}
               className={glassDialogDangerActionClass}
             >
-              {favoriteDeleteLoading ? 'Processing...' : 'Remove'}
+              {favoriteDeleteLoading
+                ? t('common.processing')
+                : t('common.removeFromFavorites')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

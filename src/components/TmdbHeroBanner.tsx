@@ -1514,16 +1514,18 @@ export default function TmdbHeroBanner({
         <div className='relative min-h-[320px] overflow-hidden bg-slate-900 px-6 py-8 text-white sm:min-h-[420px] sm:px-12 sm:py-10'>
           <div className='absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(14,165,233,0.18),transparent_45%)]' />
           <div className='relative z-10 max-w-2xl space-y-3'>
-            <h2 className='text-2xl font-bold sm:text-3xl'>TMDB Hero Unavailable</h2>
+            <h2 className='text-2xl font-bold sm:text-3xl'>
+              {t('hero.unavailable')}
+            </h2>
             <p className='text-sm text-white/75 sm:text-base'>
-              {error || 'No data available at the moment.'}
+              {error || t('hero.noData')}
             </p>
             <button
               type='button'
               onClick={() => fetchHeroData()}
               className='inline-flex items-center rounded-full border border-white/25 bg-black/30 px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/50'
             >
-              Retry
+              {t('hero.retry')}
             </button>
           </div>
         </div>
@@ -1860,7 +1862,7 @@ export default function TmdbHeroBanner({
                         ? 'w-7 bg-white'
                         : 'w-1.5 bg-white/35 active:bg-white/65'
                     }`}
-                    aria-label={`Go to slide ${index + 1}`}
+                  aria-label={t('hero.goToSlide', { count: index + 1 })}
                   />
                 ))}
               </div>
@@ -1880,7 +1882,7 @@ export default function TmdbHeroBanner({
                     ? 'w-7 bg-white'
                     : 'w-1.5 bg-white/35 hover:bg-white/65'
                 }`}
-                aria-label={`Go to slide ${index + 1}`}
+                aria-label={t('hero.goToSlide', { count: index + 1 })}
               />
             ))}
           </div>

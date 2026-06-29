@@ -2,6 +2,7 @@
 
 import { ArrowUp } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const SHOW_AFTER_Y = 360;
 const HIDE_BEFORE_Y = 120;
@@ -9,6 +10,7 @@ const DIRECTION_DEAD_ZONE = 8;
 const SCROLL_DURATION_MS = 260;
 
 const BackToTop = () => {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const lastScrollYRef = useRef(0);
   const tickingRef = useRef(false);
@@ -137,7 +139,7 @@ const BackToTop = () => {
   return (
     <button
       type='button'
-      aria-label='Back to top'
+      aria-label={t('common.backToTop')}
       aria-hidden={!isVisible}
       tabIndex={isVisible ? 0 : -1}
       onClick={handleClick}
