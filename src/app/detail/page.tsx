@@ -28,7 +28,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   deleteFavorite,
   generateStorageKey,
@@ -275,6 +277,7 @@ function DetailSkeleton() {
 function DetailPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { i18n, t } = useTranslation();
   const castRailRef = useRef<HTMLDivElement | null>(null);
   const collectionRailRef = useRef<HTMLDivElement | null>(null);
   const recommendationRailRef = useRef<HTMLDivElement | null>(null);
@@ -319,8 +322,9 @@ function DetailPageClient() {
       poster: searchParams.get('poster'),
       score: searchParams.get('score'),
       logoLanguagePreference,
+      tmdbLanguage: getCurrentTmdbLanguage(),
     };
-  }, [searchParams]);
+  }, [i18n.language, searchParams]);
   const {
     mp4Url: streamTrailerMp4Url,
     hlsUrl: streamTrailerHlsUrl,
@@ -602,10 +606,10 @@ function DetailPageClient() {
               <Info className='h-5 w-5' />
             </div>
             <h1 className='text-xl font-semibold text-zinc-900 dark:text-zinc-100'>
-              Failed to load details
+              {t('detail.failedToLoad')}
             </h1>
             <p className='text-sm leading-6 text-zinc-600 dark:text-zinc-400'>
-              {error || 'No details were found for this title.'}
+              {error || t('detail.noDetailsFound')}
             </p>
             <button
               type='button'
@@ -613,7 +617,7 @@ function DetailPageClient() {
               className='ui-glass-control inline-flex items-center gap-2 px-4 py-2 text-sm font-medium'
             >
               <ArrowLeft className='h-4 w-4' />
-              Back
+              {t('common.back')}
             </button>
           </div>
         </div>
@@ -743,7 +747,7 @@ function DetailPageClient() {
                       className='inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-all hover:bg-white/90 hover:shadow-xl'
                     >
                       <Play className='h-4 w-4' fill='currentColor' />
-                      Play Now
+                      {t('common.playNow')}
                     </button>
                   ) : null}
                   <button
@@ -753,10 +757,14 @@ function DetailPageClient() {
                     }}
                     disabled={favoritePending}
                     aria-label={
-                      favorited ? 'Remove from favorites' : 'Add to favorites'
+                      favorited
+                        ? t('common.removeFromFavorites')
+                        : t('common.addToFavorites')
                     }
                     title={
-                      favorited ? 'Remove from favorites' : 'Add to favorites'
+                      favorited
+                        ? t('common.removeFromFavorites')
+                        : t('common.addToFavorites')
                     }
                     className={`ui-glass-control inline-flex h-10 w-10 items-center justify-center disabled:pointer-events-none disabled:opacity-60 ${
                       favorited
@@ -777,7 +785,7 @@ function DetailPageClient() {
                       className='ui-glass-control inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold'
                     >
                       <Youtube className='h-4 w-4' />
-                      Trailer
+                      {t('common.trailer')}
                     </a>
                   ) : null}
                   {showStreamTrailerBackground ? (
@@ -786,8 +794,8 @@ function DetailPageClient() {
                       onClick={toggleTrailerSound}
                       aria-label={
                         trailerMuted
-                          ? 'Turn trailer sound on'
-                          : 'Turn trailer sound off'
+                          ? t('detail.turnTrailerSoundOn')
+                          : t('detail.turnTrailerSoundOff')
                       }
                       className='ui-glass-control inline-flex h-10 w-10 items-center justify-center'
                     >
@@ -827,7 +835,9 @@ function DetailPageClient() {
                           tooltipPlacement='bottom'
                         />
                         <span className='rounded border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] px-1.5 py-0.5 text-[11px] font-semibold uppercase text-white/95 backdrop-blur-md'>
-                          {detail.mediaType === 'movie' ? 'Movie' : 'Series'}
+                          {detail.mediaType === 'movie'
+                            ? t('common.movie')
+                            : t('common.series')}
                         </span>
                         {detail.runtime ? (
                           <span className='inline-flex items-center gap-1'>
@@ -840,7 +850,10 @@ function DetailPageClient() {
                         detail.episodes ? (
                           <span className='inline-flex items-center gap-1'>
                             <Users className='h-4 w-4' />
-                            {detail.seasons}S / {detail.episodes}E
+                            {t('hero.tvMetaShort', {
+                              seasons: detail.seasons,
+                              episodes: detail.episodes,
+                            })}
                           </span>
                         ) : null}
                         {detail.contentRating ? (
@@ -875,7 +888,11 @@ function DetailPageClient() {
                           </span>
                         ) : null}
                         {typeof detail.popularity === 'number' ? (
-                          <span>Popularity: {detail.popularity}</span>
+                          <span>
+                            {t('detail.popularity', {
+                              value: detail.popularity,
+                            })}
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -889,7 +906,9 @@ function DetailPageClient() {
         <div className='relative z-10 space-y-8 px-5 pb-12 pt-4 sm:px-10 lg:px-14'>
           {detail.cast.length > 0 ? (
             <section className='space-y-3'>
-              <h2 className='text-base font-semibold text-white/92'>Cast</h2>
+              <h2 className='text-base font-semibold text-white/92'>
+                {t('detail.cast')}
+              </h2>
               <div
                 className='relative'
                 onMouseEnter={() => {
@@ -928,7 +947,7 @@ function DetailPageClient() {
                           {person.name}
                         </p>
                         <p className='mt-0.5 line-clamp-1 text-[11px] leading-4 text-white/50'>
-                          {person.character || 'Unknown role'}
+                          {person.character || t('detail.unknownRole')}
                         </p>
                       </div>
                     </button>
@@ -940,7 +959,7 @@ function DetailPageClient() {
                     direction='left'
                     visible={castRailHovered}
                     align='avatar'
-                    label='Show previous cast members'
+                    label={t('detail.showPreviousCast')}
                     onClick={() => scrollRail(castRailRef, 'left')}
                   />
                 ) : null}
@@ -949,7 +968,7 @@ function DetailPageClient() {
                     direction='right'
                     visible={castRailHovered}
                     align='avatar'
-                    label='Show more cast members'
+                    label={t('detail.showMoreCast')}
                     onClick={() => scrollRail(castRailRef, 'right')}
                   />
                 ) : null}
@@ -962,7 +981,7 @@ function DetailPageClient() {
               <div>
                 <div>
                   <h2 className='text-base font-semibold text-white/92'>
-                    Collection
+                    {t('detail.collection')}
                   </h2>
                   <div className='mt-1 flex max-w-full items-center gap-2'>
                     <p className='min-w-0 truncate text-xs text-white/50'>
@@ -1020,7 +1039,7 @@ function DetailPageClient() {
                     direction='left'
                     visible={collectionRailHovered}
                     align='poster'
-                    label='Show previous collection titles'
+                    label={t('detail.showPreviousCollection')}
                     onClick={() => scrollRail(collectionRailRef, 'left')}
                   />
                 ) : null}
@@ -1029,7 +1048,7 @@ function DetailPageClient() {
                     direction='right'
                     visible={collectionRailHovered}
                     align='poster'
-                    label='Show more collection titles'
+                    label={t('detail.showMoreCollection')}
                     onClick={() => scrollRail(collectionRailRef, 'right')}
                   />
                 ) : null}
@@ -1040,7 +1059,7 @@ function DetailPageClient() {
           {recommendations.length > 0 ? (
             <section className='space-y-3'>
               <h2 className='text-base font-semibold text-white/92'>
-                More Like This
+                {t('detail.moreLikeThis')}
               </h2>
               <div
                 className='relative'
@@ -1088,7 +1107,7 @@ function DetailPageClient() {
                     direction='left'
                     visible={recommendationRailHovered}
                     align='poster'
-                    label='Show previous recommendations'
+                    label={t('detail.showPreviousRecommendations')}
                     onClick={() => scrollRail(recommendationRailRef, 'left')}
                   />
                 ) : null}
@@ -1097,7 +1116,7 @@ function DetailPageClient() {
                     direction='right'
                     visible={recommendationRailHovered}
                     align='poster'
-                    label='Show more recommendations'
+                    label={t('detail.showMoreRecommendations')}
                     onClick={() => scrollRail(recommendationRailRef, 'right')}
                   />
                 ) : null}

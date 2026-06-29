@@ -5,7 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
@@ -48,12 +50,16 @@ interface CreditRailSection {
 }
 
 type PersonCreditSectionKey = 'movie' | 'tv' | 'producer' | 'director';
+type TranslateFn = (
+  key: string,
+  options?: Record<string, unknown>
+) => string;
 
-const SECTION_TITLES: Record<PersonCreditSectionKey, string> = {
-  movie: 'Movies',
-  tv: 'Series',
-  producer: 'Producer',
-  director: 'Director',
+const SECTION_TITLE_KEYS: Record<PersonCreditSectionKey, string> = {
+  movie: 'common.movies',
+  tv: 'common.series',
+  producer: 'searchPage.producer',
+  director: 'searchPage.director',
 };
 
 const PRODUCER_ROLE_RE =
@@ -135,7 +141,12 @@ function isDirectorCredit(item: PersonCredit): boolean {
   return /directing|导演/.test(department);
 }
 
+function getSectionTitle(section: PersonCreditSectionKey, t: TranslateFn) {
+  return t(SECTION_TITLE_KEYS[section]);
+}
+
 function CreditRail({ title, items, showAllHref }: CreditRailSection) {
+  const { t } = useTranslation();
   const desktopScrollRef = useRef<HTMLDivElement | null>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
@@ -178,9 +189,9 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
           <Link
             href={showAllHref}
             className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
-            aria-label={`View all ${title}`}
+            aria-label={t('person.viewAllSection', { section: title })}
           >
-            <span>See All</span>
+            <span>{t('common.seeAll')}</span>
             <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
               ›
             </span>
@@ -242,7 +253,7 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
                 type='button'
                 onClick={() => scrollDesktopBy('left')}
                 className='flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 shadow-lg transition-transform hover:scale-105 hover:bg-white dark:border-gray-600 dark:bg-gray-800/90 dark:hover:bg-gray-700'
-                aria-label='Scroll left'
+                aria-label={t('detail.scrollLeft')}
               >
                 <ChevronLeft className='h-6 w-6 text-gray-600 dark:text-gray-300' />
               </button>
@@ -270,7 +281,7 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
                 type='button'
                 onClick={() => scrollDesktopBy('right')}
                 className='flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 shadow-lg transition-transform hover:scale-105 hover:bg-white dark:border-gray-600 dark:bg-gray-800/90 dark:hover:bg-gray-700'
-                aria-label='Scroll right'
+                aria-label={t('detail.scrollRight')}
               >
                 <ChevronRight className='h-6 w-6 text-gray-600 dark:text-gray-300' />
               </button>
@@ -339,6 +350,8 @@ function RailSkeleton({
   title: string;
   showSeeAll?: boolean;
 }) {
+  const { t } = useTranslation();
+
   return (
     <section className='mb-11 sm:mb-14'>
       <div className='mb-3 flex items-center justify-between gap-4'>
@@ -347,7 +360,7 @@ function RailSkeleton({
         </h2>
         {showSeeAll ? (
           <span className='inline-flex items-center gap-2 text-base font-semibold text-zinc-500 dark:text-zinc-300'>
-            <span>See All</span>
+            <span>{t('common.seeAll')}</span>
             <span className='text-2xl leading-none'>›</span>
           </span>
         ) : null}
@@ -405,6 +418,7 @@ function SectionGridSkeleton({ title }: { title: string }) {
 }
 
 export default function PersonDetailPage() {
+  const { i18n, t } = useTranslation();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const personId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -416,7 +430,7 @@ export default function PersonDetailPage() {
   useEffect(() => {
     const idNum = Number(personId);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-      setError('Invalid person id');
+      setError(t('person.invalidId'));
       setLoading(false);
       return;
     }
@@ -427,21 +441,26 @@ export default function PersonDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`/api/tmdb/person/${idNum}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/tmdb/person/${idNum}?tmdbLanguage=${encodeURIComponent(
+            getCurrentTmdbLanguage()
+          )}`,
+          {
+            signal: controller.signal,
+          }
+        );
         const payload = (await response.json()) as PersonDetail & {
           error?: string;
         };
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Failed to load person detail');
+          throw new Error(payload.error || t('person.failedToLoad'));
         }
 
         setDetail(payload);
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError((err as Error).message || 'Failed to load person detail');
+        setError((err as Error).message || t('person.failedToLoad'));
       } finally {
         setLoading(false);
       }
@@ -450,7 +469,7 @@ export default function PersonDetailPage() {
     void run();
 
     return () => controller.abort();
-  }, [personId]);
+  }, [i18n.language, personId, t]);
 
   const movieCredits = useMemo(() => {
     if (!detail?.credits?.length) return [];
@@ -478,7 +497,7 @@ export default function PersonDetailPage() {
 
   const selectedSection = useMemo(() => {
     const section = (searchParams.get('section') || '').trim().toLowerCase();
-    if (section in SECTION_TITLES) return section as PersonCreditSectionKey;
+    if (section in SECTION_TITLE_KEYS) return section as PersonCreditSectionKey;
     return '';
   }, [searchParams]);
 
@@ -487,7 +506,7 @@ export default function PersonDetailPage() {
     if (movieCredits.length > 0) {
       list.push({
         key: 'movies',
-        title: 'Movies',
+        title: getSectionTitle('movie', t),
         items: movieCredits,
         showAllHref: detail ? `/person/${detail.id}?section=movie` : undefined,
       });
@@ -495,7 +514,7 @@ export default function PersonDetailPage() {
     if (showCredits.length > 0) {
       list.push({
         key: 'shows',
-        title: 'Series',
+        title: getSectionTitle('tv', t),
         items: showCredits,
         showAllHref: detail ? `/person/${detail.id}?section=tv` : undefined,
       });
@@ -503,7 +522,7 @@ export default function PersonDetailPage() {
     if (producerCredits.length > 0) {
       list.push({
         key: 'producer',
-        title: 'Producer',
+        title: getSectionTitle('producer', t),
         items: producerCredits,
         showAllHref: detail
           ? `/person/${detail.id}?section=producer`
@@ -513,7 +532,7 @@ export default function PersonDetailPage() {
     if (directorCredits.length > 0) {
       list.push({
         key: 'director',
-        title: 'Director',
+        title: getSectionTitle('director', t),
         items: directorCredits,
         showAllHref: detail
           ? `/person/${detail.id}?section=director`
@@ -524,36 +543,36 @@ export default function PersonDetailPage() {
     if (!list.length && detail?.credits?.length) {
       list.push({
         key: 'works',
-        title: 'Works',
+        title: t('person.works'),
         items: dedupeCreditsByMedia(detail.credits),
       });
     }
 
     return list;
-  }, [detail, directorCredits, movieCredits, producerCredits, showCredits]);
+  }, [detail, directorCredits, movieCredits, producerCredits, showCredits, t]);
 
   const selectedSectionData = useMemo(() => {
     if (selectedSection === 'movie') {
       return {
-        title: 'Movies',
+        title: getSectionTitle('movie', t),
         items: movieCredits,
       };
     }
     if (selectedSection === 'tv') {
       return {
-        title: 'Series',
+        title: getSectionTitle('tv', t),
         items: showCredits,
       };
     }
     if (selectedSection === 'producer') {
       return {
-        title: 'Producer',
+        title: getSectionTitle('producer', t),
         items: producerCredits,
       };
     }
     if (selectedSection === 'director') {
       return {
-        title: 'Director',
+        title: getSectionTitle('director', t),
         items: directorCredits,
       };
     }
@@ -564,6 +583,7 @@ export default function PersonDetailPage() {
     producerCredits,
     selectedSection,
     showCredits,
+    t,
   ]);
 
   return (
@@ -575,14 +595,14 @@ export default function PersonDetailPage() {
               <PersonHeaderSkeleton />
               {selectedSection ? (
                 <SectionGridSkeleton
-                  title={SECTION_TITLES[selectedSection]}
+                  title={getSectionTitle(selectedSection, t)}
                 />
               ) : (
                 <>
-                  <RailSkeleton title='Movies' showSeeAll />
-                  <RailSkeleton title='Series' showSeeAll />
-                  <RailSkeleton title='Producer' showSeeAll />
-                  <RailSkeleton title='Director' showSeeAll />
+                  <RailSkeleton title={getSectionTitle('movie', t)} showSeeAll />
+                  <RailSkeleton title={getSectionTitle('tv', t)} showSeeAll />
+                  <RailSkeleton title={getSectionTitle('producer', t)} showSeeAll />
+                  <RailSkeleton title={getSectionTitle('director', t)} showSeeAll />
                 </>
               )}
             </div>
@@ -591,7 +611,7 @@ export default function PersonDetailPage() {
               {error}
             </div>
           ) : detail ? (
-            <>
+            <div className='space-y-2'>
               <header className='mb-8 sm:mb-10'>
                 <div className='flex items-center justify-center gap-2'>
                   <span className='relative inline-flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-800 text-xs font-medium text-zinc-200 sm:h-9 sm:w-9 sm:text-sm'>
@@ -621,14 +641,18 @@ export default function PersonDetailPage() {
                       href={`/person/${detail.id}`}
                       className='text-sm text-zinc-400 transition-colors hover:text-white'
                     >
-                      Back
+                      {t('common.back')}
                     </Link>
                     <span className='text-zinc-600'>/</span>
                     <h2 className='text-[1.05rem] font-semibold text-white sm:text-[1.2rem]'>
-                      All {selectedSectionData.title}
+                      {t('person.allSection', {
+                        section: selectedSectionData.title,
+                      })}
                     </h2>
                     <span className='text-xs text-zinc-400'>
-                      {selectedSectionData.items.length} titles
+                      {t('person.titleCount', {
+                        count: selectedSectionData.items.length,
+                      })}
                     </span>
                   </div>
 
@@ -662,13 +686,13 @@ export default function PersonDetailPage() {
                 ))
               ) : (
                 <div className='rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-zinc-300'>
-                  No work information available.
+                  {t('person.noWorkInfo')}
                 </div>
               )}
-            </>
+            </div>
           ) : (
             <div className='rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-zinc-300'>
-              This person was not found.
+              {t('person.notFound')}
             </div>
           )}
         </div>

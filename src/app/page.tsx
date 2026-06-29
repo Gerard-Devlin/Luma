@@ -4,6 +4,7 @@
 
 import { ShieldAlert } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import ContinueWatching from '@/components/ContinueWatching';
 import HomeCuratedRows from '@/components/HomeCuratedRows';
@@ -20,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DEFAULT_ANNOUNCEMENT } from '@/lib/legal';
 
 function splitAnnouncementParagraphs(text: string) {
   const normalized = text.trim();
@@ -45,8 +47,16 @@ function splitAnnouncementParagraphs(text: string) {
 }
 
 function HomeClient() {
+  const { t } = useTranslation();
   const { announcement } = useSite();
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const announcementText =
+    announcement === DEFAULT_ANNOUNCEMENT
+      ? t('legal.defaultAnnouncement')
+      : announcement;
+  const announcementParagraphs = splitAnnouncementParagraphs(
+    announcementText || ''
+  );
 
   useEffect(() => {
     if (typeof window !== 'undefined' && announcement) {
@@ -92,15 +102,15 @@ function HomeClient() {
                   <ShieldAlert className='h-5 w-5' />
                 </span>
                 <AlertDialogTitle className='text-xl text-zinc-900 dark:text-zinc-100'>
-                  {'Disclaimer'}
+                  {t('common.disclaimer')}
                 </AlertDialogTitle>
               </div>
-              <AlertDialogDescription className='max-h-[46vh] space-y-3 overflow-y-auto pr-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300'>
-                {splitAnnouncementParagraphs(announcement).map(
-                  (paragraph, index) => (
+              <AlertDialogDescription asChild>
+                <div className='max-h-[46vh] space-y-3 overflow-y-auto pr-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300'>
+                  {announcementParagraphs.map((paragraph, index) => (
                     <p key={`announcement-${index}`}>{paragraph}</p>
-                  )
-                )}
+                  ))}
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className='mt-2'>
@@ -108,7 +118,7 @@ function HomeClient() {
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className='w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200'
               >
-                {'I understand'}
+                {t('common.iUnderstand')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

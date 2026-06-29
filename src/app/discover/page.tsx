@@ -14,7 +14,9 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import DiscoverCardSkeleton from '@/components/DiscoverCardSkeleton';
 import PageLayout from '@/components/PageLayout';
 import TmdbHeroBanner from '@/components/TmdbHeroBanner';
@@ -22,19 +24,19 @@ import VideoCard from '@/components/VideoCard';
 
 interface GenreOption {
   id: number;
-  label: string;
+  labelKey: string;
 }
 
 interface ShowCountryOption {
   value: string;
-  label: string;
+  labelKey: string;
 }
 
 type DiscoverSortMode = 'popularity' | 'date' | 'rating';
 
 interface SortOption {
   value: DiscoverSortMode;
-  label: string;
+  labelKey: string;
 }
 
 interface DiscoverApiResponse {
@@ -75,55 +77,55 @@ const MIN_RATING = 0;
 const MAX_RATING = 10;
 
 const MOVIE_GENRE_OPTIONS: GenreOption[] = [
-  { id: 12, label: 'Adventure' },
-  { id: 18, label: 'Drama' },
-  { id: 28, label: 'Action' },
-  { id: 16, label: 'Animation' },
-  { id: 36, label: 'History' },
-  { id: 35, label: 'Comedy' },
-  { id: 14, label: 'Fantasy' },
-  { id: 10751, label: 'Family' },
-  { id: 27, label: 'Horror' },
-  { id: 9648, label: 'Mystery' },
-  { id: 53, label: 'Thriller' },
-  { id: 10752, label: 'War' },
-  { id: 10749, label: 'Romance' },
-  { id: 80, label: 'Crime' },
-  { id: 10770, label: 'TV Movie' },
-  { id: 878, label: 'Sci-Fi' },
-  { id: 99, label: 'Documentary' },
-  { id: 37, label: 'Western' },
-  { id: 10402, label: 'Music' },
+  { id: 12, labelKey: 'discover.adventure' },
+  { id: 18, labelKey: 'discover.drama' },
+  { id: 28, labelKey: 'discover.action' },
+  { id: 16, labelKey: 'discover.animation' },
+  { id: 36, labelKey: 'discover.history' },
+  { id: 35, labelKey: 'discover.comedy' },
+  { id: 14, labelKey: 'discover.fantasy' },
+  { id: 10751, labelKey: 'discover.family' },
+  { id: 27, labelKey: 'discover.horror' },
+  { id: 9648, labelKey: 'discover.mystery' },
+  { id: 53, labelKey: 'discover.thriller' },
+  { id: 10752, labelKey: 'discover.war' },
+  { id: 10749, labelKey: 'discover.romance' },
+  { id: 80, labelKey: 'discover.crime' },
+  { id: 10770, labelKey: 'discover.tvMovie' },
+  { id: 878, labelKey: 'discover.sciFi' },
+  { id: 99, labelKey: 'discover.documentary' },
+  { id: 37, labelKey: 'discover.western' },
+  { id: 10402, labelKey: 'discover.music' },
 ];
 
 const TV_GENRE_OPTIONS: GenreOption[] = [
-  { id: 10765, label: 'Sci-Fi & Fantasy' },
-  { id: 10768, label: 'War & Politics' },
-  { id: 10762, label: 'Kids' },
-  { id: 18, label: 'Drama' },
-  { id: 10759, label: 'Action & Adventure' },
-  { id: 16, label: 'Animation' },
-  { id: 35, label: 'Comedy' },
-  { id: 10751, label: 'Family' },
-  { id: 9648, label: 'Mystery' },
-  { id: 10763, label: 'News' },
-  { id: 80, label: 'Crime' },
-  { id: 10764, label: 'Reality' },
-  { id: 99, label: 'Documentary' },
-  { id: 10766, label: 'Soap' },
-  { id: 10767, label: 'Talk' },
-  { id: 37, label: 'Western' },
+  { id: 10765, labelKey: 'discover.sciFiFantasy' },
+  { id: 10768, labelKey: 'discover.warPolitics' },
+  { id: 10762, labelKey: 'discover.kids' },
+  { id: 18, labelKey: 'discover.drama' },
+  { id: 10759, labelKey: 'discover.actionAdventure' },
+  { id: 16, labelKey: 'discover.animation' },
+  { id: 35, labelKey: 'discover.comedy' },
+  { id: 10751, labelKey: 'discover.family' },
+  { id: 9648, labelKey: 'discover.mystery' },
+  { id: 10763, labelKey: 'discover.news' },
+  { id: 80, labelKey: 'discover.crime' },
+  { id: 10764, labelKey: 'discover.reality' },
+  { id: 99, labelKey: 'discover.documentary' },
+  { id: 10766, labelKey: 'discover.soap' },
+  { id: 10767, labelKey: 'discover.talk' },
+  { id: 37, labelKey: 'discover.western' },
 ];
 
 const LANGUAGE_OPTIONS = [
-  { value: '', label: 'Any language' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'en', label: 'English' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'ko', label: 'Korean' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'es', label: 'Spanish' },
+  { value: '', labelKey: 'discover.anyLanguage' },
+  { value: 'zh', labelKey: 'discover.chinese' },
+  { value: 'en', labelKey: 'discover.english' },
+  { value: 'ja', labelKey: 'discover.japanese' },
+  { value: 'ko', labelKey: 'discover.korean' },
+  { value: 'fr', labelKey: 'discover.french' },
+  { value: 'de', labelKey: 'discover.german' },
+  { value: 'es', labelKey: 'discover.spanish' },
 ];
 
 const DEFAULT_FILTERS: FilterState = {
@@ -147,12 +149,6 @@ function normalizeType(
   return 'movie';
 }
 
-function getPageTitle(type: 'movie' | 'tv' | 'show'): string {
-  if (type === 'tv') return 'Series';
-  if (type === 'show') return 'Shows';
-  return 'Movies';
-}
-
 function parseNumberLike(value: string): string {
   const next = value.trim();
   if (!next) return '';
@@ -167,20 +163,20 @@ const RANGE_INPUT_CLASS =
 const SHOW_GENRE_FILTER = '10764|10767';
 const SHOW_HERO_COUNTRY_FILTER = 'CN|KR';
 const SHOW_COUNTRY_OPTIONS: ShowCountryOption[] = [
-  { value: 'CN', label: 'China' },
-  { value: 'KR', label: 'Korea' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'US', label: 'United States' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'TH', label: 'Thailand' },
-  { value: 'FR', label: 'France' },
-  { value: 'DE', label: 'Germany' },
+  { value: 'CN', labelKey: 'discover.countryChina' },
+  { value: 'KR', labelKey: 'discover.countryKorea' },
+  { value: 'JP', labelKey: 'discover.countryJapan' },
+  { value: 'US', labelKey: 'discover.countryUnitedStates' },
+  { value: 'GB', labelKey: 'discover.countryUnitedKingdom' },
+  { value: 'TH', labelKey: 'discover.countryThailand' },
+  { value: 'FR', labelKey: 'discover.countryFrance' },
+  { value: 'DE', labelKey: 'discover.countryGermany' },
 ];
 const DEFAULT_SORT_MODE: DiscoverSortMode = 'popularity';
 const SORT_OPTIONS: SortOption[] = [
-  { value: 'popularity', label: 'Popularity' },
-  { value: 'date', label: 'Date' },
-  { value: 'rating', label: 'Rating' },
+  { value: 'popularity', labelKey: 'discover.popularity' },
+  { value: 'date', labelKey: 'discover.date' },
+  { value: 'rating', labelKey: 'discover.rating' },
 ];
 
 function resolveDiscoverSortBy(
@@ -197,6 +193,7 @@ function resolveDiscoverSortBy(
 }
 
 function DiscoverPageClient() {
+  const { i18n, t } = useTranslation();
   const searchParams = useSearchParams();
   const type = normalizeType(searchParams.get('type'));
   const media = type === 'movie' ? 'movie' : 'tv';
@@ -319,6 +316,7 @@ function DiscoverPageClient() {
 
         const params = new URLSearchParams(queryString);
         params.set('page', String(page));
+        params.set('tmdbLanguage', getCurrentTmdbLanguage());
 
         const response = await fetch(`/api/tmdb/discover?${params.toString()}`);
         const data = (await response.json()) as DiscoverApiResponse;
@@ -342,7 +340,7 @@ function DiscoverPageClient() {
         setIsLoadingMore(false);
       }
     },
-    [queryString]
+    [i18n.language, queryString]
   );
 
   const loadShowPage = useCallback(
@@ -360,6 +358,7 @@ function DiscoverPageClient() {
           page: String(page + 1),
           with_genres: SHOW_GENRE_FILTER,
           sort_by: resolveDiscoverSortBy(sortMode, 'tv'),
+          tmdbLanguage: getCurrentTmdbLanguage(),
         });
 
         if (showCountryFilter) {
@@ -389,7 +388,7 @@ function DiscoverPageClient() {
         setShowLoadingMore(false);
       }
     },
-    [showCountryFilter, sortMode]
+    [i18n.language, showCountryFilter, sortMode]
   );
 
   useEffect(() => {
@@ -594,7 +593,11 @@ function DiscoverPageClient() {
           <div className='mb-6 space-y-4 sm:mb-8 sm:space-y-6'>
             <div className='space-y-1'>
               <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200 sm:text-3xl'>
-                {getPageTitle(type)}
+                {type === 'tv'
+                  ? t('common.series')
+                  : type === 'show'
+                    ? t('common.shows')
+                    : t('common.movies')}
               </h1>
             </div>
 
@@ -604,7 +607,7 @@ function DiscoverPageClient() {
                   <div className='mb-4 flex items-center justify-between'>
                     <div className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-200'>
                       <ListFilter className='h-5 w-5' />
-                      <span>Filters</span>
+                      <span>{t('discover.filters')}</span>
                     </div>
                     <button
                       type='button'
@@ -619,14 +622,14 @@ function DiscoverPageClient() {
                       className='inline-flex items-center gap-1 px-1 py-1 text-sm font-medium text-red-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-400 dark:hover:text-red-300'
                     >
                       <RotateCcw className='h-3.5 w-3.5' />
-                      {'Reset'}
+                      {t('discover.reset')}
                     </button>
                   </div>
                   <div className='space-y-4'>
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4'>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0 sm:pt-1'>
                         <Languages className='h-4 w-4' />
-                        {'Country'}
+                        {t('discover.country')}
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {SHOW_COUNTRY_OPTIONS.map((country) => {
@@ -643,7 +646,7 @@ function DiscoverPageClient() {
                                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                               }`}
                             >
-                              {country.label}
+                              {t(country.labelKey)}
                             </button>
                           );
                         })}
@@ -652,7 +655,7 @@ function DiscoverPageClient() {
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4'>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0 sm:pt-1'>
                         <Tags className='h-4 w-4' />
-                        {'Sort'}
+                        {t('discover.sort')}
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {SORT_OPTIONS.map((option) => {
@@ -669,7 +672,7 @@ function DiscoverPageClient() {
                                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                               }`}
                             >
-                              {option.label}
+                              {t(option.labelKey)}
                             </button>
                           );
                         })}
@@ -686,11 +689,11 @@ function DiscoverPageClient() {
                       className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 transition hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100'
                     >
                       <ListFilter className='h-5 w-5' />
-                      <span>Filters</span>
+                      <span>{t('discover.filters')}</span>
                       <span className='text-xs font-normal text-gray-500 dark:text-gray-400'>
                         {showAdvancedFilters
-                          ? 'Click to collapse'
-                          : 'Click to expand'}
+                          ? t('discover.clickToCollapse')
+                          : t('discover.clickToExpand')}
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 transition-transform ${
@@ -707,7 +710,7 @@ function DiscoverPageClient() {
                       className='inline-flex items-center gap-1 px-1 py-1 text-sm font-medium text-red-500 transition hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
                     >
                       <RotateCcw className='h-3.5 w-3.5' />
-                      {'Reset'}
+                      {t('discover.reset')}
                     </button>
                   </div>
 
@@ -715,7 +718,7 @@ function DiscoverPageClient() {
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4'>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <CalendarRange className='h-4 w-4' />
-                        {'Release Date'}
+                        {t('discover.releaseDate')}
                       </div>
                   <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
@@ -777,7 +780,7 @@ function DiscoverPageClient() {
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4'>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0 sm:pt-1'>
                         <Tags className='h-4 w-4' />
-                        {'Genres'}
+                        {t('discover.genres')}
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {genreOptions.map((genre) => {
@@ -796,7 +799,7 @@ function DiscoverPageClient() {
                                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                               }`}
                             >
-                              {genre.label}
+                              {t(genre.labelKey)}
                             </button>
                           );
                         })}
@@ -809,7 +812,7 @@ function DiscoverPageClient() {
                     >
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0 sm:pt-1'>
                         <Tags className='h-4 w-4' />
-                        {'Exclude Genres'}
+                        {t('discover.excludeGenres')}
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {genreOptions.map((genre) => {
@@ -828,7 +831,7 @@ function DiscoverPageClient() {
                                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                               }`}
                             >
-                              {genre.label}
+                              {t(genre.labelKey)}
                             </button>
                           );
                         })}
@@ -837,7 +840,7 @@ function DiscoverPageClient() {
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4'>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0 sm:pt-1'>
                         <Tags className='h-4 w-4' />
-                        {'Sort'}
+                        {t('discover.sort')}
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {SORT_OPTIONS.map((option) => {
@@ -854,7 +857,7 @@ function DiscoverPageClient() {
                                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                               }`}
                             >
-                              {option.label}
+                              {t(option.labelKey)}
                             </button>
                           );
                         })}
@@ -864,7 +867,7 @@ function DiscoverPageClient() {
                     <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Languages className='h-4 w-4' />
-                        {'Language'}
+                        {t('common.language')}
                       </div>
                       <select
                         value={filters.language}
@@ -881,7 +884,7 @@ function DiscoverPageClient() {
                             key={option.value || 'none'}
                             value={option.value}
                           >
-                            {option.label}
+                            {t(option.labelKey)}
                           </option>
                         ))}
                       </select>
@@ -890,7 +893,7 @@ function DiscoverPageClient() {
                     <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Star className='h-4 w-4' />
-                        {'User Rating'}
+                        {t('discover.userRating')}
                       </div>
                   <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
@@ -952,7 +955,7 @@ function DiscoverPageClient() {
                     <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <UsersRound className='h-4 w-4' />
-                        {'Minimum Votes'}
+                        {t('discover.minimumVotes')}
                       </div>
                       <input
                         type='number'
@@ -965,7 +968,7 @@ function DiscoverPageClient() {
                             minVoteCount: e.target.value,
                           }))
                         }
-                        placeholder='e.g. 500'
+                        placeholder={t('discover.minVotesPlaceholder')}
                         className='w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-base outline-none transition focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800 sm:max-w-xs'
                       />
                     </div>
@@ -973,7 +976,7 @@ function DiscoverPageClient() {
                     <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Clock3 className='h-4 w-4' />
-                        {'Runtime'}
+                        {t('discover.runtime')}
                       </div>
                   <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
@@ -1069,7 +1072,7 @@ function DiscoverPageClient() {
                   <div className='flex items-center gap-2'>
                     <div className='h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500' />
                     <span className='text-gray-600 dark:text-gray-300'>
-                      {'Loading...'}
+                      {t('common.loading')}
                     </span>
                   </div>
                 ) : null}
@@ -1079,14 +1082,14 @@ function DiscoverPageClient() {
             {!(type === 'show' ? showHasMore : hasMore) &&
             (type === 'show' ? showItems.length : items.length) > 0 ? (
               <div className='py-8 text-center text-gray-500 dark:text-gray-400'>
-                {'All content loaded'}
+                {t('common.allContentLoaded')}
               </div>
             ) : null}
 
             {!(type === 'show' ? showLoading : loading) &&
             (type === 'show' ? showItems.length : items.length) === 0 ? (
               <div className='py-8 text-center text-gray-500 dark:text-gray-400'>
-                {'No related content found'}
+                {t('common.noRelatedContentFound')}
               </div>
             ) : null}
           </div>

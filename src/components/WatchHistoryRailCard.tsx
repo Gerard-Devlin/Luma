@@ -3,6 +3,7 @@
 import { Check } from 'lucide-react';
 import Image from 'next/image';
 import { MouseEventHandler, PointerEventHandler } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface WatchHistoryRailCardProps {
   title: string;
@@ -35,6 +36,7 @@ export default function WatchHistoryRailCard({
   onPointerCancel,
   onClickCapture,
 }: WatchHistoryRailCardProps) {
+  const { t } = useTranslation();
   const clampedProgress = Math.min(100, Math.max(0, progress));
   const visibleProgress =
     clampedProgress > 0 ? Math.max(clampedProgress, 14) : 0;
@@ -65,7 +67,7 @@ export default function WatchHistoryRailCard({
             />
           ) : (
             <div className='flex h-full w-full items-center justify-center bg-zinc-900 text-sm text-zinc-500'>
-              No image
+              {t('common.noImage')}
             </div>
           )}
           <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/18 to-transparent' />

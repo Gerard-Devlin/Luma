@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 
+import {
+  getTmdbImageLanguage,
+  getTmdbVideoLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
@@ -628,6 +633,7 @@ async function resolveTmdbTargetFromTitle(
   year: string,
   mediaType: TmdbMediaType,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<{ id: number; mediaType: TmdbMediaType } | null> {
   const queryHasSeasonIntent = hasSeasonIntent(title);
@@ -663,7 +669,7 @@ async function resolveTmdbTargetFromTitle(
     for (const searchQuery of searchQueryVariants) {
       const params = new URLSearchParams({
         api_key: apiKey,
-        language: 'en-US',
+        language: tmdbLanguage,
         include_adult: 'false',
         query: searchQuery,
         page: '1',
@@ -756,6 +762,7 @@ async function fetchTmdbDetailRaw(
   mediaType: TmdbMediaType,
   id: number,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal,
   logoLanguagePreference: LogoLanguagePreference
 ): Promise<TmdbDetailRawResponse | null> {
@@ -764,15 +771,14 @@ async function fetchTmdbDetailRaw(
       ? 'credits,videos,release_dates,images,recommendations,external_ids'
       : 'aggregate_credits,credits,videos,content_ratings,images,recommendations,external_ids';
 
-  const includeImageLanguage =
-    logoLanguagePreference === 'en' ? 'en,null' : 'null,en';
+  const includeImageLanguage = getTmdbImageLanguage(tmdbLanguage);
 
   const params = new URLSearchParams({
     api_key: apiKey,
-    language: 'en-US',
+    language: tmdbLanguage,
     append_to_response: appendToResponse,
     include_image_language: includeImageLanguage,
-    include_video_language: 'en,null',
+    include_video_language: getTmdbVideoLanguage(tmdbLanguage),
   });
 
   try {
@@ -795,11 +801,12 @@ async function fetchTmdbDetailRaw(
 async function fetchTmdbCollectionRaw(
   id: number,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<TmdbCollectionRawResponse | null> {
   const params = new URLSearchParams({
     api_key: apiKey,
-    language: 'en-US',
+    language: tmdbLanguage,
   });
 
   try {
@@ -1044,6 +1051,7 @@ export async function GET(request: Request) {
     logoLanguageParam,
     mediaType
   );
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
 
   const rawId = Number(searchParams.get('id'));
   const hasValidId = Number.isInteger(rawId) && rawId > 0;
@@ -1081,6 +1089,7 @@ export async function GET(request: Request) {
         year,
         mediaType,
         apiKey,
+        tmdbLanguage,
         controller.signal
       );
       if (!resolved) {
@@ -1101,6 +1110,7 @@ export async function GET(request: Request) {
       resolvedMediaType,
       resolvedId,
       apiKey,
+      tmdbLanguage,
       controller.signal,
       logoLanguagePreference
     );
@@ -1133,7 +1143,12 @@ export async function GET(request: Request) {
       resolvedMediaType === 'movie' &&
       Number.isInteger(collectionId) &&
       collectionId > 0
-        ? await fetchTmdbCollectionRaw(collectionId, apiKey, controller.signal)
+        ? await fetchTmdbCollectionRaw(
+            collectionId,
+            apiKey,
+            tmdbLanguage,
+            controller.signal
+          )
         : null;
 
     const payload = mapRawDetailToResponse(rawDetail, {

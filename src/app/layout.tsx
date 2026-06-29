@@ -8,6 +8,7 @@ import { getConfig } from '@/lib/config';
 import { DEFAULT_ANNOUNCEMENT } from '@/lib/legal';
 
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
+import { I18nProvider } from '../components/I18nProvider';
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
 
@@ -94,10 +95,12 @@ export default async function RootLayout({
           forcedTheme='dark'
           disableTransitionOnChange
         >
-          <SiteProvider siteName={siteName} announcement={announcement}>
-            {children}
-            <GlobalErrorIndicator />
-          </SiteProvider>
+          <I18nProvider>
+            <SiteProvider siteName={siteName} announcement={announcement}>
+              {children}
+              <GlobalErrorIndicator />
+            </SiteProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

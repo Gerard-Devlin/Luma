@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
+import { useTranslation } from 'react-i18next';
 
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useSite } from '@/components/SiteProvider';
 import { checkForUpdates, CURRENT_VERSION, UpdateStatus } from '@/lib/version';
 
@@ -22,6 +24,7 @@ const GrainGradient = dynamic(
 );
 
 function VersionDisplay() {
+  const { t } = useTranslation();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [isChecking, setIsChecking] = useState(true);
 
@@ -63,14 +66,16 @@ function VersionDisplay() {
             <>
               <AlertCircle className='h-3.5 w-3.5 shrink-0' />
               <span className='shrink-0 text-xs font-semibold'>
-                Update available
+                {t('auth.updateAvailable')}
               </span>
             </>
           )}
           {updateStatus === UpdateStatus.NO_UPDATE && (
             <>
               <CheckCircle className='h-3.5 w-3.5 shrink-0' />
-              <span className='shrink-0 text-xs font-semibold'>Up to date</span>
+              <span className='shrink-0 text-xs font-semibold'>
+                {t('auth.upToDate')}
+              </span>
             </>
           )}
         </div>
@@ -116,6 +121,7 @@ function GrainGradientBackdrop() {
 }
 
 function LoginPageClient() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -159,7 +165,7 @@ function LoginPageClient() {
       }
       setAuthMode('login');
       setError(null);
-      setSuccess('Email confirmed. You can sign in now.');
+      setSuccess(t('auth.emailConfirmed'));
       return;
     }
 
@@ -167,12 +173,12 @@ function LoginPageClient() {
     setSuccess(null);
     setError(
       reason === 'exists'
-        ? 'This username or email is already registered.'
+        ? t('auth.usernameOrEmailExists')
         : reason === 'server'
-        ? 'Confirmation failed because of a server error. Please try again.'
-        : 'This confirmation link is invalid or expired.'
+        ? t('auth.confirmationFailed')
+        : t('auth.confirmationInvalid')
     );
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const storageType = runtimeConfig?.STORAGE_TYPE ?? 'localstorage';
   const canShowRegister =
@@ -200,7 +206,7 @@ function LoginPageClient() {
 
     if (!password || (showUsernameField && !username)) return;
     if (isTurnstileEnabled && !turnstileToken) {
-      setError('Please complete the verification challenge.');
+      setError(t('auth.verifyChallenge'));
       return;
     }
 
@@ -224,15 +230,15 @@ function LoginPageClient() {
         const redirect = searchParams.get('redirect') || '/';
         router.replace(redirect);
       } else if (res.status === 401) {
-        setError('Incorrect password.');
+        setError(t('auth.incorrectPassword'));
         resetTurnstile();
       } else {
         const data = await res.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? 'Server error.');
+        setError((data as { error?: string }).error ?? t('auth.serverError'));
         resetTurnstile();
       }
     } catch (error) {
-      setError('Network error. Please try again later.');
+      setError(t('auth.networkError'));
       resetTurnstile();
     } finally {
       setLoading(false);
@@ -249,7 +255,7 @@ function LoginPageClient() {
 
     if (!password || !username || !email) return;
     if (isTurnstileEnabled && !turnstileToken) {
-      setError('Please complete the verification challenge.');
+      setError(t('auth.verifyChallenge'));
       return;
     }
 
@@ -278,16 +284,16 @@ function LoginPageClient() {
         setEmail('');
         setAuthMode('login');
         setSuccess(
-          `Confirmation link sent to ${data.email || email}. Check your email.`
+          t('auth.confirmationSent', { email: data.email || email })
         );
         resetTurnstile();
       } else {
         const data = await res.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? 'Server error.');
+        setError((data as { error?: string }).error ?? t('auth.serverError'));
         resetTurnstile();
       }
     } catch (error) {
-      setError('Network error. Please try again later.');
+      setError(t('auth.networkError'));
       resetTurnstile();
     } finally {
       setLoading(false);
@@ -311,6 +317,9 @@ function LoginPageClient() {
   return (
     <main className='relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-12 text-white'>
       <GrainGradientBackdrop />
+      <div className='fixed right-4 top-4 z-20'>
+        <LanguageSwitcher />
+      </div>
 
       <div className='relative z-10 w-full max-w-sm rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 p-8 shadow-2xl backdrop-blur-xl dark:border dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-900/40'>
         <img
@@ -323,7 +332,7 @@ function LoginPageClient() {
           {showUsernameField && (
             <div className='space-y-2'>
               <label htmlFor='username' className='sr-only'>
-                Username
+                {t('auth.username')}
               </label>
               <input
                 id='username'
@@ -331,7 +340,9 @@ function LoginPageClient() {
                 autoComplete='username'
                 className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
                 placeholder={
-                  authMode === 'register' ? 'Choose a username' : 'Enter username'
+                  authMode === 'register'
+                    ? t('auth.chooseUsername')
+                    : t('auth.enterUsername')
                 }
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -342,14 +353,14 @@ function LoginPageClient() {
           {authMode === 'register' && (
             <div className='space-y-2'>
               <label htmlFor='email' className='sr-only'>
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id='email'
                 type='email'
                 autoComplete='email'
                 className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
-                placeholder='Enter email address'
+                placeholder={t('auth.enterEmail')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -359,7 +370,7 @@ function LoginPageClient() {
 
           <div className='space-y-2'>
             <label htmlFor='password' className='sr-only'>
-              Password
+              {t('auth.password')}
             </label>
             <input
               id='password'
@@ -368,8 +379,8 @@ function LoginPageClient() {
               className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
               placeholder={
                 authMode === 'register'
-                  ? 'Create a password'
-                  : 'Enter access password'
+                  ? t('auth.createPassword')
+                  : t('auth.enterAccessPassword')
               }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -415,18 +426,18 @@ function LoginPageClient() {
           >
             {loading
               ? authMode === 'login'
-                ? 'Signing in...'
-                : 'Signing up...'
+                ? t('auth.signingIn')
+                : t('auth.signingUp')
               : authMode === 'login'
-              ? 'Sign in'
-              : 'Sign up'}
+              ? t('auth.signIn')
+              : t('auth.signUp')}
           </button>
 
           {canShowRegister && (
             <p className='pt-1 text-center text-sm text-zinc-500 dark:text-zinc-400'>
               {authMode === 'login' ? (
                 <>
-                  Don&apos;t have an account?{' '}
+                  {t('auth.dontHaveAccount')}{' '}
                   <button
                     type='button'
                     onClick={() => {
@@ -437,12 +448,12 @@ function LoginPageClient() {
                     disabled={loading}
                     className='font-semibold text-zinc-900 underline underline-offset-4 transition-colors hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-100 dark:hover:text-white'
                   >
-                    Sign up
+                    {t('auth.signUp')}
                   </button>
                 </>
               ) : (
                 <>
-                  Already have an account?{' '}
+                  {t('auth.alreadyHaveAccount')}{' '}
                   <button
                     type='button'
                     onClick={() => {
@@ -453,7 +464,7 @@ function LoginPageClient() {
                     disabled={loading}
                     className='font-semibold text-zinc-900 underline underline-offset-4 transition-colors hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-100 dark:hover:text-white'
                   >
-                    Sign in
+                    {t('auth.signIn')}
                   </button>
                 </>
               )}

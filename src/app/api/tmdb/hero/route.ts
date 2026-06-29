@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+import {
+  getTmdbImageLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 
 
@@ -139,12 +143,13 @@ async function fetchLogoForItem(
   mediaType: TmdbMediaType,
   id: number,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<string> {
   try {
     const params = new URLSearchParams({
       api_key: apiKey,
-      include_image_language: 'en,null',
+      include_image_language: getTmdbImageLanguage(tmdbLanguage),
     });
 
     const response = await fetch(
@@ -166,12 +171,13 @@ async function fetchHeroMetaForItem(
   mediaType: TmdbMediaType,
   id: number,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<TmdbHeroMeta> {
   try {
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: 'en-US',
+      language: tmdbLanguage,
     });
 
     const response = await fetch(
@@ -244,6 +250,7 @@ export async function GET(request: Request) {
   const withOriginCountry = normalizeWithOriginCountry(
     searchParams.get('with_origin_country')
   );
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
 
   const apiKey =
     process.env.TMDB_API_KEY ||
@@ -268,7 +275,7 @@ export async function GET(request: Request) {
       mediaFilter === 'movie' ? 'movie' : 'tv';
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: 'en-US',
+      language: tmdbLanguage,
       page: '1',
     });
     if (shouldUseDiscover) {
@@ -320,8 +327,20 @@ export async function GET(request: Request) {
     const results = await Promise.all(
       baseResults.map(async (item) => {
         const [logo, meta] = await Promise.all([
-          fetchLogoForItem(item.mediaType, item.id, apiKey, controller.signal),
-          fetchHeroMetaForItem(item.mediaType, item.id, apiKey, controller.signal),
+          fetchLogoForItem(
+            item.mediaType,
+            item.id,
+            apiKey,
+            tmdbLanguage,
+            controller.signal
+          ),
+          fetchHeroMetaForItem(
+            item.mediaType,
+            item.id,
+            apiKey,
+            tmdbLanguage,
+            controller.signal
+          ),
         ]);
         return {
           ...item,

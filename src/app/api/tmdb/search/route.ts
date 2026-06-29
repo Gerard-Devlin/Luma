@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
 import { SearchResult } from '@/lib/types';
 
 
@@ -118,13 +119,17 @@ function scoreMatch(title: string, query: string): number {
   return 0;
 }
 
-function buildTmdbSearchParams(apiKey: string, query: string): URLSearchParams {
+function buildTmdbSearchParams(
+  apiKey: string,
+  query: string,
+  tmdbLanguage: string
+): URLSearchParams {
   return new URLSearchParams({
     api_key: apiKey,
     query,
     page: '1',
     include_adult: 'false',
-    language: 'en-US',
+    language: tmdbLanguage,
   });
 }
 
@@ -132,10 +137,11 @@ async function fetchTmdbList<T>(
   endpointPath: string,
   apiKey: string,
   query: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<T[]> {
   try {
-    const params = buildTmdbSearchParams(apiKey, query);
+    const params = buildTmdbSearchParams(apiKey, query, tmdbLanguage);
     const response = await fetch(
       `${TMDB_API_BASE_URL}${endpointPath}?${params.toString()}`,
       { signal }
@@ -216,6 +222,7 @@ function setCachedTvEpisodeCount(id: number, count: number): void {
 async function fetchTvEpisodeCount(
   id: number,
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<number | null> {
   const cached = getCachedTvEpisodeCount(id);
@@ -224,7 +231,7 @@ async function fetchTvEpisodeCount(
   try {
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: 'en-US',
+      language: tmdbLanguage,
     });
     const response = await fetch(
       `${TMDB_API_BASE_URL}/tv/${id}?${params.toString()}`,
@@ -247,6 +254,7 @@ async function fetchTvEpisodeCount(
 async function hydrateTvEpisodeCounts(
   candidates: SearchMediaCandidate[],
   apiKey: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<void> {
   const tvCandidates = candidates.filter(
@@ -258,7 +266,12 @@ async function hydrateTvEpisodeCounts(
     tvCandidates.map(async (candidate) => {
       const id = Number(candidate.result.id);
       if (!Number.isInteger(id) || id <= 0) return;
-      const episodeCount = await fetchTvEpisodeCount(id, apiKey, signal);
+      const episodeCount = await fetchTvEpisodeCount(
+        id,
+        apiKey,
+        tmdbLanguage,
+        signal
+      );
       if (!episodeCount || episodeCount <= 0) return;
       candidate.result.total_episodes = episodeCount;
     })
@@ -298,6 +311,7 @@ function emptySearchResponse(): SearchTmdbResponse {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = normalizeText(searchParams.get('q') || '');
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
 
   if (!query) {
     return NextResponse.json(emptySearchResponse(), {
@@ -321,9 +335,27 @@ export async function GET(request: Request) {
 
   try {
     const [movieRawList, tvRawList, peopleRawList] = await Promise.all([
-      fetchTmdbList<TmdbMovieItem>('/search/movie', apiKey, query, controller.signal),
-      fetchTmdbList<TmdbTvItem>('/search/tv', apiKey, query, controller.signal),
-      fetchTmdbList<TmdbPersonItem>('/search/person', apiKey, query, controller.signal),
+      fetchTmdbList<TmdbMovieItem>(
+        '/search/movie',
+        apiKey,
+        query,
+        tmdbLanguage,
+        controller.signal
+      ),
+      fetchTmdbList<TmdbTvItem>(
+        '/search/tv',
+        apiKey,
+        query,
+        tmdbLanguage,
+        controller.signal
+      ),
+      fetchTmdbList<TmdbPersonItem>(
+        '/search/person',
+        apiKey,
+        query,
+        tmdbLanguage,
+        controller.signal
+      ),
     ]);
 
     const mediaCandidates = [
@@ -340,7 +372,12 @@ export async function GET(request: Request) {
       return b.popularity - a.popularity;
     });
 
-    await hydrateTvEpisodeCounts(mediaCandidates, apiKey, controller.signal);
+    await hydrateTvEpisodeCounts(
+      mediaCandidates,
+      apiKey,
+      tmdbLanguage,
+      controller.signal
+    );
 
     const response: SearchTmdbResponse = {
       results: mediaCandidates.map((item) => item.result),

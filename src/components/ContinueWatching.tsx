@@ -8,7 +8,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   deletePlayRecord,
@@ -57,14 +59,16 @@ const HISTORY_BACKDROP_RESOLVE_CONCURRENCY = 3;
 interface HistoryImageEntry {
   cacheKey: string;
   image: string;
+  title: string;
 }
 
 interface HistoryTmdbDetail {
   backdrop?: string | null;
+  title?: string | null;
 }
 
-const historyBackdropCache = new Map<string, string>();
-const historyBackdropPending = new Map<string, Promise<string>>();
+const historyBackdropCache = new Map<string, HistoryImageEntry>();
+const historyBackdropPending = new Map<string, Promise<HistoryImageEntry>>();
 
 function inferTmdbMediaType(
   record: PlayRecord & { key: string }
@@ -81,8 +85,12 @@ function getOppositeMediaType(
   return mediaType === 'movie' ? 'tv' : 'movie';
 }
 
-function buildHistoryBackdropCacheKey(record: PlayRecord & { key: string }) {
+function buildHistoryBackdropCacheKey(
+  record: PlayRecord & { key: string },
+  tmdbLanguage: string
+) {
   return [
+    tmdbLanguage,
     record.key,
     record.title || '',
     record.search_title || '',
@@ -98,21 +106,27 @@ async function fetchHistoryBackdropByRequest(input: {
   mediaType: TmdbDetailMediaType;
   year?: string;
   poster?: string;
-}): Promise<string> {
+  tmdbLanguage: string;
+}): Promise<HistoryImageEntry | null> {
   const detail = await fetchTmdbDetailWithClientCache<HistoryTmdbDetail>({
     id: input.id,
     title: input.title,
     mediaType: input.mediaType,
     year: input.year,
     poster: input.poster,
+    tmdbLanguage: input.tmdbLanguage,
   });
-  return (detail.backdrop || '').trim();
+  const image = (detail.backdrop || '').trim();
+  const title = (detail.title || '').trim();
+  return image || title ? { cacheKey: '', image, title } : null;
 }
 
 async function fetchHistoryBackdrop(
-  record: PlayRecord & { key: string }
-): Promise<string> {
+  record: PlayRecord & { key: string },
+  tmdbLanguage: string
+): Promise<HistoryImageEntry> {
   const fallbackImage = (record.cover || '').trim();
+  const fallbackTitle = (record.title || record.search_title || '').trim();
   const title = (record.search_title || record.title || '').trim();
   const year = (record.year || '').trim();
   const mediaType = inferTmdbMediaType(record);
@@ -132,8 +146,15 @@ async function fetchHistoryBackdrop(
           id: numericTmdbId,
           mediaType: candidateType,
           poster: fallbackImage,
+          tmdbLanguage,
         });
-        if (backdrop) return backdrop;
+        if (backdrop?.image || backdrop?.title) {
+          return {
+            cacheKey: '',
+            image: backdrop.image || fallbackImage,
+            title: backdrop.title || fallbackTitle,
+          };
+        }
       } catch {
         // Fall through to the next candidate.
       }
@@ -148,34 +169,51 @@ async function fetchHistoryBackdrop(
           mediaType: candidateType,
           year,
           poster: fallbackImage,
+          tmdbLanguage,
         });
-        if (backdrop) return backdrop;
+        if (backdrop?.image || backdrop?.title) {
+          return {
+            cacheKey: '',
+            image: backdrop.image || fallbackImage,
+            title: backdrop.title || fallbackTitle,
+          };
+        }
       } catch {
         // Keep the history rail resilient for unusual records.
       }
     }
   }
 
-  return fallbackImage;
+  return { cacheKey: '', image: fallbackImage, title: fallbackTitle };
 }
 
-function resolveHistoryBackdrop(record: PlayRecord & { key: string }) {
-  const cacheKey = buildHistoryBackdropCacheKey(record);
+function resolveHistoryBackdrop(
+  record: PlayRecord & { key: string },
+  tmdbLanguage: string
+) {
+  const cacheKey = buildHistoryBackdropCacheKey(record, tmdbLanguage);
   const cached = historyBackdropCache.get(cacheKey);
   if (cached !== undefined) return Promise.resolve(cached);
 
   const pending = historyBackdropPending.get(cacheKey);
   if (pending) return pending;
 
-  const request = fetchHistoryBackdrop(record)
-    .then((image) => {
-      historyBackdropCache.set(cacheKey, image);
-      return image;
+  const request = fetchHistoryBackdrop(record, tmdbLanguage)
+    .then((entry) => {
+      const nextEntry = { ...entry, cacheKey };
+      historyBackdropCache.set(cacheKey, nextEntry);
+      return nextEntry;
     })
     .catch(() => {
       const fallbackImage = (record.cover || '').trim();
-      historyBackdropCache.set(cacheKey, fallbackImage);
-      return fallbackImage;
+      const fallbackTitle = (record.title || record.search_title || '').trim();
+      const fallbackEntry = {
+        cacheKey,
+        image: fallbackImage,
+        title: fallbackTitle,
+      };
+      historyBackdropCache.set(cacheKey, fallbackEntry);
+      return fallbackEntry;
     })
     .finally(() => {
       historyBackdropPending.delete(cacheKey);
@@ -186,6 +224,7 @@ function resolveHistoryBackdrop(record: PlayRecord & { key: string }) {
 }
 
 export default function ContinueWatching({ className }: ContinueWatchingProps) {
+  const { i18n, t } = useTranslation();
   const { showMatrixLoading, navigateWithMatrixLoading } =
     useMatrixRouteTransition();
   const [playRecords, setPlayRecords] = useState<
@@ -197,6 +236,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
   const [historyImageByKey, setHistoryImageByKey] = useState<
     Record<string, HistoryImageEntry>
   >({});
+  const tmdbLanguage = getCurrentTmdbLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
@@ -255,12 +295,12 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     const cachedEntries: Record<string, HistoryImageEntry> = {};
 
     for (const record of playRecords) {
-      const cacheKey = buildHistoryBackdropCacheKey(record);
+      const cacheKey = buildHistoryBackdropCacheKey(record, tmdbLanguage);
       if (historyImageByKey[record.key]?.cacheKey === cacheKey) continue;
 
-      const cachedImage = historyBackdropCache.get(cacheKey);
-      if (cachedImage !== undefined) {
-        cachedEntries[record.key] = { cacheKey, image: cachedImage };
+      const cachedEntry = historyBackdropCache.get(cacheKey);
+      if (cachedEntry !== undefined) {
+        cachedEntries[record.key] = cachedEntry;
         continue;
       }
 
@@ -285,15 +325,19 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
         nextIndex += 1;
         if (!record) return;
 
-        const cacheKey = buildHistoryBackdropCacheKey(record);
-        const image = await resolveHistoryBackdrop(record);
+        const cacheKey = buildHistoryBackdropCacheKey(record, tmdbLanguage);
+        const entry = await resolveHistoryBackdrop(record, tmdbLanguage);
         if (cancelled) return;
 
         setHistoryImageByKey((prev) => {
           if (prev[record.key]?.cacheKey === cacheKey) return prev;
           return {
             ...prev,
-            [record.key]: { cacheKey, image },
+            [record.key]: {
+              cacheKey,
+              image: entry.image,
+              title: entry.title,
+            },
           };
         });
       }
@@ -306,7 +350,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     return () => {
       cancelled = true;
     };
-  }, [historyImageByKey, playRecords]);
+  }, [historyImageByKey, i18n.language, playRecords, tmdbLanguage]);
 
   const clearLongPressTimer = useCallback(() => {
     if (!longPressTimerRef.current) return;
@@ -398,7 +442,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
       <section className={`mb-8 ${className || ''}`}>
         <div className='mb-4 flex items-center justify-between'>
           <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-            Continue Watching
+            {t('common.continueWatching')}
           </h2>
           {!loading && playRecords.length > 0 ? (
             isBatchMode ? (
@@ -409,7 +453,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                   disabled={selectedKeys.size === 0}
                   onClick={() => setDeleteDialogOpen(true)}
                 >
-                  {`Delete (${selectedKeys.size})`}
+                  {`${t('common.delete')} (${selectedKeys.size})`}
                 </button>
                 <button
                   type='button'
@@ -419,7 +463,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                     setSelectedKeys(new Set());
                   }}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             ) : (
@@ -430,7 +474,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                 }}
                 className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
               >
-                <span>See All</span>
+                <span>{t('common.seeAll')}</span>
                 <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
                   ›
                 </span>
@@ -453,13 +497,27 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                 ))
               : playRecords.map((record) => {
                   const isSelected = selectedKeys.has(record.key);
-                  const cacheKey = buildHistoryBackdropCacheKey(record);
+                  const cacheKey = buildHistoryBackdropCacheKey(
+                    record,
+                    tmdbLanguage
+                  );
                   const resolvedImage = historyImageByKey[record.key];
+                  const title =
+                    resolvedImage?.cacheKey === cacheKey &&
+                    resolvedImage.title
+                      ? resolvedImage.title
+                      : record.title ||
+                        record.search_title ||
+                        t('common.untitled');
                   return (
                     <WatchHistoryRailCard
                       key={record.key}
-                      title={record.title || record.search_title || 'Untitled'}
-                      subtitle={formatTmdbHistorySubtitle(record.key, record)}
+                      title={title}
+                      subtitle={formatTmdbHistorySubtitle(
+                        record.key,
+                        record,
+                        t
+                      )}
                       poster={
                         resolvedImage?.cacheKey === cacheKey
                           ? resolvedImage.image
@@ -490,11 +548,13 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className={glassDialogContentClass}>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete selected items?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('common.deleteSelectedItems')}
+              </AlertDialogTitle>
               <AlertDialogDescription className={glassDialogDescriptionClass}>
-                {`This will delete ${selectedKeys.size} history item${
-                  selectedKeys.size === 1 ? '' : 's'
-                }.`}
+                {t('home.deleteHistoryDescription', {
+                  count: selectedKeys.size,
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -502,7 +562,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                 disabled={deleting}
                 className={glassDialogCancelClass}
               >
-                Cancel
+                {t('common.cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={deleting}
@@ -512,7 +572,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                 }}
                 className={glassDialogDangerActionClass}
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deleting ? t('common.deleting') : t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -2,7 +2,9 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
@@ -30,6 +32,7 @@ interface DiscoverApiResponse {
 }
 
 export default function CuratedPageClient() {
+  const { i18n, t } = useTranslation();
   const params = useParams<{ slug: string }>();
   const slug = params?.slug || '';
 
@@ -56,8 +59,10 @@ export default function CuratedPageClient() {
         else setLoading(true);
         setError(null);
 
+        const primaryParams = buildCuratedCategoryQuery(config, page, false);
+        primaryParams.set('tmdbLanguage', getCurrentTmdbLanguage());
         let response = await fetch(
-          `/api/tmdb/discover?${buildCuratedCategoryQuery(config, page, false).toString()}`
+          `/api/tmdb/discover?${primaryParams.toString()}`
         );
         let payload = (await response.json()) as DiscoverApiResponse;
 
@@ -68,8 +73,10 @@ export default function CuratedPageClient() {
           payload.code === 200 &&
           payload.list.length === 0
         ) {
+          const fallbackParams = buildCuratedCategoryQuery(config, page, true);
+          fallbackParams.set('tmdbLanguage', getCurrentTmdbLanguage());
           response = await fetch(
-            `/api/tmdb/discover?${buildCuratedCategoryQuery(config, page, true).toString()}`
+            `/api/tmdb/discover?${fallbackParams.toString()}`
           );
           payload = (await response.json()) as DiscoverApiResponse;
         }
@@ -92,7 +99,7 @@ export default function CuratedPageClient() {
         setLoadingMore(false);
       }
     },
-    [config]
+    [config, i18n.language]
   );
 
   useEffect(() => {
@@ -127,7 +134,7 @@ export default function CuratedPageClient() {
         <div className='overflow-visible px-0 pb-4 sm:px-10 sm:pb-8'>
           <div className='px-4 pt-6 sm:px-0'>
             <div className='py-10 text-center text-zinc-500 dark:text-zinc-400'>
-              {'Category not found'}
+              {t('common.noRelatedContentFound')}
             </div>
           </div>
         </div>
@@ -189,7 +196,7 @@ export default function CuratedPageClient() {
                   {loadingMore ? (
                     <div className='inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400'>
                       <span className='h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-sky-500 dark:border-zinc-600 dark:border-t-sky-400' />
-                      {'Loading...'}
+                      {t('common.loading')}
                     </div>
                   ) : (
                     <span className='h-5 w-5 rounded-full border border-transparent' />
@@ -197,7 +204,7 @@ export default function CuratedPageClient() {
                 </div>
               ) : (
                 <div className='py-8 text-center text-zinc-500 dark:text-zinc-400'>
-                  {'All items loaded'}
+                  {t('common.allContentLoaded')}
                 </div>
               )}
             </>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -175,9 +176,11 @@ function mergeAndSortCredits(raw: TmdbPersonRaw): PersonCredit[] {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ) {
+  const { searchParams } = new URL(request.url);
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
   const rawId = Number(context.params.id);
   const id = Number.isInteger(rawId) && rawId > 0 ? rawId : 0;
 
@@ -205,7 +208,7 @@ export async function GET(
   try {
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: 'en-US',
+      language: tmdbLanguage,
       append_to_response: 'combined_credits,external_ids',
     });
     const response = await fetch(

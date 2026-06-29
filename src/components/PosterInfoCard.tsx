@@ -1,6 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 
+'use client';
+
 import { Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PosterInfoCardProps {
   title: string;
@@ -25,6 +28,7 @@ export default function PosterInfoCard({
   onImageLoaded,
   className = '',
 }: PosterInfoCardProps) {
+  const { t } = useTranslation();
   const isListing = variant === 'listing';
   const ratingClassName = isListing
     ? 'absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-amber-300 backdrop-blur'
@@ -50,7 +54,7 @@ export default function PosterInfoCard({
           />
         ) : (
           <div className='flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-white/50'>
-            No poster
+            {t('common.noPoster')}
           </div>
         )}
         {rating ? (
@@ -64,7 +68,9 @@ export default function PosterInfoCard({
 
       <div className={isListing ? 'mt-3 h-16' : 'mt-2 h-14'}>
         <p className={titleClassName}>{title}</p>
-        <p className={yearClassName}>{subtitle || year || 'Unknown year'}</p>
+        <p className={yearClassName}>
+          {subtitle || year || t('common.unknownYear')}
+        </p>
       </div>
     </div>
   );

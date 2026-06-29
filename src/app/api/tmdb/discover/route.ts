@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
+
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const TMDB_BACKDROP_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
@@ -135,6 +137,7 @@ function parseSortBy(
 async function resolveKeywordIds(
   apiKey: string,
   keyword: string,
+  tmdbLanguage: string,
   signal: AbortSignal
 ): Promise<string> {
   const normalizedKeyword = normalizeText(keyword);
@@ -145,7 +148,7 @@ async function resolveKeywordIds(
       api_key: apiKey,
       query: normalizedKeyword,
       page: '1',
-      language: 'en-US',
+      language: tmdbLanguage,
     });
     const response = await fetch(
       `${TMDB_API_BASE_URL}/search/keyword?${params.toString()}`,
@@ -172,13 +175,14 @@ function buildDiscoverParams(
   apiKey: string,
   mediaType: 'movie' | 'tv',
   searchParams: URLSearchParams,
-  keywordIds: string
+  keywordIds: string,
+  tmdbLanguage: string
 ): URLSearchParams {
   const sortBy = parseSortBy(searchParams.get('sort_by'), mediaType);
   const params = new URLSearchParams({
     api_key: apiKey,
     page: String(parsePage(searchParams.get('page'))),
-    language: 'en-US',
+    language: tmdbLanguage,
     sort_by: sortBy,
     include_adult: searchParams.get('include_adult') === 'true' ? 'true' : 'false',
   });
@@ -296,6 +300,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mediaType = parseMedia(searchParams.get('media'));
   const page = parsePage(searchParams.get('page'));
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
 
   const apiKey =
     process.env.TMDB_API_KEY ||
@@ -315,10 +320,17 @@ export async function GET(request: Request) {
     const keywordIds = await resolveKeywordIds(
       apiKey,
       searchParams.get('keyword') || '',
+      tmdbLanguage,
       controller.signal
     );
 
-    const params = buildDiscoverParams(apiKey, mediaType, searchParams, keywordIds);
+    const params = buildDiscoverParams(
+      apiKey,
+      mediaType,
+      searchParams,
+      keywordIds,
+      tmdbLanguage
+    );
     params.set('page', String(page));
 
     const response = await fetch(

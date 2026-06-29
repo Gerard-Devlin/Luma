@@ -16,6 +16,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { type MouseEvent, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 import {
   deleteFavorite,
@@ -102,10 +103,11 @@ export default function TmdbDetailModal({
   onClose,
   onPlay,
   onRetry,
-  playLabel = 'Play Now',
+  playLabel,
   showPosterTitle = true,
   playButtonClassName = 'inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-white/90',
 }: TmdbDetailModalProps) {
+  const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const [favorited, setFavorited] = useState(false);
   const [favoritePending, setFavoritePending] = useState(false);
@@ -117,6 +119,7 @@ export default function TmdbDetailModal({
       : '';
   const canPlay = detail ? !isFutureReleaseDate(detail.releaseDate) : true;
   const smoothEase = [0.22, 1, 0.36, 1] as const;
+  const resolvedPlayLabel = playLabel || t('common.playNow');
 
   useEffect(() => {
     if (!open || !favoriteSource || !favoriteId || !favoriteStorageKey) {
@@ -360,7 +363,7 @@ export default function TmdbDetailModal({
               {!loading && error ? (
                 <div className='flex min-h-[320px] flex-col items-center justify-center gap-3 text-center'>
                   <p className='text-base font-medium text-white'>
-                    Failed to load details
+                    {t('detail.failedToLoad')}
                   </p>
                   <p className='text-sm text-white/70'>{error}</p>
                   {onRetry ? (
@@ -372,7 +375,7 @@ export default function TmdbDetailModal({
                       }}
                       className='mt-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20'
                     >
-                      Retry
+                      {t('detail.retry')}
                     </button>
                   ) : null}
                 </div>
@@ -391,7 +394,7 @@ export default function TmdbDetailModal({
                         />
                       ) : (
                         <div className='flex h-full w-full items-center justify-center bg-white/10 text-xs text-white/60'>
-                          No Poster
+                          {t('common.noPoster')}
                         </div>
                       )}
                     </div>
@@ -426,8 +429,16 @@ export default function TmdbDetailModal({
                           type='button'
                           onClick={handleToggleFavorite}
                           disabled={favoritePending}
-                          aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
-                          title={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                          aria-label={
+                            favorited
+                              ? t('common.removeFromFavorites')
+                              : t('common.addToFavorites')
+                          }
+                          title={
+                            favorited
+                              ? t('common.removeFromFavorites')
+                              : t('common.addToFavorites')
+                          }
                           className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
                             favorited
                               ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.24)]'
@@ -478,7 +489,10 @@ export default function TmdbDetailModal({
                       detail.episodes ? (
                         <span className='inline-flex items-center gap-1 text-white/80'>
                           <Users size={14} />
-                          {detail.seasons} Seasons / {detail.episodes} Episodes
+                          {t('hero.tvMeta', {
+                            seasons: detail.seasons,
+                            episodes: detail.episodes,
+                          })}
                         </span>
                       ) : null}
 
@@ -514,14 +528,18 @@ export default function TmdbDetailModal({
                         </span>
                       ) : null}
                       {typeof detail.popularity === 'number' ? (
-                        <span>Popularity: {detail.popularity}</span>
+                        <span>
+                          {t('detail.popularity', {
+                            value: detail.popularity,
+                          })}
+                        </span>
                       ) : null}
                     </div>
 
                     {detail.cast.length > 0 ? (
                       <div className='space-y-2'>
                         <p className='text-sm font-semibold text-white/90'>
-                          Cast
+                          {t('detail.cast')}
                         </p>
                         <div className='flex flex-wrap gap-2'>
                           {detail.cast.slice(0, 8).map((person) => (
@@ -551,7 +569,7 @@ export default function TmdbDetailModal({
                           className={playButtonClassName}
                         >
                           <Play size={14} />
-                          {playLabel}
+                          {resolvedPlayLabel}
                         </button>
                       ) : null}
 
@@ -564,7 +582,7 @@ export default function TmdbDetailModal({
                           className='inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20'
                         >
                           <Info size={14} />
-                          Trailer
+                          {t('common.trailer')}
                         </a>
                       ) : null}
                     </div>

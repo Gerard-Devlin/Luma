@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { addSearchHistory } from '@/lib/db.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import type { SearchResult } from '@/lib/types';
@@ -38,6 +40,7 @@ function normalizeKeyword(value: string): string {
 }
 
 export default function DesktopTopSearch() {
+  const { i18n } = useTranslation();
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -74,7 +77,9 @@ export default function DesktopTopSearch() {
       setHasSearched(true);
       try {
         const response = await fetch(
-          `/api/tmdb/search?q=${encodeURIComponent(trimmedQuery)}`,
+          `/api/tmdb/search?q=${encodeURIComponent(
+            trimmedQuery
+          )}&tmdbLanguage=${encodeURIComponent(getCurrentTmdbLanguage())}`,
           { signal: controller.signal }
         );
         if (!response.ok) {
@@ -94,7 +99,7 @@ export default function DesktopTopSearch() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [trimmedQuery]);
+  }, [i18n.language, trimmedQuery]);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {

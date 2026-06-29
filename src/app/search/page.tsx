@@ -6,7 +6,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   addSearchHistory,
   deleteSearchHistory,
@@ -49,24 +51,28 @@ interface TmdbTopSearchDetail extends TmdbDetailModalData {
 const SEARCH_SUGGEST_DEBOUNCE_MS = 220;
 const SEARCH_SUGGEST_LIMIT = 6;
 
-const DEPARTMENT_LABELS: Record<string, string> = {
-  Acting: 'Actor',
-  Directing: 'Director',
-  Production: 'Producer',
-  Writing: 'Writer',
-  Creator: 'Creator',
-  Camera: 'Camera',
-  Editing: 'Editor',
-  Sound: 'Sound',
-  Art: 'Art',
-  'Costume & Make-Up': 'Costume & Make-Up',
-  'Visual Effects': 'Visual Effects',
+const DEPARTMENT_LABEL_KEYS: Record<string, string> = {
+  Acting: 'searchPage.actor',
+  Directing: 'searchPage.director',
+  Production: 'searchPage.producer',
+  Writing: 'searchPage.writer',
+  Creator: 'searchPage.creator',
+  Camera: 'searchPage.camera',
+  Editing: 'searchPage.editor',
+  Sound: 'searchPage.sound',
+  Art: 'searchPage.art',
+  'Costume & Make-Up': 'searchPage.costumeMakeUp',
+  'Visual Effects': 'searchPage.visualEffects',
 };
 
-function formatDepartment(value: string): string {
+function formatDepartment(
+  value: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   const normalized = value.trim();
   if (!normalized) return '';
-  return DEPARTMENT_LABELS[normalized] || normalized;
+  const labelKey = DEPARTMENT_LABEL_KEYS[normalized];
+  return labelKey ? t(labelKey) : normalized;
 }
 
 function getMediaType(item: SearchResult): TmdbDetailMediaType {
@@ -121,6 +127,7 @@ function isTvResult(item: SearchResult): boolean {
 }
 
 function SearchPageClient() {
+  const { i18n, t } = useTranslation();
   // 搜索历史
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
@@ -252,7 +259,9 @@ function SearchPageClient() {
       setHasSuggestionSearched(true);
       try {
         const response = await fetch(
-          `/api/tmdb/search?q=${encodeURIComponent(trimmedSearchQuery)}`,
+          `/api/tmdb/search?q=${encodeURIComponent(
+            trimmedSearchQuery
+          )}&tmdbLanguage=${encodeURIComponent(getCurrentTmdbLanguage())}`,
           { signal: controller.signal }
         );
         if (!response.ok) {
@@ -277,7 +286,7 @@ function SearchPageClient() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [trimmedSearchQuery, suggestionOpen]);
+  }, [i18n.language, trimmedSearchQuery, suggestionOpen]);
 
   useEffect(() => {
     const query = searchParams.get('q');
@@ -299,7 +308,9 @@ function SearchPageClient() {
       const trimmedQuery = query.trim();
 
       const tmdbPayload = await fetch(
-        `/api/tmdb/search?q=${encodeURIComponent(trimmedQuery)}`
+        `/api/tmdb/search?q=${encodeURIComponent(
+          trimmedQuery
+        )}&tmdbLanguage=${encodeURIComponent(getCurrentTmdbLanguage())}`
       )
         .then(async (response) => {
           if (!response.ok) return { results: [], people: [] };
@@ -364,7 +375,8 @@ function SearchPageClient() {
   const loadDetailForResult = useCallback(async (result: SearchResult) => {
     const mediaType = getMediaType(result);
     const year = normalizeYear(result.year);
-    const cacheKey = `${mediaType}-${result.title.trim()}-${year}`;
+    const tmdbLanguage = getCurrentTmdbLanguage();
+    const cacheKey = `${tmdbLanguage}-${mediaType}-${result.title.trim()}-${year}`;
     const cached = detailCacheRef.current[cacheKey];
     if (cached) {
       setDetailData(cached);
@@ -385,6 +397,7 @@ function SearchPageClient() {
           mediaType,
           year,
           poster: result.poster,
+          tmdbLanguage,
         }
       );
       if (detailRequestIdRef.current !== requestId) return;
@@ -392,13 +405,13 @@ function SearchPageClient() {
       setDetailData(payload);
     } catch {
       if (detailRequestIdRef.current !== requestId) return;
-      setDetailError('Failed to load details. Please try again.');
+      setDetailError(t('detail.failedToLoad'));
     } finally {
       if (detailRequestIdRef.current === requestId) {
         setDetailLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   const handleOpenDetail = useCallback(
     (result: SearchResult) => {
@@ -640,7 +653,7 @@ function SearchPageClient() {
                   {personResults.length > 0 && (
                     <div className='mb-10'>
                       <h3 className='mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200'>
-                        People
+                        {t('searchPage.people')}
                       </h3>
                       <div className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scroll-smooth scrollbar-hide'>
                         {personResults.map((person) => (
@@ -670,7 +683,7 @@ function SearchPageClient() {
                               </p>
                               {person.department && (
                                 <p className='mt-0.5 truncate text-[11px] leading-4 text-gray-500 dark:text-gray-400'>
-                                  {formatDepartment(person.department)}
+                                  {formatDepartment(person.department, t)}
                                 </p>
                               )}
                             </div>
@@ -681,7 +694,7 @@ function SearchPageClient() {
                   )}
                   <div className='mb-8 flex items-center justify-between'>
                     <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      Search Results
+                      {t('searchPage.searchResults')}
                     </h2>
                   </div>
                   <div className='justify-start grid grid-cols-2 gap-x-2 gap-y-8 sm:gap-y-8 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px]'>
@@ -712,8 +725,8 @@ function SearchPageClient() {
                     {searchResults.length === 0 && (
                       <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
                         {personResults.length > 0
-                          ? 'No movie/tv results'
-                          : 'No search results'}
+                          ? t('searchPage.noMovieTvResults')
+                          : t('common.noSearchResults')}
                       </div>
                     )}
                   </div>
@@ -721,7 +734,7 @@ function SearchPageClient() {
               ) : searchHistory.length > 0 ? (
                 <section className='mb-12'>
                   <h2 className='mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200'>
-                    Search History
+                    {t('searchPage.searchHistory')}
                     {/* {searchHistory.length > 0 && (
                   <button
                     onClick={() => {
@@ -746,7 +759,9 @@ function SearchPageClient() {
                         </button>
                         <button
                           type='button'
-                          aria-label={`Delete search history item ${item}`}
+                          aria-label={t('searchPage.deleteSearchHistoryItem', {
+                            item,
+                          })}
                           onClick={(event) => {
                             event.stopPropagation();
                             void handleDeleteSearchHistory(item);

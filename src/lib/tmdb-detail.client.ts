@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
+
 export type TmdbDetailMediaType = 'movie' | 'tv';
 export type TmdbLogoLanguagePreference = 'zh' | 'en';
 
@@ -11,6 +13,7 @@ export interface TmdbDetailClientRequest {
   poster?: string | null;
   score?: string | null;
   logoLanguagePreference?: TmdbLogoLanguagePreference | null;
+  tmdbLanguage?: string | null;
   signal?: AbortSignal;
 }
 
@@ -22,6 +25,7 @@ interface NormalizedTmdbDetailRequest {
   poster: string;
   score: string;
   logoLanguagePreference: TmdbLogoLanguagePreference;
+  tmdbLanguage: string;
   signal?: AbortSignal;
 }
 
@@ -186,6 +190,7 @@ function normalizeTmdbDetailRequest(
       request.logoLanguagePreference,
       mediaType
     ),
+    tmdbLanguage: (request.tmdbLanguage || getCurrentTmdbLanguage()).trim(),
     signal: request.signal,
   };
 
@@ -201,12 +206,12 @@ export function buildTmdbDetailClientCacheKey(
 ): string {
   const normalized = normalizeTmdbDetailRequest(request);
   if (normalized.id !== null) {
-    return `id:${normalized.mediaType}:${normalized.logoLanguagePreference}:${normalized.id}`;
+    return `id:${normalized.mediaType}:${normalized.logoLanguagePreference}:${normalized.tmdbLanguage}:${normalized.id}`;
   }
 
   const normalizedTitle = normalizeTitleKey(normalized.title);
   const normalizedYear = normalized.year || 'unknown';
-  return `title:${normalized.mediaType}:${normalized.logoLanguagePreference}:${normalizedTitle}:${normalizedYear}`;
+  return `title:${normalized.mediaType}:${normalized.logoLanguagePreference}:${normalized.tmdbLanguage}:${normalizedTitle}:${normalizedYear}`;
 }
 
 function buildTmdbDetailRequestParams(
@@ -224,6 +229,7 @@ function buildTmdbDetailRequestParams(
 
   params.set('type', normalized.mediaType);
   params.set('logoLang', normalized.logoLanguagePreference);
+  params.set('tmdbLanguage', normalized.tmdbLanguage);
 
   if (normalized.poster) {
     params.set('poster', normalized.poster);

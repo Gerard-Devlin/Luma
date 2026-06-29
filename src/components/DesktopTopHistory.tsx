@@ -5,7 +5,9 @@ import { Clock3, Loader2, Play, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   deletePlayRecord,
@@ -16,7 +18,12 @@ import {
   buildTmdbHistoryPlayUrl,
   filterTmdbHistoryRecords,
   parseStorageKey,
+  parseTmdbStorageId,
 } from '@/lib/tmdb-history';
+import {
+  fetchTmdbDetailWithClientCache,
+  type TmdbDetailMediaType,
+} from '@/lib/tmdb-detail.client';
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
 import {
@@ -41,21 +48,52 @@ interface PlayHistoryItem extends PlayRecord {
   key: string;
 }
 
-const HISTORY_LIMIT = 12;
+interface LocalizedHistoryDisplay {
+  title?: string;
+  poster?: string;
+}
 
-function formatRelativeTime(timestamp: number): string {
+interface LocalizedHistoryDetail {
+  title?: string | null;
+  poster?: string | null;
+}
+
+const HISTORY_LIMIT = 12;
+const localizedHistoryPending = new Set<string>();
+
+function inferTmdbMediaType(record: PlayHistoryItem): TmdbDetailMediaType {
+  const { id } = parseStorageKey(record.key);
+  const parsed = parseTmdbStorageId(id);
+  if (parsed && parsed.season !== null) return 'tv';
+  return record.total_episodes && record.total_episodes > 1 ? 'tv' : 'movie';
+}
+
+function getTmdbNumericId(record: PlayHistoryItem): string {
+  const { source, id } = parseStorageKey(record.key);
+  if (source !== 'tmdb') return '';
+  return parseTmdbStorageId(id)?.tmdbId || (/^\d+$/.test(id) ? id : '');
+}
+
+function formatRelativeTime(
+  timestamp: number,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   if (!Number.isFinite(timestamp) || timestamp <= 0) {
     return '';
   }
 
   const diff = Date.now() - timestamp;
-  if (diff < 60 * 1000) return 'Just now';
-  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))}m ago`;
+  if (diff < 60 * 1000) return t('time.justNow');
+  if (diff < 60 * 60 * 1000) {
+    return t('time.minutesAgo', { count: Math.floor(diff / (60 * 1000)) });
+  }
   if (diff < 24 * 60 * 60 * 1000) {
-    return `${Math.floor(diff / (60 * 60 * 1000))}h ago`;
+    return t('time.hoursAgo', { count: Math.floor(diff / (60 * 60 * 1000)) });
   }
   if (diff < 7 * 24 * 60 * 60 * 1000) {
-    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d ago`;
+    return t('time.daysAgo', {
+      count: Math.floor(diff / (24 * 60 * 60 * 1000)),
+    });
   }
 
   return new Intl.DateTimeFormat('en-US', {
@@ -64,24 +102,29 @@ function formatRelativeTime(timestamp: number): string {
   }).format(new Date(timestamp));
 }
 
-function formatProgress(record: PlayHistoryItem): string {
+function formatProgress(
+  record: PlayHistoryItem,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   const totalEpisodes = Math.max(0, Number(record.total_episodes || 0));
   const currentEpisode = Math.max(0, Number(record.index || 0));
   if (totalEpisodes > 1) {
     if (currentEpisode > 0) {
-      return `Episode ${Math.min(currentEpisode, totalEpisodes)} / ${totalEpisodes}`;
+      return `${t('common.episode', {
+        count: Math.min(currentEpisode, totalEpisodes),
+      })} / ${totalEpisodes}`;
     }
-    return `${totalEpisodes} episodes`;
+    return t('common.episodes', { count: totalEpisodes });
   }
 
   const totalTime = Math.max(0, Number(record.total_time || 0));
   const playTime = Math.max(0, Number(record.play_time || 0));
   if (totalTime > 0 && playTime > 0) {
     const percent = Math.round((playTime / totalTime) * 100);
-    return `Progress ${Math.min(100, percent)}%`;
+    return `${t('common.progress')} ${Math.min(100, percent)}%`;
   }
 
-  return 'Movie';
+  return t('common.movie');
 }
 
 function buildPlayUrl(record: PlayHistoryItem): string {
@@ -89,6 +132,7 @@ function buildPlayUrl(record: PlayHistoryItem): string {
 }
 
 export default function DesktopTopHistory() {
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const { showMatrixLoading, navigateWithMatrixLoading } =
@@ -102,6 +146,10 @@ export default function DesktopTopHistory() {
     null
   );
   const [items, setItems] = useState<PlayHistoryItem[]>([]);
+  const [localizedDisplayByKey, setLocalizedDisplayByKey] = useState<
+    Record<string, LocalizedHistoryDisplay>
+  >({});
+  const tmdbLanguage = getCurrentTmdbLanguage();
 
   const updateRecords = useCallback((records: Record<string, PlayRecord>) => {
     const sorted = Object.entries(filterTmdbHistoryRecords(records))
@@ -171,6 +219,68 @@ export default function DesktopTopHistory() {
 
   const displayItems = items.slice(0, HISTORY_LIMIT);
 
+  useEffect(() => {
+    const targets = displayItems.filter((item) => {
+      const pendingKey = `${tmdbLanguage}:${item.key}`;
+      if (localizedDisplayByKey[pendingKey]) return false;
+      return !localizedHistoryPending.has(pendingKey);
+    });
+    if (!targets.length) return;
+
+    let cancelled = false;
+    targets.forEach((item) => {
+      localizedHistoryPending.add(`${tmdbLanguage}:${item.key}`);
+    });
+
+    const run = async () => {
+      const settled = await Promise.allSettled(
+        targets.map(async (item) => {
+          try {
+            const tmdbId = getTmdbNumericId(item);
+            const detail =
+              await fetchTmdbDetailWithClientCache<LocalizedHistoryDetail>({
+                id: tmdbId || undefined,
+                title: tmdbId
+                  ? undefined
+                  : item.search_title || item.title || undefined,
+                mediaType: inferTmdbMediaType(item),
+                year: item.year,
+                poster: item.cover,
+                tmdbLanguage,
+              });
+            return [
+              `${tmdbLanguage}:${item.key}`,
+              {
+                title: (detail.title || '').trim(),
+                poster: (detail.poster || '').trim(),
+              },
+            ] as const;
+          } catch {
+            return null;
+          } finally {
+            localizedHistoryPending.delete(`${tmdbLanguage}:${item.key}`);
+          }
+        })
+      );
+
+      if (cancelled) return;
+      setLocalizedDisplayByKey((prev) => {
+        const next = { ...prev };
+        settled.forEach((result) => {
+          if (result.status !== 'fulfilled' || !result.value) return;
+          const [key, display] = result.value;
+          next[key] = display;
+        });
+        return next;
+      });
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [displayItems, i18n.language, localizedDisplayByKey, tmdbLanguage]);
+
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
 
@@ -239,7 +349,7 @@ export default function DesktopTopHistory() {
           setOpen((prev) => !prev);
         }}
         onFocus={handlePointerEnter}
-        aria-label='Watch history'
+        aria-label={t('common.watchHistory')}
         className={`ui-glass-control inline-flex h-11 w-11 items-center justify-center ${
           open ? 'ui-glass-control-active' : ''
         }`}
@@ -282,14 +392,14 @@ export default function DesktopTopHistory() {
           <div className='flex items-center justify-between border-b border-[var(--ui-glass-divider)] px-2.5 pb-2.5 pt-1.5'>
             <div className='flex items-center gap-2 text-sm font-semibold text-zinc-100'>
               <Clock3 className='h-4 w-4 text-zinc-300' />
-              <span>Watch History</span>
+              <span>{t('common.watchHistory')}</span>
             </div>
             <button
               type='button'
               onClick={() => handleNavigateWithMatrixLoading('/my')}
               className='text-xs text-zinc-300 transition-colors hover:text-white'
             >
-              View all
+              {t('common.viewAll')}
             </button>
           </div>
 
@@ -310,7 +420,15 @@ export default function DesktopTopHistory() {
                 ))}
               </div>
             ) : displayItems.length > 0 ? (
-              displayItems.map((item, index) => (
+              displayItems.map((item, index) => {
+                const localizedDisplay =
+                  localizedDisplayByKey[`${tmdbLanguage}:${item.key}`];
+                const displayTitle =
+                  localizedDisplay?.title ||
+                  item.title ||
+                  t('common.untitled');
+                const displayPoster = localizedDisplay?.poster || item.cover;
+                return (
                 <div
                   key={item.key}
                   className='ui-glass-row group flex items-center gap-2.5 px-2 py-2'
@@ -324,8 +442,8 @@ export default function DesktopTopHistory() {
                     className='flex min-w-0 flex-1 items-center gap-2.5 text-left'
                   >
                     <Image
-                      src={item.cover}
-                      alt={item.title}
+                      src={displayPoster}
+                      alt={displayTitle}
                       width={44}
                       height={64}
                       unoptimized
@@ -335,16 +453,16 @@ export default function DesktopTopHistory() {
                     />
                     <div className='min-w-0'>
                       <p className='truncate text-sm font-medium text-zinc-100'>
-                        {item.title || 'Untitled'}
+                        {displayTitle}
                       </p>
                       <div className='mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400'>
                         <Play className='h-3.5 w-3.5 shrink-0 text-zinc-500' />
                         <span className='truncate'>
-                          {formatProgress(item)}
+                          {formatProgress(item, t)}
                         </span>
                         <span className='text-zinc-500'>·</span>
                         <span className='truncate'>
-                          {formatRelativeTime(item.save_time)}
+                          {formatRelativeTime(item.save_time, t)}
                         </span>
                       </div>
                     </div>
@@ -352,7 +470,7 @@ export default function DesktopTopHistory() {
 
                   <button
                     type='button'
-                    aria-label='Delete history item'
+                    aria-label={t('common.deleteHistoryItem')}
                     disabled={deleting}
                     onClick={(event) => {
                       event.preventDefault();
@@ -368,10 +486,11 @@ export default function DesktopTopHistory() {
                     )}
                   </button>
                 </div>
-              ))
+              );
+              })
             ) : (
               <div className='px-4 py-8 text-center text-sm text-zinc-400'>
-                No history yet
+                {t('common.noHistoryYet')}
               </div>
             )}
           </div>
@@ -389,9 +508,9 @@ export default function DesktopTopHistory() {
       >
         <AlertDialogContent className={glassDialogContentClass}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+            <AlertDialogTitle>{t('home.deleteThisItem')}</AlertDialogTitle>
             <AlertDialogDescription className={glassDialogDescriptionClass}>
-              This watch history item will be deleted.
+              {t('home.deleteWatchHistoryItem')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -399,7 +518,7 @@ export default function DesktopTopHistory() {
               disabled={deleting}
               className={glassDialogCancelClass}
             >
-              Cancel
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
@@ -409,7 +528,7 @@ export default function DesktopTopHistory() {
               }}
               className={glassDialogDangerActionClass}
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? t('common.deleting') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

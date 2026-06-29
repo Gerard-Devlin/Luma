@@ -11,7 +11,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
@@ -192,6 +194,7 @@ async function fetchDiscoverItems(
   query: URLSearchParams,
   signal: AbortSignal
 ): Promise<RankedDiscoverItem[]> {
+  query.set('tmdbLanguage', getCurrentTmdbLanguage());
   const response = await fetch(`/api/tmdb/discover?${query.toString()}`, {
     signal,
   });
@@ -346,6 +349,7 @@ function RankedSection({
   onOpenDetail,
   onNavigateWithMatrixLoading,
 }: RankedSectionProps) {
+  const { t } = useTranslation();
   const desktopScrollRef = useRef<HTMLDivElement | null>(null);
   const desktopScrollFrameRef = useRef<number | null>(null);
   const showLeftScrollRef = useRef(false);
@@ -416,7 +420,7 @@ function RankedSection({
           onClick={(event) => onNavigateWithMatrixLoading(event, href)}
           className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
         >
-          <span>See All</span>
+          <span>{t('common.seeAll')}</span>
           <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
             ›
           </span>
@@ -477,7 +481,7 @@ function RankedSection({
                     type='button'
                     onClick={() => scrollDesktopBy('left')}
                     className='flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 shadow-lg transition-transform hover:scale-105 hover:bg-white dark:border-gray-600 dark:bg-gray-800/90 dark:hover:bg-gray-700'
-                    aria-label='Scroll left'
+                    aria-label={t('detail.scrollLeft')}
                   >
                     <ChevronLeft className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                   </button>
@@ -505,7 +509,7 @@ function RankedSection({
                     type='button'
                     onClick={() => scrollDesktopBy('right')}
                     className='flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 shadow-lg transition-transform hover:scale-105 hover:bg-white dark:border-gray-600 dark:bg-gray-800/90 dark:hover:bg-gray-700'
-                    aria-label='Scroll right'
+                    aria-label={t('detail.scrollRight')}
                   >
                     <ChevronRight className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                   </button>
@@ -542,6 +546,7 @@ interface TopRatedRankedRowsProps {
 }
 
 export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProps) {
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const { showMatrixLoading, navigateLinkWithMatrixLoading } =
     useMatrixRouteTransition();
@@ -571,7 +576,8 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
       id: string,
       mediaType: TmdbMediaType,
       logoLanguagePreference: LogoLanguagePreference
-    ) => `${mediaType}:${logoLanguagePreference}:${id}`,
+    ) =>
+      `${mediaType}:${logoLanguagePreference}:${getCurrentTmdbLanguage()}:${id}`,
     []
   );
 
@@ -910,7 +916,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
     return () => {
       controller.abort();
     };
-  }, [fetchRankedItems, hydrateItemDetails]);
+  }, [fetchRankedItems, hydrateItemDetails, i18n.language]);
 
   if (
     !loading &&
@@ -927,7 +933,9 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
 
       <div className={`mb-2 ${className || ''}`}>
         <RankedSection
-          title={POPULAR_MOVIE_CONFIG.title}
+          title={t(`curated.${POPULAR_MOVIE_CONFIG.slug}`, {
+            defaultValue: POPULAR_MOVIE_CONFIG.title,
+          })}
           href={`/curated/${POPULAR_MOVIE_CONFIG.slug}`}
           mediaType='movie'
           items={popularMovieItems}
@@ -936,7 +944,9 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
         />
         <RankedSection
-          title={MOVIE_TOP_RATED_CONFIG.title}
+          title={t(`curated.${MOVIE_TOP_RATED_CONFIG.slug}`, {
+            defaultValue: MOVIE_TOP_RATED_CONFIG.title,
+          })}
           href={`/curated/${MOVIE_TOP_RATED_CONFIG.slug}`}
           mediaType='movie'
           items={movieItems}
@@ -945,7 +955,9 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
         />
         <RankedSection
-          title={TV_TOP_RATED_CONFIG.title}
+          title={t(`curated.${TV_TOP_RATED_CONFIG.slug}`, {
+            defaultValue: TV_TOP_RATED_CONFIG.title,
+          })}
           href={`/curated/${TV_TOP_RATED_CONFIG.slug}`}
           mediaType='tv'
           items={tvItems}
@@ -964,7 +976,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
         onClose={handleCloseDetail}
         onPlay={handlePlayFromDetail}
         onRetry={activeItem ? handleRetryDetail : undefined}
-        playLabel='Play Now'
+        playLabel={t('common.playNow')}
       />
       <SeasonPickerModal
         open={seasonPicker.open}

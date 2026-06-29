@@ -7,9 +7,12 @@ import { KeyRound, LogOut, Shield, User, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { checkForUpdates, UpdateStatus } from '@/lib/version';
+
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface AuthInfo {
   username?: string;
@@ -30,6 +33,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
   triggerClassName,
   avatarSize = 'default',
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const triggerRef = useRef<HTMLDivElement | null>(null);
@@ -220,12 +224,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
 
     // 验证密码
     if (!newPassword) {
-      setPasswordError('New password cannot be empty.');
+      setPasswordError(t('password.cannotBeEmpty'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('The two passwords do not match.');
+      setPasswordError(t('password.mismatch'));
       return;
     }
 
@@ -245,7 +249,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
       const data = await response.json();
 
       if (!response.ok) {
-        setPasswordError(data.error || 'Failed to change password.');
+        setPasswordError(data.error || t('password.failed'));
         return;
       }
 
@@ -253,7 +257,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
       setIsChangePasswordOpen(false);
       await handleLogout();
     } catch (error) {
-      setPasswordError('Network error. Please try again later.');
+      setPasswordError(t('auth.networkError'));
     } finally {
       setPasswordLoading(false);
     }
@@ -328,7 +332,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           <div className='space-y-0.5'>
             <div className='flex items-center justify-between gap-2'>
               <span className='text-[10px] font-medium uppercase tracking-wider text-zinc-400'>
-                Current User
+                {t('common.currentUser')}
               </span>
               <span
                 className={`inline-flex items-center rounded-[calc(var(--ui-radius-row)-4px)] px-1.5 py-0.5 text-[10px] font-medium ${
@@ -347,7 +351,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
                 {authInfo?.username || 'default'}
               </div>
               <div className='shrink-0 text-[10px] text-zinc-500'>
-                Storage:
+                {t('common.storage')}:
                 {storageType === 'localstorage' ? 'Local' : storageType}
               </div>
             </div>
@@ -356,6 +360,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({
 
         {/* 菜单项 */}
         <div className='pt-1'>
+          <LanguageSwitcher variant='menuItem' />
+
           {/* 管理面板按钮 */}
           {showAdminPanel && (
             <button
@@ -363,7 +369,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className='ui-glass-row flex w-full items-center gap-2 px-2.5 py-2 text-left text-[13px] text-zinc-200 hover:text-white'
             >
               <Shield className='h-3.5 w-3.5 text-zinc-400' />
-              <span className='font-medium'>Admin Panel</span>
+              <span className='font-medium'>{t('common.adminPanel')}</span>
             </button>
           )}
 
@@ -374,7 +380,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className='ui-glass-row flex w-full items-center gap-2 px-2.5 py-2 text-left text-[13px] text-zinc-200 hover:text-white'
             >
               <KeyRound className='h-3.5 w-3.5 text-zinc-400' />
-              <span className='font-medium'>Change Password</span>
+              <span className='font-medium'>{t('common.changePassword')}</span>
             </button>
           )}
 
@@ -384,7 +390,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             className='flex w-full items-center gap-2 rounded-[var(--ui-radius-row)] px-2.5 py-2 text-left text-[13px] text-rose-300 transition-colors hover:bg-rose-500/15 hover:text-rose-200'
           >
             <LogOut className='h-3.5 w-3.5' />
-            <span className='font-medium'>Sign Out</span>
+            <span className='font-medium'>{t('common.signOut')}</span>
           </button>
         </div>
       </motion.div>
@@ -403,12 +409,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         {/* 标题栏 */}
         <div className='flex items-center justify-between mb-6'>
           <h3 className='text-lg font-semibold text-zinc-100'>
-            Change Password
+            {t('common.changePassword')}
           </h3>
           <button
             onClick={handleCloseChangePassword}
             className='flex h-8 w-8 items-center justify-center rounded-full p-1 text-zinc-400 transition-colors hover:bg-[var(--ui-glass-row-hover)]'
-            aria-label='Close'
+            aria-label={t('common.close')}
           >
             <X className='w-full h-full' />
           </button>
@@ -419,12 +425,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           {/* 新密码输入 */}
           <div>
             <label className='mb-2 block text-sm font-medium text-zinc-200'>
-              New Password
+              {t('password.newPassword')}
             </label>
             <input
               type='password'
               className='ui-glass-input w-full px-3 py-2 text-sm placeholder-zinc-500'
-              placeholder='Enter a new password'
+              placeholder={t('password.enterNew')}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={passwordLoading}
@@ -434,12 +440,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           {/* 确认密码输入 */}
           <div>
             <label className='mb-2 block text-sm font-medium text-zinc-200'>
-              Confirm Password
+              {t('password.confirmPassword')}
             </label>
             <input
               type='password'
               className='ui-glass-input w-full px-3 py-2 text-sm placeholder-zinc-500'
-              placeholder='Enter the new password again'
+              placeholder={t('password.enterAgain')}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={passwordLoading}
@@ -461,21 +467,21 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             className='flex-1 rounded-xl bg-[var(--ui-glass-row-hover)] px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-[var(--ui-glass-row-active)] disabled:cursor-not-allowed disabled:opacity-50'
             disabled={passwordLoading}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSubmitChangePassword}
             className='flex-1 rounded-xl bg-blue-600/90 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50'
             disabled={passwordLoading || !newPassword || !confirmPassword}
           >
-            {passwordLoading ? 'Changing...' : 'Confirm'}
+            {passwordLoading ? t('common.changing') : t('common.confirm')}
           </button>
         </div>
 
         {/* 底部说明 */}
         <div className='mt-4 border-t border-[var(--ui-glass-divider)] pt-4'>
           <p className='text-xs text-zinc-500 text-center'>
-            You will need to sign in again after changing your password.
+            {t('password.signInAgain')}
           </p>
         </div>
       </div>
@@ -500,7 +506,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             triggerClassName ||
             `ui-glass-control ${isOpen ? 'ui-glass-control-active' : ''}`
           } m-0 inline-flex h-11 w-11 items-center justify-center p-0 outline-none focus-visible:outline-none`}
-          aria-label='User Menu'
+          aria-label={t('common.userMenu')}
         >
           <User className='h-5 w-5 shrink-0' />
         </button>

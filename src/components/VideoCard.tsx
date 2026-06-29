@@ -10,7 +10,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -32,6 +34,10 @@ import {
 } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { parseTmdbStorageId } from '@/lib/tmdb-history';
+import {
+  getTmdbImageLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 import { SearchResult } from '@/lib/types';
@@ -230,12 +236,21 @@ function toImageUrl(path?: string | null, size = 'w500'): string {
   return `${TMDB_IMAGE_BASE_URL}/${size}${path}`;
 }
 
-function selectBestLogoPath(logos: TmdbLogoItem[]): string {
+function selectBestLogoPath(
+  logos: TmdbLogoItem[],
+  tmdbLanguage = getCurrentTmdbLanguage()
+): string {
   if (!logos.length) return '';
 
   const getLanguagePriority = (lang?: string | null): number => {
-    if (lang === 'zh') return 4;
-    if (lang === 'en') return 3;
+    if (normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN') {
+      if (lang === 'zh') return 4;
+      if (lang === 'en') return 3;
+      if (lang === null || lang === undefined) return 2;
+      return 1;
+    }
+    if (lang === 'en') return 4;
+    if (lang === 'zh') return 3;
     if (lang === null || lang === undefined) return 2;
     return 1;
   };
@@ -270,6 +285,7 @@ function buildTmdbDetailCacheKey(input: TmdbDetailLookupInput): string {
     title: input.title,
     mediaType: input.mediaType,
     year: input.year,
+    tmdbLanguage: getCurrentTmdbLanguage(),
   });
 }
 
@@ -571,6 +587,7 @@ async function resolveTmdbTargetFromTitle(
   mediaType: TmdbMediaType
 ): Promise<{ id: number; mediaType: TmdbMediaType } | null> {
   if (!TMDB_CLIENT_API_KEY) return null;
+  const tmdbLanguage = getCurrentTmdbLanguage();
 
   const queryHasSeasonIntent = hasSeasonIntentForLookup(title);
   const primaryMediaType: TmdbMediaType = queryHasSeasonIntent
@@ -605,7 +622,7 @@ async function resolveTmdbTargetFromTitle(
     for (const searchQuery of searchQueryVariants) {
       const params = new URLSearchParams({
         api_key: TMDB_CLIENT_API_KEY,
-        language: 'en-US',
+        language: tmdbLanguage,
         include_adult: 'false',
         query: searchQuery,
         page: '1',
@@ -703,11 +720,12 @@ async function fetchTmdbLogo(
   id: number
 ): Promise<string> {
   if (!TMDB_CLIENT_API_KEY) return '';
+  const tmdbLanguage = getCurrentTmdbLanguage();
 
   try {
     const params = new URLSearchParams({
       api_key: TMDB_CLIENT_API_KEY,
-      include_image_language: 'en,null',
+      include_image_language: getTmdbImageLanguage(tmdbLanguage),
     });
     const response = await fetch(
       `${TMDB_API_BASE_URL}/${mediaType}/${id}/images?${params.toString()}`,
@@ -716,7 +734,7 @@ async function fetchTmdbLogo(
     if (!response.ok) return '';
 
     const data = (await response.json()) as TmdbImagesResponse;
-    const logoPath = selectBestLogoPath(data.logos || []);
+    const logoPath = selectBestLogoPath(data.logos || [], tmdbLanguage);
     return logoPath ? `${TMDB_IMAGE_BASE_URL}/w500${logoPath}` : '';
   } catch {
     return '';
@@ -739,6 +757,7 @@ async function fetchTmdbDetailByTitle(
   if (input.score) {
     routeParams.set('score', input.score);
   }
+  routeParams.set('tmdbLanguage', getCurrentTmdbLanguage());
 
   try {
     const routeResponse = await fetch(
@@ -767,7 +786,7 @@ async function fetchTmdbDetailByTitle(
 
   const params = new URLSearchParams({
     api_key: TMDB_CLIENT_API_KEY,
-    language: 'en-US',
+    language: getCurrentTmdbLanguage(),
     append_to_response: appendToResponse,
   });
 
@@ -842,6 +861,7 @@ async function fetchTmdbDetailWithClientCache(
     year: input.year,
     poster: input.poster,
     score: input.score,
+    tmdbLanguage: getCurrentTmdbLanguage(),
   });
 }
 
@@ -852,6 +872,7 @@ function scheduleTmdbDetailPrefetch(input: TmdbDetailLookupInput): void {
     year: input.year,
     poster: input.poster,
     score: input.score,
+    tmdbLanguage: getCurrentTmdbLanguage(),
   });
 }
 
@@ -874,6 +895,7 @@ export default function VideoCard({
   type = '',
   displayVariant = 'default',
 }: VideoCardProps) {
+  const { i18n } = useTranslation();
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -997,7 +1019,7 @@ export default function VideoCard({
   );
   const tmdbDetailCacheKey = useMemo(
     () => buildTmdbDetailCacheKey(tmdbTrigger),
-    [tmdbTrigger]
+    [i18n.language, tmdbTrigger]
   );
 
   // Keep favorite state synced with shared storage.
@@ -1135,6 +1157,7 @@ export default function VideoCard({
           title: trimmedTitle,
           mediaType: 'tv',
           year: yearValue.trim(),
+          tmdbLanguage: getCurrentTmdbLanguage(),
         });
         if (payload.mediaType !== 'tv') return 0;
         const seasons = payload.seasons;
@@ -1144,7 +1167,7 @@ export default function VideoCard({
         return 0;
       }
     },
-    []
+    [i18n.language]
   );
 
   const goToPlay = useCallback(async () => {
@@ -1341,7 +1364,7 @@ export default function VideoCard({
 
     hasScheduledPrefetchRef.current = true;
     scheduleTmdbDetailPrefetch(tmdbTrigger);
-  }, [from, tmdbTrigger]);
+  }, [from, i18n.language, tmdbTrigger]);
 
   useEffect(() => {
     hasScheduledPrefetchRef.current = false;
@@ -1451,7 +1474,7 @@ export default function VideoCard({
         setDetailLoading(false);
       }
     }
-  }, [tmdbDetailCacheKey, tmdbTrigger]);
+  }, [i18n.language, tmdbDetailCacheKey, tmdbTrigger]);
 
   useEffect(() => {
     if (!detailOpen) return;

@@ -9,6 +9,7 @@ import {
   normalizeTmdbId,
   normalizeTmdbPlayerMediaType,
 } from '@/lib/tmdb-player-sources';
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
 
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
@@ -48,6 +49,7 @@ function toImageUrl(path?: string | null, size = 'w300'): string {
 async function fetchTmdbSeason(
   tmdbId: number,
   season: number,
+  tmdbLanguage: string,
   signal: AbortSignal
 ) {
   const apiKey =
@@ -56,7 +58,7 @@ async function fetchTmdbSeason(
 
   const params = new URLSearchParams({
     api_key: apiKey,
-    language: 'en-US',
+    language: tmdbLanguage,
   });
 
   try {
@@ -124,6 +126,7 @@ export async function GET(request: Request) {
     searchParams.get('type') || searchParams.get('mediaType')
   );
   const provider = getTmdbPlayerProvider(searchParams.get('provider'));
+  const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
   const season = mediaType === 'tv'
     ? normalizePositiveInteger(searchParams.get('season'), 1)
     : 1;
@@ -140,7 +143,12 @@ export async function GET(request: Request) {
   try {
     const seasonDetail =
       mediaType === 'tv'
-        ? await fetchTmdbSeason(tmdbId, season, controller.signal)
+        ? await fetchTmdbSeason(
+            tmdbId,
+            season,
+            tmdbLanguage,
+            controller.signal
+          )
         : null;
     const embedUrl = buildTmdbProviderUrl({
       tmdbId,

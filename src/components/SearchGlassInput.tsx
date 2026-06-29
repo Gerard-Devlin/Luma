@@ -6,12 +6,9 @@ import type {
   KeyboardEventHandler,
   RefObject,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
-
-const DEFAULT_SEARCH_PLACEHOLDER = 'Search ...';
-const CLEAR_SEARCH_LABEL = 'Clear search';
-const FOCUS_SEARCH_LABEL = 'Focus search';
 
 interface SearchGlassInputProps {
   value: string;
@@ -37,7 +34,7 @@ export default function SearchGlassInput({
   onSubmit,
   inputRef,
   inputId,
-  placeholder = DEFAULT_SEARCH_PLACEHOLDER,
+  placeholder,
   active = false,
   variant = 'desktop',
   className,
@@ -45,10 +42,14 @@ export default function SearchGlassInput({
   onInputKeyDown,
   onClear,
   onShortcutClick,
-  clearLabel = CLEAR_SEARCH_LABEL,
-  shortcutLabel = FOCUS_SEARCH_LABEL,
+  clearLabel,
+  shortcutLabel,
 }: SearchGlassInputProps) {
+  const { t } = useTranslation();
   const isMobile = variant === 'mobile';
+  const inputPlaceholder = placeholder || t('common.searchPlaceholder');
+  const inputClearLabel = clearLabel || t('common.clearSearch');
+  const inputShortcutLabel = shortcutLabel || t('common.focusSearch');
 
   return (
     <form
@@ -74,7 +75,7 @@ export default function SearchGlassInput({
         onChange={(event) => onValueChange(event.target.value)}
         onFocus={onFocus}
         onKeyDown={onInputKeyDown}
-        placeholder={placeholder}
+        placeholder={inputPlaceholder}
         className={cn(
           'h-full w-full appearance-none border-0 bg-transparent text-gray-100 placeholder:text-gray-400 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0',
           isMobile ? 'px-2.5 text-[15px]' : 'px-2 text-sm'
@@ -84,7 +85,7 @@ export default function SearchGlassInput({
         <button
           type='button'
           onClick={onClear}
-          aria-label={clearLabel}
+          aria-label={inputClearLabel}
           className={cn(
             'inline-flex shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[var(--ui-glass-row-hover)] hover:text-gray-200',
             isMobile ? 'h-7 w-7' : 'h-6 w-6'
@@ -96,7 +97,7 @@ export default function SearchGlassInput({
         <button
           type='button'
           onClick={onShortcutClick}
-          aria-label={shortcutLabel}
+          aria-label={inputShortcutLabel}
           className='ui-glass-shortcut inline-flex h-6 shrink-0 items-center gap-0.5 px-1.5 text-[10px] font-medium'
         >
           <span className='text-[9px] leading-none'>&#8984;</span>

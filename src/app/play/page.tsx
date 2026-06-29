@@ -22,7 +22,9 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   deleteFavorite,
@@ -313,6 +315,7 @@ function addResumeParamsToEmbedUrl(url: string, resumeTime: number): string {
 }
 
 function PlayPageClient() {
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasTmdbPlayerParams = Boolean(
@@ -345,7 +348,7 @@ function PlayPageClient() {
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
   const [loadingMessage, setLoadingMessage] = useState(
-    'Searching playback sources...'
+    t('play.searchingPlaybackSources')
   );
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SearchResult | null>(null);
@@ -788,6 +791,7 @@ function PlayPageClient() {
     params: URLSearchParams
   ): Promise<TmdbPlayDetail | null> => {
     try {
+      params.set('tmdbLanguage', getCurrentTmdbLanguage());
       const response = await fetch(`/api/tmdb/detail?${params.toString()}`);
       if (!response.ok) return null;
       return (await response.json()) as TmdbPlayDetail;
@@ -807,6 +811,7 @@ function PlayPageClient() {
       tmdbId: String(input.tmdbId),
       type: input.mediaType,
       provider: normalizeTmdbPlayerProvider(input.provider),
+      tmdbLanguage: getCurrentTmdbLanguage(),
     });
 
     if (input.mediaType === 'tv') {
@@ -818,7 +823,7 @@ function PlayPageClient() {
       cache: 'no-store',
     });
     if (!response.ok) {
-      let message = 'Failed to resolve playback source';
+      let message = t('play.failedToResolvePlaybackSource');
       try {
         const payload = await response.json();
         if (payload?.error) message = payload.error;
@@ -871,7 +876,8 @@ function PlayPageClient() {
       year,
       score: detailData?.score || searchParams.get('score') || '',
       desc: detailData?.overview || '',
-      type_name: resolved.mediaType === 'tv' ? 'Series' : 'Movie',
+      type_name:
+        resolved.mediaType === 'tv' ? t('common.series') : t('common.movie'),
     };
   };
 
@@ -1214,7 +1220,9 @@ function PlayPageClient() {
     } catch (err) {
       setIsVideoLoading(false);
       setError(
-        err instanceof Error ? err.message : 'Failed to switch playback source'
+        err instanceof Error
+          ? err.message
+          : t('play.failedToSwitchPlaybackSource')
       );
     }
   };
@@ -1337,14 +1345,14 @@ function PlayPageClient() {
   useEffect(() => {
     const initAll = async () => {
       if (!initialTmdbId) {
-        setError('Missing TMDB playback id');
+        setError(t('play.missingTmdbPlaybackId'));
         setLoading(false);
         return;
       }
 
       setLoading(true);
       setLoadingStage('fetching');
-      setLoadingMessage('Resolving playback source...');
+      setLoadingMessage(t('play.resolvingPlaybackSource'));
       setVideoLoadingStage('initing');
       setIsVideoLoading(true);
 
@@ -1379,11 +1387,11 @@ function PlayPageClient() {
           preserveExistingEpisode: true,
         });
         setLoadingStage('ready');
-        setLoadingMessage('Ready. Starting playback...');
+        setLoadingMessage(t('play.readyStartingPlayback'));
         setLoading(false);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to resolve playback'
+          err instanceof Error ? err.message : t('play.failedToResolvePlayback')
         );
         setLoading(false);
         setIsVideoLoading(false);
@@ -1881,11 +1889,10 @@ function PlayPageClient() {
               <Info className='h-5 w-5' />
             </div>
             <h1 className='text-xl font-semibold text-zinc-900 dark:text-zinc-100'>
-              No playable source found
+              {t('play.noPlayableSourceFound')}
             </h1>
             <p className='text-sm leading-6 text-zinc-600 dark:text-zinc-400'>
-              {error ||
-                'The current source is temporarily unavailable, or no matching title was found. Go back and try a different keyword.'}
+              {error || t('play.sourceUnavailable')}
             </p>
             <button
               type='button'
@@ -1893,7 +1900,7 @@ function PlayPageClient() {
               className='ui-glass-control inline-flex items-center gap-2 px-4 py-2 text-sm font-medium'
             >
               <ArrowLeft className='h-4 w-4' />
-              Back
+              {t('common.back')}
             </button>
           </div>
         </div>
@@ -1902,16 +1909,16 @@ function PlayPageClient() {
   }
 
   const displayTitle =
-    tmdbDetail?.title || videoTitle || detail?.title || 'Untitled';
+    tmdbDetail?.title || videoTitle || detail?.title || t('common.untitled');
   const displayYear = tmdbDetail?.year || detail?.year || videoYear;
   const displayOverview = tmdbDetail?.overview || detail?.desc || '';
   const displayPoster =
     tmdbDetail?.poster || tmdbDetail?.backdrop || videoCover;
   const displayType =
     tmdbDetail?.mediaType === 'tv'
-      ? 'Series'
+      ? t('common.series')
       : tmdbDetail?.mediaType === 'movie'
-      ? 'Movie'
+      ? t('common.movie')
       : detail?.type_name || '';
   const displayGenres = tmdbDetail?.genres || [];
   const displayCast = tmdbDetail?.cast || [];
@@ -1937,13 +1944,15 @@ function PlayPageClient() {
   const currentTmdbEpisodeNumber = currentEpisodeIndex + 1;
   const formatEpisodeMeta = (episode: TmdbEpisodeItem): string => {
     const chunks: string[] = [];
-    if (episode.runtime) chunks.push(`${episode.runtime} min`);
+    if (episode.runtime) {
+      chunks.push(t('play.runtimeMinutes', { count: episode.runtime }));
+    }
     if (episode.airDate) {
       const date = new Date(`${episode.airDate}T00:00:00`);
       chunks.push(
         Number.isNaN(date.getTime())
           ? episode.airDate
-          : date.toLocaleDateString('en-US', {
+          : date.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
@@ -2013,9 +2022,7 @@ function PlayPageClient() {
     }
 
     if (!resolved) {
-      setRecommendedDetailError(
-        'Failed to load details. Please try again later.'
-      );
+      setRecommendedDetailError(t('play.failedToLoadDetailsLater'));
       setRecommendedDetailLoading(false);
       return;
     }
@@ -2068,8 +2075,8 @@ function PlayPageClient() {
                   className='ui-glass-control flex h-10 w-full items-center justify-between px-3 text-left'
                   style={{ borderRadius: 'var(--ui-radius-row)' }}
                 >
-                  <span className='ui-token-text-primary truncate text-sm font-semibold'>
-                    Season {currentSeason}
+                    <span className='ui-token-text-primary truncate text-sm font-semibold'>
+                    {t('seasonPicker.season', { season: currentSeason })}
                   </span>
                   <ChevronRight
                     className={`ui-token-text-muted h-4 w-4 transition-transform duration-200 ${
@@ -2127,7 +2134,9 @@ function PlayPageClient() {
                           </span>
                           <h3 className='ui-episode-title ui-token-text-primary line-clamp-1 text-sm font-semibold'>
                             {episode.title ||
-                              `Episode ${episode.episodeNumber}`}
+                              t('common.episode', {
+                                count: episode.episodeNumber,
+                              })}
                           </h3>
                         </div>
                         {meta ? (
@@ -2149,7 +2158,7 @@ function PlayPageClient() {
                   className='ui-glass-panel ui-token-text-muted p-5 text-center text-sm'
                   style={{ borderRadius: 'var(--ui-radius-row)' }}
                 >
-                  No episodes available for this season.
+                  {t('common.noRelatedContentFound')}
                 </div>
               )}
             </div>
@@ -2162,7 +2171,11 @@ function PlayPageClient() {
           className={`pointer-events-auto ui-glass-control ui-episode-trigger group inline-flex items-center transition-transform hover:scale-[1.02] ${
             episodePanelOpen ? 'ui-glass-control-active' : ''
           }`}
-          aria-label={episodePanelOpen ? 'Hide episodes' : 'Show episodes'}
+          aria-label={
+            episodePanelOpen
+              ? t('common.hideEpisodes')
+              : t('common.showEpisodes')
+          }
           aria-expanded={episodePanelOpen}
         >
           <span className='ui-episode-trigger-icon inline-flex items-center justify-center'>
@@ -2346,8 +2359,10 @@ function PlayPageClient() {
                   tmdbDetail.episodes ? (
                     <span className='inline-flex items-center gap-1 text-gray-700/80 dark:text-white/80'>
                       <Users size={14} />
-                      {tmdbDetail.seasons} Seasons / {tmdbDetail.episodes}{' '}
-                      Episodes
+                      {t('hero.tvMeta', {
+                        seasons: tmdbDetail.seasons,
+                        episodes: tmdbDetail.episodes,
+                      })}
                     </span>
                   ) : null}
                   {displayType && (
@@ -2385,7 +2400,7 @@ function PlayPageClient() {
                 {displayCast.length > 0 ? (
                   <section className='mt-4 space-y-3'>
                     <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
-                      Cast
+                      {t('detail.cast')}
                     </h2>
                     <div
                       className='relative'
@@ -2425,7 +2440,7 @@ function PlayPageClient() {
                                 {item.name}
                               </p>
                               <p className='mt-0.5 line-clamp-1 text-[11px] leading-4 text-gray-600 dark:text-gray-400'>
-                                {item.character || 'Unknown role'}
+                                {item.character || t('detail.unknownRole')}
                               </p>
                             </div>
                           </button>
@@ -2454,7 +2469,7 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollCastLeft}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='Show previous cast members'
+                              aria-label={t('detail.showPreviousCast')}
                             >
                               <ChevronLeft className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2484,7 +2499,7 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollCastRight}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='Show more cast members'
+                              aria-label={t('detail.showMoreCast')}
                             >
                               <ChevronRight className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2499,7 +2514,7 @@ function PlayPageClient() {
                   <section className='mt-4 space-y-3'>
                     <div>
                       <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
-                        Collection
+                        {t('detail.collection')}
                       </h2>
                       <div className='mt-1 flex max-w-full items-center gap-2'>
                         <p className='min-w-0 truncate text-xs text-gray-600 dark:text-gray-400'>
@@ -2550,7 +2565,7 @@ function PlayPageClient() {
                                 />
                               ) : (
                                 <div className='flex h-full w-full items-center justify-center text-[11px] text-gray-300/80'>
-                                  No poster
+                                  {t('common.noPoster')}
                                 </div>
                               )}
                               {item.score ? (
@@ -2565,7 +2580,7 @@ function PlayPageClient() {
                                 {item.title}
                               </p>
                               <p className='mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400'>
-                                {item.year || 'Unknown year'}
+                                {item.year || t('common.unknownYear')}
                               </p>
                             </div>
                           </button>
@@ -2594,7 +2609,7 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollCollectionLeft}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='Show previous collection titles'
+                              aria-label={t('detail.showPreviousCollection')}
                             >
                               <ChevronLeft className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2624,7 +2639,7 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollCollectionRight}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='Show more collection titles'
+                              aria-label={t('detail.showMoreCollection')}
                             >
                               <ChevronRight className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2638,7 +2653,7 @@ function PlayPageClient() {
                 {displayRecommendations.length > 0 ? (
                   <section className='mt-4 space-y-3'>
                     <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
-                      More Like This
+                      {t('detail.moreLikeThis')}
                     </h2>
                     <div
                       className='relative'
@@ -2680,7 +2695,7 @@ function PlayPageClient() {
                                 />
                               ) : (
                                 <div className='flex h-full w-full items-center justify-center text-[11px] text-gray-300/80'>
-                                  No poster
+                                  {t('common.noPoster')}
                                 </div>
                               )}
                               {item.score ? (
@@ -2695,7 +2710,7 @@ function PlayPageClient() {
                                 {item.title}
                               </p>
                               <p className='mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400'>
-                                {item.year || 'Unknown year'}
+                                {item.year || t('common.unknownYear')}
                               </p>
                             </div>
                           </button>
@@ -2724,7 +2739,9 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollRecommendedLeft}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='向左查看更多推荐'
+                              aria-label={t(
+                                'detail.showPreviousRecommendations'
+                              )}
                             >
                               <ChevronLeft className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2754,7 +2771,7 @@ function PlayPageClient() {
                               type='button'
                               onClick={scrollRecommendedRight}
                               className='ui-glass-control flex h-12 w-12 items-center justify-center transition-transform hover:scale-105'
-                              aria-label='向右查看更多推荐'
+                              aria-label={t('detail.showMoreRecommendations')}
                             >
                               <ChevronRight className='h-6 w-6 text-gray-600 dark:text-gray-300' />
                             </button>
@@ -2779,7 +2796,7 @@ function PlayPageClient() {
                     />
                   ) : (
                     <span className='text-gray-600 dark:text-gray-400'>
-                      封面图片
+                      {t('common.noPoster')}
                     </span>
                   )}
                 </div>
@@ -2798,7 +2815,7 @@ function PlayPageClient() {
         onClose={closeRecommendedDetailModal}
         onRetry={retryOpenRecommendedDetailModal}
         onPlay={handleRecommendedPlayFromDetail}
-        playLabel='Play Now'
+        playLabel={t('common.playNow')}
       />
 
       {seasonMenuOpen && seasonMenuRect
@@ -2841,7 +2858,7 @@ function PlayPageClient() {
                         borderRadius: 'var(--ui-radius-row)',
                       }}
                     >
-                      <span>Season {season}</span>
+                      <span>{t('seasonPicker.season', { season })}</span>
                       {isActive ? (
                         <Check className='ui-token-text-primary h-5 w-5' />
                       ) : (

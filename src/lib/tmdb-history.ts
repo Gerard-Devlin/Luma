@@ -77,7 +77,8 @@ export function buildTmdbHistoryPlayUrl(
 
 export function formatTmdbHistorySubtitle(
   key: string,
-  record: WatchRecordLike
+  record: WatchRecordLike,
+  t?: (key: string, options?: Record<string, unknown>) => string
 ): string {
   const { source, id } = parseStorageKey(key);
   const parsed = source === 'tmdb' ? parseTmdbStorageId(id) : null;
@@ -87,24 +88,35 @@ export function formatTmdbHistorySubtitle(
   if (parsed && parsed.season !== null) {
     if (totalEpisodes > 1) {
       if (currentEpisode >= totalEpisodes) {
-        return `Next Season • S${parsed.season + 1}`;
+        return t
+          ? t('history.nextSeason', { season: parsed.season + 1 })
+          : `Next Season • S${parsed.season + 1}`;
       }
       if (currentEpisode > 0) {
-        return `Next • S${parsed.season}, E${currentEpisode + 1}`;
+        return t
+          ? t('history.nextEpisodeInSeason', {
+              season: parsed.season,
+              episode: currentEpisode + 1,
+            })
+          : `Next • S${parsed.season}, E${currentEpisode + 1}`;
       }
     }
-    return `Season ${parsed.season}`;
+    return t
+      ? t('history.season', { season: parsed.season })
+      : `Season ${parsed.season}`;
   }
 
   if (totalEpisodes > 1) {
     if (currentEpisode > 0) {
-      return `Episode ${Math.min(
-        currentEpisode + 1,
-        totalEpisodes
-      )} / ${totalEpisodes}`;
+      const episode = Math.min(currentEpisode + 1, totalEpisodes);
+      return t
+        ? t('history.episodeProgress', { episode, total: totalEpisodes })
+        : `Episode ${episode} / ${totalEpisodes}`;
     }
-    return `${totalEpisodes} episodes`;
+    return t
+      ? t('common.episodes', { count: totalEpisodes })
+      : `${totalEpisodes} episodes`;
   }
 
-  return 'Continue';
+  return t ? t('history.continue') : 'Continue';
 }

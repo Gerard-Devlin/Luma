@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+import {
+  getTmdbImageLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 
 
@@ -47,6 +51,7 @@ interface RecommendationRecordInput {
 interface RecommendationRequestBody {
   records?: RecommendationRecordInput[];
   mediaType?: HeroMediaFilter;
+  tmdbLanguage?: string;
 }
 
 interface WeightedSeed {
@@ -465,7 +470,8 @@ async function resolveSeedToTmdb(
   seed: WeightedSeed,
   apiKey: string,
   signal: AbortSignal,
-  mediaFilter: HeroMediaFilter
+  mediaFilter: HeroMediaFilter,
+  tmdbLanguage: string
 ): Promise<{ id: number; mediaType: TmdbMediaType } | null> {
   const endpointOrder: Array<TmdbMediaType | 'multi'> =
     seed.preferredMediaType === 'tv'
@@ -476,7 +482,7 @@ async function resolveSeedToTmdb(
   for (const endpoint of endpointOrder) {
     const params = new URLSearchParams({
       api_key: apiKey,
-      language: 'en-US',
+      language: tmdbLanguage,
       include_adult: 'false',
       query: seed.title,
       page: '1',
@@ -546,18 +552,19 @@ async function fetchTmdbDetailRaw(
   id: number,
   apiKey: string,
   signal: AbortSignal,
-  appendToResponse: string
+  appendToResponse: string,
+  tmdbLanguage: string
 ): Promise<TmdbDetailRawResponse | null> {
   const params = new URLSearchParams({
     api_key: apiKey,
-    language: 'en-US',
+    language: tmdbLanguage,
   });
 
   if (appendToResponse) {
     params.set('append_to_response', appendToResponse);
   }
   if (appendToResponse.includes('images')) {
-    params.set('include_image_language', 'en,null');
+    params.set('include_image_language', getTmdbImageLanguage(tmdbLanguage));
   }
 
   try {
@@ -581,9 +588,16 @@ async function resolveSeedDetail(
   seed: WeightedSeed,
   apiKey: string,
   signal: AbortSignal,
-  mediaFilter: HeroMediaFilter
+  mediaFilter: HeroMediaFilter,
+  tmdbLanguage: string
 ): Promise<ResolvedSeed | null> {
-  const resolved = await resolveSeedToTmdb(seed, apiKey, signal, mediaFilter);
+  const resolved = await resolveSeedToTmdb(
+    seed,
+    apiKey,
+    signal,
+    mediaFilter,
+    tmdbLanguage
+  );
   if (!resolved) return null;
 
   const detail = await fetchTmdbDetailRaw(
@@ -591,7 +605,8 @@ async function resolveSeedDetail(
     resolved.id,
     apiKey,
     signal,
-    'recommendations,similar,keywords,credits'
+    'recommendations,similar,keywords,credits',
+    tmdbLanguage
   );
   if (!detail) return null;
 
@@ -603,8 +618,17 @@ async function resolveSeedDetail(
   };
 }
 
-function selectBestLogoPath(logos: TmdbLogoItem[]): string {
+function selectBestLogoPath(
+  logos: TmdbLogoItem[],
+  tmdbLanguage: string
+): string {
   const getLanguagePriority = (lang?: string | null): number => {
+    if (normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN') {
+      if (lang === 'zh') return 4;
+      if (lang === 'en') return 3;
+      if (lang === null || lang === undefined) return 2;
+      return 1;
+    }
     if (lang === 'en') return 4;
     if (lang === 'zh') return 3;
     if (lang === null || lang === undefined) return 2;
@@ -1014,7 +1038,8 @@ async function addDiscoverCandidates(
   signal: AbortSignal,
   mediaFilter: HeroMediaFilter,
   profile: TasteProfile,
-  dailyKey: string
+  dailyKey: string,
+  tmdbLanguage: string
 ): Promise<void> {
   const mediaTypes: TmdbMediaType[] =
     mediaFilter === 'all' ? ['movie', 'tv'] : [mediaFilter];
@@ -1049,7 +1074,7 @@ async function addDiscoverCandidates(
     const createParams = () => {
       const params = new URLSearchParams({
         api_key: apiKey,
-        language: 'en-US',
+        language: tmdbLanguage,
         page: '1',
         sort_by: 'popularity.desc',
         include_adult: 'false',
@@ -1212,14 +1237,16 @@ function rankCandidates(
 async function hydrateCandidate(
   candidate: Candidate,
   apiKey: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  tmdbLanguage: string
 ): Promise<TmdbHeroItem | null> {
   const raw = await fetchTmdbDetailRaw(
     candidate.mediaType,
     candidate.id,
     apiKey,
     signal,
-    'images'
+    'images',
+    tmdbLanguage
   );
   if (!raw) return null;
 
@@ -1228,7 +1255,7 @@ async function hydrateCandidate(
   const poster = toImageUrl(raw.poster_path, 'w500');
   if (!title || !backdrop || !poster) return null;
 
-  const logoPath = selectBestLogoPath(raw.images?.logos || []);
+  const logoPath = selectBestLogoPath(raw.images?.logos || [], tmdbLanguage);
   if (!logoPath) return null;
 
   const runtime =
@@ -1284,6 +1311,7 @@ export async function POST(request: Request) {
   }
 
   const mediaFilter = normalizeMediaFilter(body?.mediaType);
+  const tmdbLanguage = normalizeTmdbLanguage(body?.tmdbLanguage);
   const records = getRequestBodyRecords(body);
   const excludedTitleKeys = buildExcludedTitleKeys(records);
   const seeds = buildWeightedSeeds(records, mediaFilter);
@@ -1301,7 +1329,13 @@ export async function POST(request: Request) {
   try {
     const resolvedResults = await Promise.allSettled(
       seeds.map((seed) =>
-        resolveSeedDetail(seed, apiKey, controller.signal, mediaFilter)
+        resolveSeedDetail(
+          seed,
+          apiKey,
+          controller.signal,
+          mediaFilter,
+          tmdbLanguage
+        )
       )
     );
     const resolvedSeeds = resolvedResults
@@ -1326,7 +1360,8 @@ export async function POST(request: Request) {
         controller.signal,
         mediaFilter,
         profile,
-        dailyKey
+        dailyKey,
+        tmdbLanguage
       );
     }
 
@@ -1338,7 +1373,7 @@ export async function POST(request: Request) {
 
     const hydratedResults = await Promise.allSettled(
       sortedCandidates.map((candidate) =>
-        hydrateCandidate(candidate, apiKey, controller.signal)
+        hydrateCandidate(candidate, apiKey, controller.signal, tmdbLanguage)
       )
     );
     const results = hydratedResults

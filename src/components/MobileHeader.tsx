@@ -2,6 +2,7 @@
 
 import { Menu, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { BackButton } from './BackButton';
 import { UserMenu } from './UserMenu';
@@ -21,6 +22,7 @@ const MobileHeader = ({
   onSearchOpen,
   isHomePage = false,
 }: MobileHeaderProps) => {
+  const { t } = useTranslation();
   const [isHidden, setIsHidden] = useState(false);
   const lastScrollY = useRef(0);
 
@@ -114,7 +116,9 @@ const MobileHeader = ({
               <div className='ui-glass-pill flex h-11 items-center overflow-hidden'>
                 <button
                   type='button'
-                  aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+                  aria-label={
+                    isMenuOpen ? t('common.closeMenu') : t('common.openMenu')
+                  }
                   onClick={onMenuToggle}
                   className='flex h-full w-11 items-center justify-center transition-colors hover:text-white'
                 >
@@ -131,7 +135,9 @@ const MobileHeader = ({
               <div className='ui-glass-control flex h-11 w-11 items-center justify-center'>
                 <button
                   type='button'
-                  aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+                  aria-label={
+                    isMenuOpen ? t('common.closeMenu') : t('common.openMenu')
+                  }
                   onClick={onMenuToggle}
                   className='flex h-full w-full items-center justify-center rounded-full text-zinc-200 transition-colors hover:text-white'
                 >
@@ -153,7 +159,7 @@ const MobileHeader = ({
               <>
                 <button
                   type='button'
-                  aria-label='Search'
+                  aria-label={t('common.search')}
                   onClick={onSearchOpen}
                   className='flex h-full w-11 items-center justify-center transition-colors hover:text-white'
                 >

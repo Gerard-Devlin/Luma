@@ -3,6 +3,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 interface SeasonPickerModalProps {
   open: boolean;
@@ -28,6 +29,7 @@ export default function SeasonPickerModal({
   onClose,
   onPickSeason,
 }: SeasonPickerModalProps) {
+  const { t } = useTranslation();
   const normalizedTitle = (title || '').trim();
   const normalizedBackdrop = useMemo(() => safeImageUrl(backdrop), [backdrop]);
   const normalizedLogo = useMemo(() => safeImageUrl(logo), [logo]);
@@ -61,7 +63,7 @@ export default function SeasonPickerModal({
       <div
         role='dialog'
         aria-modal='false'
-        aria-label='Choose a season to play'
+        aria-label={t('seasonPicker.chooseSeason')}
         className='pointer-events-auto relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/20 bg-black text-white shadow-2xl'
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
@@ -87,13 +89,15 @@ export default function SeasonPickerModal({
               onClose();
             }}
             className='absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-zinc-200 transition-colors hover:bg-black/70 hover:text-white'
-            aria-label='Close season picker'
+            aria-label={t('seasonPicker.close')}
           >
             <X className='h-4 w-4' />
           </button>
 
           <div className='text-center sm:text-left'>
-            <h3 className='text-lg font-semibold sm:pr-10'>Choose a season to play</h3>
+            <h3 className='text-lg font-semibold sm:pr-10'>
+              {t('seasonPicker.chooseSeason')}
+            </h3>
             {normalizedLogo ? (
               <div className='relative mx-auto mt-2 h-14 w-full max-w-[360px] sm:mx-0 sm:h-16'>
                 <img
@@ -117,9 +121,9 @@ export default function SeasonPickerModal({
                   event.stopPropagation();
                   onPickSeason(season);
                 }}
-                className='rounded-xl border border-zinc-200/30 bg-white/10 px-2 py-2 text-sm font-medium text-zinc-100 transition-colors hover:bg-white/20'
+              className='rounded-xl border border-zinc-200/30 bg-white/10 px-2 py-2 text-sm font-medium text-zinc-100 transition-colors hover:bg-white/20'
               >
-                {`Season ${season}`}
+                {t('seasonPicker.season', { season })}
               </button>
             ))}
           </div>

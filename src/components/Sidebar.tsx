@@ -23,6 +23,7 @@ import {
   useLayoutEffect,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
@@ -56,6 +57,7 @@ const Sidebar = ({
   activePath = '/',
   showBackButton = false,
 }: SidebarProps) => {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const shouldReduceMotion = useReducedMotion();
@@ -122,17 +124,17 @@ const Sidebar = ({
   const menuItems = [
     {
       icon: Clapperboard,
-      label: 'Movies',
+      label: t('common.movies'),
       href: '/discover?type=movie',
     },
     {
       icon: Tv,
-      label: 'Series',
+      label: t('common.series'),
       href: '/discover?type=tv',
     },
     {
       icon: HeartPulse,
-      label: 'Shows',
+      label: t('common.shows'),
       href: '/discover?type=show',
     },
   ];
@@ -155,7 +157,11 @@ const Sidebar = ({
             >
               <button
                 type='button'
-                aria-label={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+                aria-label={
+                  isCollapsed
+                    ? t('common.openSidebar')
+                    : t('nav.collapseSidebar')
+                }
                 onMouseEnter={openSidebar}
                 onFocus={openSidebar}
                 onClick={handleToggle}
@@ -166,7 +172,7 @@ const Sidebar = ({
               <div className='ui-glass-divider h-5 w-px' />
               <button
                 type='button'
-                aria-label='Back'
+                aria-label={t('common.back')}
                 onClick={() => window.history.back()}
                 className='flex h-full w-11 items-center justify-center text-zinc-300 transition-colors hover:bg-[var(--ui-glass-row-hover)] hover:text-white'
               >
@@ -176,7 +182,9 @@ const Sidebar = ({
           ) : (
             <button
               type='button'
-              aria-label={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+              aria-label={
+                isCollapsed ? t('common.openSidebar') : t('nav.collapseSidebar')
+              }
               onMouseEnter={openSidebar}
               onFocus={openSidebar}
               onClick={handleToggle}
@@ -251,7 +259,7 @@ const Sidebar = ({
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    Home
+                    {t('common.home')}
                   </span>
                 )}
               </Link>
@@ -272,7 +280,7 @@ const Sidebar = ({
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    Search
+                    {t('common.search')}
                   </span>
                 )}
               </Link>
@@ -293,7 +301,7 @@ const Sidebar = ({
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    My Library
+                    {t('common.myLibrary')}
                   </span>
                 )}
               </Link>

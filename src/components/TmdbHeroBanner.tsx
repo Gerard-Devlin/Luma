@@ -19,7 +19,13 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
+import {
+  getTmdbImageLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import {
   deleteFavorite,
   generateStorageKey,
@@ -222,13 +228,6 @@ const SWIPE_THRESHOLD_PX = 48;
 const WHEEL_SWIPE_THRESHOLD_PX = 80;
 const WHEEL_SWIPE_COOLDOWN_MS = 520;
 const WHEEL_GESTURE_IDLE_MS = 180;
-const TEXT_MOVIE = 'Movie';
-const TEXT_TV = 'Series';
-const TEXT_PLAY = 'Play';
-const TEXT_DETAIL = 'Details';
-const TEXT_FAVORITE = 'Add to favorites';
-const TEXT_UNFAVORITE = 'Remove from favorites';
-const TEXT_DETAIL_LOAD_FAILED = 'Failed to load details';
 
 function toYear(value?: string): string {
   if (!value) return '';
@@ -266,10 +265,20 @@ function mapRawItemToHero(item: TmdbRawItem): TmdbHeroItem | null {
   };
 }
 
-function selectBestLogoPath(logos: TmdbLogoItem[]): string {
+function selectBestLogoPath(
+  logos: TmdbLogoItem[],
+  tmdbLanguage = getCurrentTmdbLanguage()
+): string {
   if (!logos.length) return '';
 
   const getLanguagePriority = (lang?: string | null): number => {
+    if (normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN') {
+      if (lang === 'zh') return 4;
+      if (lang === 'en') return 3;
+      if (lang === null) return 2;
+      if (lang === undefined) return 2;
+      return 1;
+    }
     if (lang === 'en') return 4;
     if (lang === 'zh') return 3;
     if (lang === null) return 2;
@@ -460,6 +469,7 @@ export default function TmdbHeroBanner({
   personalizedSeeds,
   requireLogo = false,
 }: TmdbHeroBannerProps) {
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const [items, setItems] = useState<TmdbHeroItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -653,9 +663,10 @@ export default function TmdbHeroBanner({
     ): Promise<string> => {
       try {
         if (!TMDB_CLIENT_API_KEY) return '';
+        const tmdbLanguage = getCurrentTmdbLanguage();
         const params = new URLSearchParams({
           api_key: TMDB_CLIENT_API_KEY,
-          include_image_language: 'en,null',
+          include_image_language: getTmdbImageLanguage(tmdbLanguage),
         });
         const response = await fetch(
           `${TMDB_API_BASE_URL}/${mediaType}/${id}/images?${params.toString()}`,
@@ -663,13 +674,13 @@ export default function TmdbHeroBanner({
         );
         if (!response.ok) return '';
         const data = (await response.json()) as TmdbImagesResponse;
-        const logoPath = selectBestLogoPath(data.logos || []);
+        const logoPath = selectBestLogoPath(data.logos || [], tmdbLanguage);
         return logoPath ? `${TMDB_IMAGE_BASE_URL}/w500${logoPath}` : '';
       } catch {
         return '';
       }
     },
-    []
+    [i18n.language]
   );
 
   const fetchHeroMetaForItem = useCallback(
@@ -686,9 +697,10 @@ export default function TmdbHeroBanner({
             episodes: null,
           };
         }
+        const tmdbLanguage = getCurrentTmdbLanguage();
         const params = new URLSearchParams({
           api_key: TMDB_CLIENT_API_KEY,
-          language: 'en-US',
+          language: tmdbLanguage,
         });
         const response = await fetch(
           `${TMDB_API_BASE_URL}/${mediaType}/${id}?${params.toString()}`,
@@ -725,11 +737,12 @@ export default function TmdbHeroBanner({
         };
       }
     },
-    []
+    [i18n.language]
   );
 
   const fetchDirectFromTmdb = useCallback(async (signal?: AbortSignal) => {
     if (!TMDB_CLIENT_API_KEY) return [];
+    const tmdbLanguage = getCurrentTmdbLanguage();
 
     const normalizedGenres = (withGenres || '').trim();
     const normalizedOriginCountry = (withOriginCountry || '')
@@ -743,7 +756,7 @@ export default function TmdbHeroBanner({
       mediaFilter === 'movie' ? 'movie' : 'tv';
     const params = new URLSearchParams({
       api_key: TMDB_CLIENT_API_KEY,
-      language: 'en-US',
+      language: tmdbLanguage,
       page: '1',
     });
     if (shouldUseDiscover) {
@@ -825,6 +838,7 @@ export default function TmdbHeroBanner({
         body: JSON.stringify({
           records: personalizedSeeds,
           mediaType: mediaFilter,
+          tmdbLanguage: getCurrentTmdbLanguage(),
         }),
         signal,
       });
@@ -836,7 +850,7 @@ export default function TmdbHeroBanner({
         .filter((item) => matchesMediaFilter(item.mediaType, mediaFilter))
         .filter((item) => !requireLogo || Boolean(item.logo));
     },
-    [mediaFilter, personalizedSeeds, requireLogo]
+    [i18n.language, mediaFilter, personalizedSeeds, requireLogo]
   );
 
   const safeImageUrl = useCallback((url: string): string => {
@@ -865,7 +879,7 @@ export default function TmdbHeroBanner({
 
     const params = new URLSearchParams({
       api_key: TMDB_CLIENT_API_KEY,
-      language: 'en-US',
+      language: getCurrentTmdbLanguage(),
       append_to_response: appendToResponse,
     });
 
@@ -878,7 +892,7 @@ export default function TmdbHeroBanner({
 
     const raw = (await response.json()) as TmdbDetailRawResponse;
     return mapRawDetailToHeroDetail(raw, item);
-  }, []);
+  }, [i18n.language]);
 
   const handleCloseDetail = useCallback(() => {
     setDetailOpen(false);
@@ -911,7 +925,7 @@ export default function TmdbHeroBanner({
   }, [router]);
 
   const loadDetailForModal = useCallback(async (item: TmdbHeroItem) => {
-    const cacheKey = `${item.mediaType}-${item.id}`;
+    const cacheKey = `${getCurrentTmdbLanguage()}-${item.mediaType}-${item.id}`;
     setDetailOpen(true);
     setDetailItem(item);
     setDetailError(null);
@@ -944,7 +958,7 @@ export default function TmdbHeroBanner({
       }
 
       if (!resolved && detailRequestIdRef.current === requestId) {
-        setDetailError((err as Error).message || TEXT_DETAIL_LOAD_FAILED);
+        setDetailError((err as Error).message || t('detail.failedToLoad'));
       }
     } finally {
       if (detailRequestIdRef.current === requestId) {
@@ -956,7 +970,7 @@ export default function TmdbHeroBanner({
         setDetailLoading(false);
       }
     }
-  }, [fetchDetailDirectFromTmdb]);
+  }, [fetchDetailDirectFromTmdb, t]);
 
   const resolveSeasonCountForItem = useCallback(
     async (item: TmdbHeroItem): Promise<number> => {
@@ -1136,6 +1150,7 @@ export default function TmdbHeroBanner({
       if (normalizedOriginCountry) {
         params.set('with_origin_country', normalizedOriginCountry);
       }
+      params.set('tmdbLanguage', getCurrentTmdbLanguage());
       const response = await fetch(
         `/api/tmdb/hero${params.toString() ? `?${params.toString()}` : ''}`,
         {
@@ -1215,6 +1230,7 @@ export default function TmdbHeroBanner({
   }, [
     fetchDirectFromTmdb,
     fetchPersonalizedFromHistory,
+    i18n.language,
     mediaFilter,
     personalizedSeeds,
     requireLogo,
@@ -1408,13 +1424,13 @@ export default function TmdbHeroBanner({
                 <div className='inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.32)]'>
                   <Play size={16} className='opacity-0' aria-hidden='true' />
                   <span className='text-sm font-semibold text-transparent'>
-                    {TEXT_PLAY}
+                    {t('common.play')}
                   </span>
                 </div>
                 <div className='inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-4 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.26)] backdrop-blur-md'>
                   <Info size={14} className='opacity-0' aria-hidden='true' />
                   <span className='text-sm font-semibold text-transparent'>
-                    {TEXT_DETAIL}
+                    {t('common.details')}
                   </span>
                 </div>
                 <div className='h-9 w-9 rounded-full border border-white/35 bg-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.26)] backdrop-blur-md' />
@@ -1596,7 +1612,9 @@ export default function TmdbHeroBanner({
                 className='text-white/80'
               />
               <span className='rounded border border-white/30 px-1.5 py-0.5 text-[11px] font-medium uppercase text-white/90'>
-                {activeItem.mediaType === 'movie' ? TEXT_MOVIE : TEXT_TV}
+                {activeItem.mediaType === 'movie'
+                  ? t('common.movie')
+                  : t('common.series')}
               </span>
               {activeItem.mediaType === 'movie' && activeItem.runtime ? (
                 <span className='inline-flex items-center gap-1 text-white/80'>
@@ -1609,7 +1627,10 @@ export default function TmdbHeroBanner({
               activeItem.episodes ? (
                 <span className='inline-flex items-center gap-1 text-white/80'>
                   <Users size={14} />
-                  {activeItem.seasons} Seasons / {activeItem.episodes} Episodes
+                  {t('hero.tvMeta', {
+                    seasons: activeItem.seasons,
+                    episodes: activeItem.episodes,
+                  })}
                 </span>
               ) : null}
             </div>
@@ -1628,7 +1649,7 @@ export default function TmdbHeroBanner({
                   className='inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black shadow-[0_10px_24px_rgba(0,0,0,0.32)] transition-all duration-200 hover:bg-white/90 hover:shadow-xl'
                 >
                   <Play size={16} fill='currentColor' />
-                  {TEXT_PLAY}
+                  {t('common.play')}
                 </button>
               ) : null}
               <button
@@ -1637,7 +1658,7 @@ export default function TmdbHeroBanner({
                 className='inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.26)] backdrop-blur-md transition-all duration-200 hover:bg-white/20 hover:shadow-xl'
               >
                 <Info size={14} />
-                {TEXT_DETAIL}
+                {t('common.details')}
               </button>
               <button
                 type='button'
@@ -1645,8 +1666,16 @@ export default function TmdbHeroBanner({
                   void handleToggleFavorite(activeItem);
                 }}
                 disabled={activeFavoritePending}
-                aria-label={activeFavorited ? TEXT_UNFAVORITE : TEXT_FAVORITE}
-                title={activeFavorited ? TEXT_UNFAVORITE : TEXT_FAVORITE}
+                aria-label={
+                  activeFavorited
+                    ? t('common.removeFromFavorites')
+                    : t('common.addToFavorites')
+                }
+                title={
+                  activeFavorited
+                    ? t('common.removeFromFavorites')
+                    : t('common.addToFavorites')
+                }
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/35 bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.26)] backdrop-blur-md transition-all duration-200 hover:bg-white/20 hover:shadow-xl disabled:pointer-events-none disabled:opacity-60 ${
                   activeFavorited
                     ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 hover:bg-yellow-400/20'
@@ -1739,7 +1768,9 @@ export default function TmdbHeroBanner({
               )}
               {activeItem.year && <span>{activeItem.year}</span>}
               <span className='rounded border border-white/35 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90'>
-                {activeItem.mediaType === 'movie' ? TEXT_MOVIE : TEXT_TV}
+                {activeItem.mediaType === 'movie'
+                  ? t('common.movie')
+                  : t('common.series')}
               </span>
               {activeItem.mediaType === 'movie' && activeItem.runtime ? (
                 <span className='inline-flex items-center gap-1'>
@@ -1752,7 +1783,10 @@ export default function TmdbHeroBanner({
               activeItem.episodes ? (
                 <span className='inline-flex items-center gap-1'>
                   <Users size={12} />
-                  {activeItem.seasons}S / {activeItem.episodes}E
+                  {t('hero.tvMetaShort', {
+                    seasons: activeItem.seasons,
+                    episodes: activeItem.episodes,
+                  })}
                 </span>
               ) : null}
             </div>
@@ -1771,7 +1805,7 @@ export default function TmdbHeroBanner({
                   className='inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-white/95 px-4 py-3 text-sm font-semibold text-black shadow-[0_10px_28px_rgba(0,0,0,0.4)] backdrop-blur-sm transition-transform duration-200 active:scale-[0.98]'
                 >
                   <Play size={16} fill='currentColor' />
-                  {TEXT_PLAY}
+                  {t('common.play')}
                 </button>
               ) : null}
               <button
@@ -1780,10 +1814,10 @@ export default function TmdbHeroBanner({
                 className={`inline-flex items-center justify-center gap-2 rounded-full border border-white/35 bg-white/15 px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.3)] backdrop-blur-md transition-colors duration-200 active:bg-white/25 ${
                   activeCanPlay ? '' : 'flex-1'
                 }`}
-                aria-label={TEXT_DETAIL}
+                aria-label={t('common.details')}
               >
                 <Info size={14} />
-                {TEXT_DETAIL}
+                {t('common.details')}
               </button>
               <button
                 type='button'
@@ -1791,8 +1825,16 @@ export default function TmdbHeroBanner({
                   void handleToggleFavorite(activeItem);
                 }}
                 disabled={activeFavoritePending}
-                aria-label={activeFavorited ? TEXT_UNFAVORITE : TEXT_FAVORITE}
-                title={activeFavorited ? TEXT_UNFAVORITE : TEXT_FAVORITE}
+                aria-label={
+                  activeFavorited
+                    ? t('common.removeFromFavorites')
+                    : t('common.addToFavorites')
+                }
+                title={
+                  activeFavorited
+                    ? t('common.removeFromFavorites')
+                    : t('common.addToFavorites')
+                }
                 className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white shadow-[0_10px_28px_rgba(0,0,0,0.3)] backdrop-blur-md transition-colors duration-200 active:bg-white/25 disabled:pointer-events-none disabled:opacity-60 ${
                   activeFavorited
                     ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 active:bg-yellow-400/20'

@@ -19,7 +19,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { Favorite, PlayRecord } from '@/lib/db.client';
 import {
   deleteFavorite,
@@ -71,8 +73,10 @@ interface FavoriteItem {
   searchTitle?: string;
 }
 
-interface TmdbPosterLookupDetail {
+interface TmdbDisplayLookupDetail {
+  title?: string;
   poster?: string;
+  year?: string;
 }
 
 interface TmdbPosterLookupTarget {
@@ -188,6 +192,31 @@ function normalizeGenreName(rawGenre: string): SupportedGenre | null {
 
 function formatGenreLabel(genre: string): string {
   return GENRE_DISPLAY_LABELS[genre as SupportedGenre] || genre;
+}
+
+function getGenreLabelKey(genre: string): string {
+  const keyByGenre: Record<SupportedGenre, string> = {
+    冒险: 'discover.adventure',
+    剧情: 'discover.drama',
+    动作: 'discover.action',
+    动画: 'discover.animation',
+    历史: 'discover.history',
+    喜剧: 'discover.comedy',
+    奇幻: 'discover.fantasy',
+    家庭: 'discover.family',
+    恐怖: 'discover.horror',
+    悬疑: 'discover.mystery',
+    惊悚: 'discover.thriller',
+    战争: 'discover.war',
+    爱情: 'discover.romance',
+    犯罪: 'discover.crime',
+    科幻: 'discover.sciFi',
+    纪录: 'discover.documentary',
+    西部: 'discover.western',
+    音乐: 'discover.music',
+  };
+
+  return keyByGenre[genre as SupportedGenre] || '';
 }
 
 function buildPlayUrl(record: PlayRecordItem): string {
@@ -309,7 +338,10 @@ function getProgressPercent(record: PlayRecord): number {
   return (record.play_time / record.total_time) * 100;
 }
 
-function formatHistoryEpisodeMeta(record: PlayRecordItem): string {
+function formatHistoryEpisodeMeta(
+  record: PlayRecordItem,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   if (getWatchFormat(record) !== 'tv') return '';
 
   const { id } = parseStorageKey(record.key);
@@ -317,7 +349,9 @@ function formatHistoryEpisodeMeta(record: PlayRecordItem): string {
   const season = parsed?.season || 1;
   const episode = Math.max(1, Number(record.index || 1));
 
-  return `Season ${season} · Episode ${episode}`;
+  return `${t('history.season', { season })} · ${t('common.episode', {
+    count: episode,
+  })}`;
 }
 
 function JumpingDots({ label }: { label: string }) {
@@ -339,6 +373,7 @@ function JumpingDots({ label }: { label: string }) {
 }
 
 function MyPageClient() {
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('play');
   const [playRecords, setPlayRecords] = useState<PlayRecordItem[]>([]);
@@ -383,9 +418,10 @@ function MyPageClient() {
   const [favoriteItemGenres, setFavoriteItemGenres] = useState<
     Record<string, SupportedGenre[]>
   >({});
-  const [tmdbPosterByKey, setTmdbPosterByKey] = useState<
-    Record<string, string>
+  const [tmdbDisplayByKey, setTmdbDisplayByKey] = useState<
+    Record<string, { title?: string; poster?: string; year?: string }>
   >({});
+  const tmdbLanguage = getCurrentTmdbLanguage();
   const genreCacheRef = useRef<Map<string, string[]>>(new Map());
   const tmdbPosterLookupKeysRef = useRef<Set<string>>(new Set());
   const longPressTimerRef = useRef<number | null>(null);
@@ -491,9 +527,13 @@ function MyPageClient() {
     ]
       .filter((target): target is TmdbPosterLookupTarget => Boolean(target))
       .filter(
-        (target) =>
-          !tmdbPosterByKey[target.key] &&
-          !tmdbPosterLookupKeysRef.current.has(target.key)
+        (target) => {
+          const displayKey = `${tmdbLanguage}:${target.key}`;
+          return (
+            !tmdbDisplayByKey[displayKey] &&
+            !tmdbPosterLookupKeysRef.current.has(displayKey)
+          );
+        }
       )
       .slice(0, TMDB_POSTER_LOOKUP_LIMIT);
 
@@ -501,7 +541,7 @@ function MyPageClient() {
 
     let cancelled = false;
     targets.forEach((target) => {
-      tmdbPosterLookupKeysRef.current.add(target.key);
+      tmdbPosterLookupKeysRef.current.add(`${tmdbLanguage}:${target.key}`);
     });
 
     const run = async () => {
@@ -509,30 +549,41 @@ function MyPageClient() {
         targets.map(async (target) => {
           try {
             const detail =
-              await fetchTmdbDetailWithClientCache<TmdbPosterLookupDetail>({
+              await fetchTmdbDetailWithClientCache<TmdbDisplayLookupDetail>({
                 id: target.tmdbId,
                 title: target.title,
                 mediaType: target.mediaType,
                 year: target.year,
                 poster: target.poster,
                 logoLanguagePreference: 'en',
+                tmdbLanguage,
               });
+            const title = (detail.title || '').trim();
             const poster = (detail.poster || '').trim();
-            return poster ? ([target.key, poster] as const) : null;
+            const year = (detail.year || '').trim();
+            if (!title && !poster && !year) return null;
+            return [
+              `${tmdbLanguage}:${target.key}`,
+              { title, poster, year },
+            ] as const;
           } catch {
             return null;
+          } finally {
+            tmdbPosterLookupKeysRef.current.delete(
+              `${tmdbLanguage}:${target.key}`
+            );
           }
         })
       );
 
       if (cancelled) return;
 
-      setTmdbPosterByKey((prev) => {
+      setTmdbDisplayByKey((prev) => {
         const next = { ...prev };
         settled.forEach((result) => {
           if (result.status !== 'fulfilled' || !result.value) return;
-          const [key, poster] = result.value;
-          next[key] = poster;
+          const [key, display] = result.value;
+          next[key] = display;
         });
         return next;
       });
@@ -542,7 +593,7 @@ function MyPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [favoriteItems, playRecords, tmdbPosterByKey]);
+  }, [favoriteItems, playRecords, tmdbDisplayByKey, tmdbLanguage]);
 
   useEffect(() => {
     setSelectedPlayKeys((prev) => {
@@ -603,7 +654,8 @@ function MyPageClient() {
 
   const fetchGenresForRecord = useCallback(
     async (record: PlayRecordItem): Promise<string[]> => {
-      const cached = genreCacheRef.current.get(record.key);
+      const cacheKey = `play:${tmdbLanguage}:${record.key}`;
+      const cached = genreCacheRef.current.get(cacheKey);
       if (cached) return cached;
 
       const { source, id } = parseStorageKey(record.key);
@@ -635,31 +687,33 @@ function MyPageClient() {
       if (source === 'tmdb' && /^\d+$/.test(id)) {
         const params = new URLSearchParams(baseParams);
         params.set('id', id);
+        params.set('tmdbLanguage', tmdbLanguage);
         const genres = (await fetchGenresWithParams(params)) || [];
-        genreCacheRef.current.set(record.key, genres);
+        genreCacheRef.current.set(cacheKey, genres);
         return genres;
       }
 
       const titleCandidates = buildTmdbTitleCandidates(record);
       if (titleCandidates.length === 0) {
-        genreCacheRef.current.set(record.key, []);
+        genreCacheRef.current.set(cacheKey, []);
         return [];
       }
 
       for (const titleCandidate of titleCandidates) {
         const params = new URLSearchParams(baseParams);
         params.set('title', titleCandidate);
+        params.set('tmdbLanguage', tmdbLanguage);
         const genres = await fetchGenresWithParams(params);
         if (genres && genres.length > 0) {
-          genreCacheRef.current.set(record.key, genres);
+          genreCacheRef.current.set(cacheKey, genres);
           return genres;
         }
       }
 
-      genreCacheRef.current.set(record.key, []);
+      genreCacheRef.current.set(cacheKey, []);
       return [];
     },
-    []
+    [tmdbLanguage]
   );
 
   useEffect(() => {
@@ -790,7 +844,7 @@ function MyPageClient() {
 
   const fetchGenresForFavorite = useCallback(
     async (item: FavoriteItem): Promise<string[]> => {
-      const cacheKey = `favorite:${item.key}`;
+      const cacheKey = `favorite:${tmdbLanguage}:${item.key}`;
       const cached = genreCacheRef.current.get(cacheKey);
       if (cached) return cached;
 
@@ -822,6 +876,7 @@ function MyPageClient() {
       if (item.source === 'tmdb' && /^\d+$/.test(item.id)) {
         const params = new URLSearchParams(baseParams);
         params.set('id', item.id);
+        params.set('tmdbLanguage', tmdbLanguage);
         const genres = (await fetchGenresWithParams(params)) || [];
         genreCacheRef.current.set(cacheKey, genres);
         return genres;
@@ -839,6 +894,7 @@ function MyPageClient() {
       for (const titleCandidate of titleCandidates) {
         const params = new URLSearchParams(baseParams);
         params.set('title', titleCandidate);
+        params.set('tmdbLanguage', tmdbLanguage);
         const genres = await fetchGenresWithParams(params);
         if (genres && genres.length > 0) {
           genreCacheRef.current.set(cacheKey, genres);
@@ -849,7 +905,7 @@ function MyPageClient() {
       genreCacheRef.current.set(cacheKey, []);
       return [];
     },
-    []
+    [tmdbLanguage]
   );
 
   useEffect(() => {
@@ -1195,6 +1251,13 @@ function MyPageClient() {
     playFilterMode !== 'all' || selectedPlayGenres.length > 0;
   const hasActiveFavoriteFilters =
     favoriteFilterMode !== 'all' || selectedFavoriteGenres.length > 0;
+  const translateGenreLabel = useCallback(
+    (genre: string) => {
+      const labelKey = getGenreLabelKey(genre);
+      return labelKey ? t(labelKey) : formatGenreLabel(genre);
+    },
+    [t]
+  );
 
   return (
     <PageLayout activePath='/my'>
@@ -1203,8 +1266,8 @@ function MyPageClient() {
           <div className='flex justify-center'>
             <CapsuleSwitch
               options={[
-                { label: 'History', value: 'play' },
-                { label: 'Favorites', value: 'favorite' },
+                { label: t('my.watchHistory'), value: 'play' },
+                { label: t('my.favorites'), value: 'favorite' },
               ]}
               active={activeTab}
               onChange={(value) => setActiveTab(value as ActiveTab)}
@@ -1216,7 +1279,7 @@ function MyPageClient() {
               <div ref={playToolbarRef} className='space-y-3'>
                 <div className='mx-auto flex max-w-full flex-wrap items-center justify-center gap-2 py-1'>
                   <span className='shrink-0 text-xs font-semibold tracking-wide text-zinc-400'>
-                    {filteredPlayRecords.length} items
+                    {t('my.itemCount', { count: filteredPlayRecords.length })}
                   </span>
                   <button
                     type='button'
@@ -1225,7 +1288,7 @@ function MyPageClient() {
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42] disabled:cursor-not-allowed disabled:opacity-45'
                   >
                     <Play className='h-4 w-4 fill-current text-zinc-300' />
-                    Play
+                    {t('my.play')}
                   </button>
                   <button
                     type='button'
@@ -1234,14 +1297,14 @@ function MyPageClient() {
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42] disabled:cursor-not-allowed disabled:opacity-45'
                   >
                     <Shuffle className='h-4 w-4 text-zinc-300' />
-                    Shuffle Play
+                    {t('my.shufflePlay')}
                   </button>
                   <button
                     type='button'
                     onClick={handleToggleTitleSort}
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42]'
                   >
-                    Title
+                    {t('my.title')}
                     {playSortMode === 'titleDesc' ? (
                       <ArrowDown className='h-4 w-4 text-zinc-300' />
                     ) : (
@@ -1250,7 +1313,7 @@ function MyPageClient() {
                   </button>
                   <button
                     type='button'
-                    aria-label='open-play-filter-panel'
+                    aria-label={t('my.filter')}
                     onClick={() => {
                       setShowPlayFilterPanel((prev) => !prev);
                     }}
@@ -1269,27 +1332,27 @@ function MyPageClient() {
                     <div className='mb-4 flex items-center justify-between'>
                       <div className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-200'>
                         <ListFilter className='h-5 w-5' />
-                        Filter
+                        {t('my.filter')}
                       </div>
                       <button
                         type='button'
                         onClick={resetPlayToolbar}
                         className='inline-flex items-center gap-1 px-1 py-1 text-sm font-medium text-red-500 transition hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
                       >
-                        Reset Filters
+                        {t('my.resetFilters')}
                       </button>
                     </div>
                     <div className='space-y-4'>
                       <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2'>
                         <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-24 sm:flex-shrink-0 sm:pt-1'>
                           <Clapperboard className='h-4 w-4' />
-                          Format
+                          {t('my.format')}
                         </div>
                         <div className='flex flex-wrap gap-2'>
                           {[
-                            { value: 'all', label: 'All' },
-                            { value: 'movie', label: 'Movies' },
-                            { value: 'tv', label: 'Series' },
+                            { value: 'all', label: t('common.all') },
+                            { value: 'movie', label: t('common.movies') },
+                            { value: 'tv', label: t('common.series') },
                           ].map((option) => {
                             const active = playFilterMode === option.value;
                             return (
@@ -1317,10 +1380,10 @@ function MyPageClient() {
                       <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2'>
                         <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-24 sm:flex-shrink-0 sm:pt-1'>
                           <Tags className='h-4 w-4' />
-                          Genres
+                          {t('my.genres')}
                         </div>
                         {loadingPlayGenreFilters ? (
-                          <JumpingDots label='Syncing genres' />
+                          <JumpingDots label={t('my.syncGenres')} />
                         ) : playGenreOptions.length > 0 ? (
                           <div className='flex flex-wrap gap-2'>
                             {playGenreOptions.map((genre) => {
@@ -1337,14 +1400,14 @@ function MyPageClient() {
                                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                                   }`}
                                 >
-                                  {formatGenreLabel(genre)}
+                                  {translateGenreLabel(genre)}
                                 </button>
                               );
                             })}
                           </div>
                         ) : (
                           <span className='text-sm text-gray-500 dark:text-gray-400'>
-                            No genres available yet. Wait for sync to finish.
+                            {t('my.noGenresAvailable')}
                           </span>
                         )}
                       </div>
@@ -1370,6 +1433,8 @@ function MyPageClient() {
                     {filteredPlayRecords.map((record) => {
                       const { source, id } = parseStorageKey(record.key);
                       const isSelected = selectedPlayKeys.has(record.key);
+                      const localizedDisplay =
+                        tmdbDisplayByKey[`${tmdbLanguage}:${record.key}`];
                       return (
                         <div
                           key={record.key}
@@ -1388,13 +1453,13 @@ function MyPageClient() {
                           <VideoCard
                             id={id}
                             source={source}
-                            title={record.title}
-                            poster={tmdbPosterByKey[record.key] || ''}
+                            title={localizedDisplay?.title || record.title}
+                            poster={localizedDisplay?.poster || ''}
                             source_name={record.source_name}
-                            year={record.year}
+                            year={localizedDisplay?.year || record.year}
                             episodes={record.total_episodes}
                             currentEpisode={record.index}
-                            subtitle={formatHistoryEpisodeMeta(record)}
+                            subtitle={formatHistoryEpisodeMeta(record, t)}
                             progress={getProgressPercent(record)}
                             query={record.search_title}
                             from='playrecord'
@@ -1432,8 +1497,8 @@ function MyPageClient() {
               ) : (
                 <div className='py-8 text-center text-sm text-gray-500 dark:text-gray-400'>
                   {playRecords.length === 0
-                    ? 'No watch history yet'
-                    : 'No matching watch history found'}
+                    ? t('my.emptyHistory')
+                    : t('my.matchingHistoryNotFound')}
                 </div>
               )}
             </section>
@@ -1442,7 +1507,9 @@ function MyPageClient() {
               <div ref={favoriteToolbarRef} className='space-y-3'>
                 <div className='mx-auto flex max-w-full flex-wrap items-center justify-center gap-2 py-1'>
                   <span className='shrink-0 text-xs font-semibold tracking-wide text-zinc-400'>
-                    {filteredFavoriteItems.length} items
+                    {t('my.itemCount', {
+                      count: filteredFavoriteItems.length,
+                    })}
                   </span>
                   <button
                     type='button'
@@ -1451,7 +1518,7 @@ function MyPageClient() {
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42] disabled:cursor-not-allowed disabled:opacity-45'
                   >
                     <Play className='h-4 w-4 fill-current text-zinc-300' />
-                    Play
+                    {t('my.play')}
                   </button>
                   <button
                     type='button'
@@ -1460,14 +1527,14 @@ function MyPageClient() {
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42] disabled:cursor-not-allowed disabled:opacity-45'
                   >
                     <Shuffle className='h-4 w-4 text-zinc-300' />
-                    Shuffle Play
+                    {t('my.shufflePlay')}
                   </button>
                   <button
                     type='button'
                     onClick={handleToggleFavoriteTitleSort}
                     className='inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/5 bg-[#2d3035] px-4 text-sm font-semibold text-zinc-100 transition-colors hover:bg-[#383c42]'
                   >
-                    Title
+                    {t('my.title')}
                     {favoriteSortMode === 'titleDesc' ? (
                       <ArrowDown className='h-4 w-4 text-zinc-300' />
                     ) : (
@@ -1476,7 +1543,7 @@ function MyPageClient() {
                   </button>
                   <button
                     type='button'
-                    aria-label='open-favorite-filter-panel'
+                    aria-label={t('my.filter')}
                     onClick={() => {
                       setShowFavoriteFilterPanel((prev) => !prev);
                     }}
@@ -1495,27 +1562,27 @@ function MyPageClient() {
                     <div className='mb-4 flex items-center justify-between'>
                       <div className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-200'>
                         <ListFilter className='h-5 w-5' />
-                        Filter
+                        {t('my.filter')}
                       </div>
                       <button
                         type='button'
                         onClick={resetFavoriteToolbar}
                         className='inline-flex items-center gap-1 px-1 py-1 text-sm font-medium text-red-500 transition hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
                       >
-                        Reset Filters
+                        {t('my.resetFilters')}
                       </button>
                     </div>
                     <div className='space-y-4'>
                       <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2'>
                         <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-24 sm:flex-shrink-0 sm:pt-1'>
                           <Clapperboard className='h-4 w-4' />
-                          Format
+                          {t('my.format')}
                         </div>
                         <div className='flex flex-wrap gap-2'>
                           {[
-                            { value: 'all', label: 'All' },
-                            { value: 'movie', label: 'Movies' },
-                            { value: 'tv', label: 'Series' },
+                            { value: 'all', label: t('common.all') },
+                            { value: 'movie', label: t('common.movies') },
+                            { value: 'tv', label: t('common.series') },
                           ].map((option) => {
                             const active = favoriteFilterMode === option.value;
                             return (
@@ -1543,10 +1610,10 @@ function MyPageClient() {
                       <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2'>
                         <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-24 sm:flex-shrink-0 sm:pt-1'>
                           <Tags className='h-4 w-4' />
-                          Genres
+                          {t('my.genres')}
                         </div>
                         {loadingFavoriteGenreFilters ? (
-                          <JumpingDots label='Syncing genres' />
+                          <JumpingDots label={t('my.syncGenres')} />
                         ) : favoriteGenreOptions.length > 0 ? (
                           <div className='flex flex-wrap gap-2'>
                             {favoriteGenreOptions.map((genre) => {
@@ -1566,14 +1633,14 @@ function MyPageClient() {
                                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                                   }`}
                                 >
-                                  {formatGenreLabel(genre)}
+                                  {translateGenreLabel(genre)}
                                 </button>
                               );
                             })}
                           </div>
                         ) : (
                           <span className='text-sm text-gray-500 dark:text-gray-400'>
-                            No genres available yet. Wait for sync to finish.
+                            {t('my.noGenresAvailable')}
                           </span>
                         )}
                       </div>
@@ -1596,64 +1663,69 @@ function MyPageClient() {
               ) : filteredFavoriteItems.length > 0 ? (
                 <div className='px-0'>
                   <div className='grid grid-cols-2 gap-x-2 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8'>
-                    {filteredFavoriteItems.map((item) => (
-                      <div
-                        key={item.key}
-                        className='relative'
-                        onPointerDown={(event) =>
-                          handleFavoriteLongPressStart(
-                            item.key,
-                            event.pointerType
-                          )
-                        }
-                        onPointerUp={handleLongPressEnd}
-                        onPointerLeave={handleLongPressEnd}
-                        onPointerCancel={handleLongPressEnd}
-                        onClickCapture={handleFavoriteCardClickCapture}
-                      >
-                        <VideoCard
-                          id={item.id}
-                          source={item.source}
-                          title={item.title}
-                          poster={tmdbPosterByKey[item.key] || item.poster}
-                          source_name={item.sourceName}
-                          year={item.year}
-                          episodes={item.episodes}
-                          currentEpisode={item.currentEpisode}
-                          subtitle={item.year}
-                          query={item.searchTitle}
-                          from='favorite'
-                          type={item.episodes > 1 ? 'tv' : ''}
-                          displayVariant='poster-info'
-                        />
-                        {isFavoriteBatchMode ? (
-                          <button
-                            type='button'
-                            aria-label='toggle-favorite-selection'
-                            className='absolute inset-0 z-20 rounded-[var(--ui-radius-card)] bg-black/10 transition-colors hover:bg-black/15'
-                            onClick={() => toggleFavoriteSelection(item.key)}
-                          >
-                            <span
-                              className={`absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold ${
-                                selectedFavoriteKeys.has(item.key)
-                                  ? 'border-red-500 bg-red-500 text-white'
-                                  : 'border-white/80 bg-black/40 text-transparent'
-                              }`}
+                    {filteredFavoriteItems.map((item) => {
+                      const localizedDisplay =
+                        tmdbDisplayByKey[`${tmdbLanguage}:${item.key}`];
+                      const displayYear = localizedDisplay?.year || item.year;
+                      return (
+                        <div
+                          key={item.key}
+                          className='relative'
+                          onPointerDown={(event) =>
+                            handleFavoriteLongPressStart(
+                              item.key,
+                              event.pointerType
+                            )
+                          }
+                          onPointerUp={handleLongPressEnd}
+                          onPointerLeave={handleLongPressEnd}
+                          onPointerCancel={handleLongPressEnd}
+                          onClickCapture={handleFavoriteCardClickCapture}
+                        >
+                          <VideoCard
+                            id={item.id}
+                            source={item.source}
+                            title={localizedDisplay?.title || item.title}
+                            poster={localizedDisplay?.poster || item.poster}
+                            source_name={item.sourceName}
+                            year={displayYear}
+                            episodes={item.episodes}
+                            currentEpisode={item.currentEpisode}
+                            subtitle={displayYear}
+                            query={item.searchTitle}
+                            from='favorite'
+                            type={item.episodes > 1 ? 'tv' : ''}
+                            displayVariant='poster-info'
+                          />
+                          {isFavoriteBatchMode ? (
+                            <button
+                              type='button'
+                              aria-label='toggle-favorite-selection'
+                              className='absolute inset-0 z-20 rounded-[var(--ui-radius-card)] bg-black/10 transition-colors hover:bg-black/15'
+                              onClick={() => toggleFavoriteSelection(item.key)}
                             >
-                              {'\u2713'}
-                            </span>
-                          </button>
-                        ) : null}
-                      </div>
-                    ))}
+                              <span
+                                className={`absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold ${
+                                  selectedFavoriteKeys.has(item.key)
+                                    ? 'border-red-500 bg-red-500 text-white'
+                                    : 'border-white/80 bg-black/40 text-transparent'
+                                }`}
+                              >
+                                {'\u2713'}
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
                 <div className='px-0'>
                   <div className='py-8 text-center text-sm text-gray-500 dark:text-gray-400'>
                     {favoriteItems.length === 0
-                      ? 'No favorites yet'
-                      : 'No matching favorites found'}
+                      ? t('my.emptyFavorites')
+                      : t('my.matchingFavoritesNotFound')}
                   </div>
                 </div>
               )}
@@ -1669,11 +1741,15 @@ function MyPageClient() {
       >
         <AlertDialogContent className={glassDialogContentClass}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{'Confirm deletion?'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('my.confirmDeletion')}</AlertDialogTitle>
             <AlertDialogDescription className={glassDialogDescriptionClass}>
               {deleteTarget === 'play'
-                ? `${selectedPlayKeys.size} history records will be deleted.`
-                : `${selectedFavoriteKeys.size} favorites will be removed.`}
+                ? t('my.deleteHistoryDescription', {
+                    count: selectedPlayKeys.size,
+                  })
+                : t('my.deleteFavoritesDescription', {
+                    count: selectedFavoriteKeys.size,
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1681,7 +1757,7 @@ function MyPageClient() {
               disabled={deleting}
               className={glassDialogCancelClass}
             >
-              {'Cancel'}
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
@@ -1691,7 +1767,7 @@ function MyPageClient() {
               }}
               className={glassDialogDangerActionClass}
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? t('common.deleting') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

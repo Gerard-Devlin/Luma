@@ -15,12 +15,11 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
 import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
-
-const CLOSE_MENU_LABEL = 'Close menu';
 
 interface MobileBottomNavProps {
   /**
@@ -42,6 +41,7 @@ const MobileBottomNav = ({
   showBackButton = false,
   useHeroHeaderStyle = false,
 }: MobileBottomNavProps) => {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const { showMatrixLoading, navigateLinkWithMatrixLoading } =
@@ -52,14 +52,14 @@ const MobileBottomNav = ({
     activePath === '/' || useHeroHeaderStyle;
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/' },
-    { icon: UserRound, label: 'My Library', href: '/my' },
+    { icon: Home, label: t('common.home'), href: '/' },
+    { icon: UserRound, label: t('common.myLibrary'), href: '/my' },
   ];
 
   const categoryItems = [
-    { icon: Film, label: 'Movies', href: '/discover?type=movie' },
-    { icon: Tv, label: 'Series', href: '/discover?type=tv' },
-    { icon: HeartPulse, label: 'Shows', href: '/discover?type=show' },
+    { icon: Film, label: t('common.movies'), href: '/discover?type=movie' },
+    { icon: Tv, label: t('common.series'), href: '/discover?type=tv' },
+    { icon: HeartPulse, label: t('common.shows'), href: '/discover?type=show' },
   ];
 
   useEffect(() => {
@@ -160,21 +160,21 @@ const MobileBottomNav = ({
                 <div className='flex h-full items-center gap-2.5'>
                   <button
                     type='button'
-                    aria-label={CLOSE_MENU_LABEL}
+                    aria-label={t('common.closeMenu')}
                     onClick={onMenuToggle || onClose}
                     className='flex h-11 w-11 items-center justify-center rounded-full text-zinc-100 transition-colors active:bg-[var(--ui-glass-row-hover)]'
                   >
                     <X className='h-6 w-6' />
                   </button>
                   <div className='text-[20px] font-semibold leading-none text-white'>
-                    Menu
+                    {t('common.menu')}
                   </div>
                   {showBackButton ? (
                     <>
                       <div className='ui-glass-divider h-5 w-px' />
                       <button
                         type='button'
-                        aria-label='Back'
+                        aria-label={t('common.back')}
                         onClick={() => window.history.back()}
                         className='flex h-10 w-10 items-center justify-center rounded-full text-zinc-200 transition-colors active:bg-[var(--ui-glass-row-hover)]'
                       >
@@ -187,14 +187,14 @@ const MobileBottomNav = ({
 
               <div className='mx-auto max-w-[720px] px-7'>
                 <div className='mt-8 text-sm font-semibold text-zinc-500'>
-                  Menu
+                  {t('common.menu')}
                 </div>
                 <ul className='mt-3.5 flex flex-col gap-3.5'>
                   {navItems.map(renderNavItem)}
                 </ul>
 
                 <div className='mt-6 text-sm font-semibold text-zinc-500'>
-                  Categories
+                  {t('common.categories')}
                 </div>
                 <ul className='mt-3.5 flex flex-col gap-3.5'>
                   {categoryItems.map(renderNavItem)}

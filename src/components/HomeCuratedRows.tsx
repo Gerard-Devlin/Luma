@@ -7,7 +7,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
@@ -50,6 +52,7 @@ function CuratedRowSection({
   row,
   onNavigateWithMatrixLoading,
 }: CuratedRowSectionProps) {
+  const { i18n, t } = useTranslation();
   const sectionRef = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<CuratedDiscoverItem[]>([]);
@@ -62,8 +65,10 @@ function CuratedRowSection({
     const load = async () => {
       try {
         setLoading(true);
+        const params = buildCuratedCategoryQuery(row, 1);
+        params.set('tmdbLanguage', getCurrentTmdbLanguage());
         const response = await fetch(
-          `/api/tmdb/discover?${buildCuratedCategoryQuery(row, 1).toString()}`,
+          `/api/tmdb/discover?${params.toString()}`,
           { signal: controller.signal }
         );
         const payload = (await response.json()) as DiscoverApiResponse;
@@ -83,7 +88,7 @@ function CuratedRowSection({
     return () => {
       controller.abort();
     };
-  }, [row]);
+  }, [i18n.language, row]);
 
   useEffect(() => {
     if (isInView) return;
@@ -128,7 +133,7 @@ function CuratedRowSection({
     <section ref={sectionRef} className='mb-8'>
       <div className='mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>
-          {row.title}
+          {t(`curated.${row.slug}`, { defaultValue: row.title })}
         </h2>
         <Link
           href={`/curated/${row.slug}`}
@@ -137,7 +142,7 @@ function CuratedRowSection({
           }
           className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
         >
-          <span>See All</span>
+          <span>{t('common.seeAll')}</span>
           <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
             ›
           </span>
@@ -188,6 +193,7 @@ function CuratedRowSection({
 }
 
 export default function HomeCuratedRows() {
+  const { t } = useTranslation();
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState(LOAD_BATCH_SIZE);
   const [loadingMoreRows, setLoadingMoreRows] = useState(false);
@@ -256,7 +262,7 @@ export default function HomeCuratedRows() {
             {loadingMoreRows ? (
               <div className='inline-flex items-center gap-2 text-sm text-gray-500 dark:text-zinc-400'>
                 <span className='h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-sky-500 dark:border-zinc-600 dark:border-t-sky-400' />
-                {'Loading...'}
+                {t('common.loading')}
               </div>
             ) : (
               <span className='h-5 w-5 rounded-full border border-transparent' />

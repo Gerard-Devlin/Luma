@@ -10,7 +10,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { addSearchHistory } from '@/lib/db.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import type { SearchResult } from '@/lib/types';
@@ -50,6 +52,7 @@ export default function MobileSearchOverlay({
   open,
   onClose,
 }: MobileSearchOverlayProps) {
+  const { i18n } = useTranslation();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -100,7 +103,9 @@ export default function MobileSearchOverlay({
       setHasSearched(true);
       try {
         const response = await fetch(
-          `/api/tmdb/search?q=${encodeURIComponent(trimmedQuery)}`,
+          `/api/tmdb/search?q=${encodeURIComponent(
+            trimmedQuery
+          )}&tmdbLanguage=${encodeURIComponent(getCurrentTmdbLanguage())}`,
           { signal: controller.signal }
         );
         if (!response.ok) {
@@ -120,7 +125,7 @@ export default function MobileSearchOverlay({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [open, trimmedQuery]);
+  }, [i18n.language, open, trimmedQuery]);
 
   const handleClearQuery = useCallback(() => {
     setQuery('');
