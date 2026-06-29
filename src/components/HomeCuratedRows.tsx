@@ -178,6 +178,8 @@ function CuratedRowSection({
               >
                 <VideoCard
                   from='discover'
+                  id={item.id}
+                  source='tmdb'
                   title={item.title}
                   poster={item.poster}
                   rate={item.rate}

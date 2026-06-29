@@ -1418,7 +1418,16 @@ export default function VideoCard({
       return;
     }
 
+    const tmdbStorage =
+      actualSource === 'tmdb' ? parseTmdbStorageId(String(actualId || '')) : null;
+    const tmdbDetailId =
+      tmdbStorage?.tmdbId ||
+      (actualSource === 'tmdb' && /^\d+$/.test(String(actualId || ''))
+        ? String(actualId)
+        : '');
+
     const detailUrl = buildTmdbDetailPageUrl({
+      id: tmdbDetailId || undefined,
       title: tmdbTrigger.title,
       mediaType: tmdbTrigger.mediaType,
       year: tmdbTrigger.year,
@@ -1432,7 +1441,7 @@ export default function VideoCard({
     }
 
     router.push(detailUrl);
-  }, [from, goToPlay, router, tmdbTrigger]);
+  }, [actualId, actualSource, from, goToPlay, router, tmdbTrigger]);
 
   const handleCardContainerClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
