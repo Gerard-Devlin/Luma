@@ -4,6 +4,10 @@
   <img src="public/logo.png" alt="Luma Logo" width="120">
 </div>
 
+<p align="center">
+  English · <a href="README_CN.md">中文</a>
+</p>
+
 > **Luma** is a cross-platform streaming aggregation app built with **Next.js 14**, **Tailwind CSS**, and **TypeScript**.
 
 <div align="center">
@@ -26,6 +30,7 @@
 
 - 🔎 **Multi-source search**: Search across configured providers and get aggregated results in one place.
 - 🎬 **TMDB metadata enrichment**: Posters, backdrops, ratings, cast, collections, and recommendations.
+- 🌐 **Multilingual interface**: Switch between English and Chinese, with TMDB requests following the selected language.
 - 🧠 **Personalized recommendation engine**: Build watch-history-aware discovery rails from TMDB recommendations, similar titles, keywords, credits, and ranking signals.
 - 🍿 **Movie and TV discovery**: Browse movies, series, curated categories, years, ratings, and runtime filters.
 - ⭐ **Favorites and continue watching**: Save favorites, watch history, playback progress, and resume points.
