@@ -1359,7 +1359,6 @@ function PlayPageClient() {
       const detailParams = new URLSearchParams({
         id: String(initialTmdbId),
         mediaType: initialTmdbMediaType,
-        logoLang: 'en',
       });
       const titleParam = searchParams.get('title');
       const yearParam = searchParams.get('year');
