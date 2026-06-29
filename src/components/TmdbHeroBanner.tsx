@@ -1862,7 +1862,7 @@ export default function TmdbHeroBanner({
                         ? 'w-7 bg-white'
                         : 'w-1.5 bg-white/35 active:bg-white/65'
                     }`}
-                  aria-label={t('hero.goToSlide', { count: index + 1 })}
+                    aria-label={t('hero.goToSlide', { count: index + 1 })}
                   />
                 ))}
               </div>
