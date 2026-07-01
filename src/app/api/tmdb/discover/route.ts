@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
+import { uniqueById } from '@/lib/unique-list';
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -247,33 +248,41 @@ interface TmdbDiscoverListItem {
 }
 
 function mapMovieList(list: TmdbDiscoverMovieItem[]): TmdbDiscoverListItem[] {
-  return list
-    .filter((item) => Number.isInteger(item.id) && !!item.poster_path && !!item.title)
-    .map((item) => ({
-      id: String(item.id),
-      title: normalizeText(item.title),
-      poster: `${TMDB_IMAGE_BASE_URL}${item.poster_path}`,
-      backdrop: item.backdrop_path
-        ? `${TMDB_BACKDROP_IMAGE_BASE_URL}${item.backdrop_path}`
-        : undefined,
-      rate: toRate(item.vote_average),
-      year: toYear(item.release_date),
-    }));
+  return uniqueById(
+    list
+      .filter(
+        (item) => Number.isInteger(item.id) && !!item.poster_path && !!item.title
+      )
+      .map((item) => ({
+        id: String(item.id),
+        title: normalizeText(item.title),
+        poster: `${TMDB_IMAGE_BASE_URL}${item.poster_path}`,
+        backdrop: item.backdrop_path
+          ? `${TMDB_BACKDROP_IMAGE_BASE_URL}${item.backdrop_path}`
+          : undefined,
+        rate: toRate(item.vote_average),
+        year: toYear(item.release_date),
+      }))
+  );
 }
 
 function mapTvList(list: TmdbDiscoverTvItem[]): TmdbDiscoverListItem[] {
-  return list
-    .filter((item) => Number.isInteger(item.id) && !!item.poster_path && !!item.name)
-    .map((item) => ({
-      id: String(item.id),
-      title: normalizeText(item.name),
-      poster: `${TMDB_IMAGE_BASE_URL}${item.poster_path}`,
-      backdrop: item.backdrop_path
-        ? `${TMDB_BACKDROP_IMAGE_BASE_URL}${item.backdrop_path}`
-        : undefined,
-      rate: toRate(item.vote_average),
-      year: toYear(item.first_air_date),
-    }));
+  return uniqueById(
+    list
+      .filter(
+        (item) => Number.isInteger(item.id) && !!item.poster_path && !!item.name
+      )
+      .map((item) => ({
+        id: String(item.id),
+        title: normalizeText(item.name),
+        poster: `${TMDB_IMAGE_BASE_URL}${item.poster_path}`,
+        backdrop: item.backdrop_path
+          ? `${TMDB_BACKDROP_IMAGE_BASE_URL}${item.backdrop_path}`
+          : undefined,
+        rate: toRate(item.vote_average),
+        year: toYear(item.first_air_date),
+      }))
+  );
 }
 
 interface DiscoverApiResponse {

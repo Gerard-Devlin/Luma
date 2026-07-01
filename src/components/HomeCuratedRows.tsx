@@ -15,6 +15,7 @@ import {
   CuratedCategoryConfig,
   HOME_CURATED_CATEGORY_CONFIGS,
 } from '@/lib/curated-categories';
+import { uniqueById } from '@/lib/unique-list';
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
 import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
@@ -75,7 +76,7 @@ function CuratedRowSection({
         if (!response.ok || payload.code !== 200) {
           throw new Error(payload.message || 'Failed to fetch curated row');
         }
-        setItems(payload.list.slice(0, 12));
+        setItems(uniqueById(payload.list).slice(0, 12));
       } catch {
         setItems([]);
       } finally {

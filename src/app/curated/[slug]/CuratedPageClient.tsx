@@ -10,6 +10,7 @@ import {
   CuratedCategoryConfig,
   getCuratedCategoryBySlug,
 } from '@/lib/curated-categories';
+import { mergeUniqueById, uniqueById } from '@/lib/unique-list';
 
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
@@ -85,7 +86,11 @@ export default function CuratedPageClient() {
           throw new Error(payload.message || 'Failed to load');
         }
 
-        setItems((prev) => (append ? [...prev, ...payload.list] : payload.list));
+        setItems((prev) =>
+          append
+            ? mergeUniqueById(prev, payload.list)
+            : uniqueById(payload.list)
+        );
         setCurrentPage(payload.page || page);
         setHasMore((payload.page || page) < (payload.total_pages || 1));
       } catch (err) {
@@ -177,7 +182,7 @@ export default function CuratedPageClient() {
             <>
               <div className='grid grid-cols-2 justify-start gap-x-2 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8'>
                 {items.map((item) => (
-                  <div key={`${item.id}-${item.title}`} className='w-full'>
+                  <div key={item.id} className='w-full'>
                     <VideoCard
                       from='discover'
                       id={item.id}

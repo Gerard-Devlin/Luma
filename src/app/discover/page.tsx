@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentTmdbLanguage } from '@/i18n/client';
+import { mergeUniqueById, uniqueById } from '@/lib/unique-list';
 import DiscoverCardSkeleton from '@/components/DiscoverCardSkeleton';
 import PageLayout from '@/components/PageLayout';
 import TmdbHeroBanner from '@/components/TmdbHeroBanner';
@@ -325,7 +326,9 @@ function DiscoverPageClient() {
           throw new Error(data.message || 'Failed to fetch TMDB data');
         }
 
-        setItems((prev) => (append ? [...prev, ...data.list] : data.list));
+        setItems((prev) =>
+          append ? mergeUniqueById(prev, data.list) : uniqueById(data.list)
+        );
         setCurrentPage(data.page || page);
         setTotalPages(data.total_pages || 1);
         setTotalResults(data.total_results || 0);
@@ -374,7 +377,9 @@ function DiscoverPageClient() {
           );
         }
 
-        setShowItems((prev) => (append ? [...prev, ...data.list] : data.list));
+        setShowItems((prev) =>
+          append ? mergeUniqueById(prev, data.list) : uniqueById(data.list)
+        );
         const current = data.page || page + 1;
         const total = data.total_pages || 1;
         setShowHasMore(current < total);
@@ -1047,8 +1052,8 @@ function DiscoverPageClient() {
                 ? skeletonData.map((index) => (
                     <DiscoverCardSkeleton key={index} />
                   ))
-                : (type === 'show' ? showItems : items).map((item, index) => (
-                    <div key={`${item.id}-${index}`} className='w-full'>
+                : (type === 'show' ? showItems : items).map((item) => (
+                    <div key={item.id} className='w-full'>
                       <VideoCard
                         id={item.id}
                         source='tmdb'
