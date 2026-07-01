@@ -413,7 +413,7 @@ function RankedSection({
 
   return (
     <section className='mb-6'>
-      <div className='mb-4 flex items-center justify-between'>
+      <div className='relative z-[650] mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>{title}</h2>
         <Link
           href={href}
@@ -474,7 +474,7 @@ function RankedSection({
                     top: '40%',
                     bottom: '60%',
                     left: '-4.5rem',
-                    pointerEvents: 'auto',
+                    pointerEvents: desktopHovered ? 'auto' : 'none',
                   }}
                 >
                   <button
@@ -502,7 +502,7 @@ function RankedSection({
                     top: '40%',
                     bottom: '60%',
                     right: '-4.5rem',
-                    pointerEvents: 'auto',
+                    pointerEvents: desktopHovered ? 'auto' : 'none',
                   }}
                 >
                   <button

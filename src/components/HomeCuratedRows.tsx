@@ -131,7 +131,7 @@ function CuratedRowSection({
 
   return (
     <section ref={sectionRef} className='mb-4'>
-      <div className='mb-4 flex items-center justify-between'>
+      <div className='relative z-[650] mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>
           {t(`curated.${row.slug}`, { defaultValue: row.title })}
         </h2>
