@@ -143,6 +143,7 @@ export default function DesktopTopSearch() {
       setOpen(false);
       router.push(
         buildTmdbDetailPageUrl({
+          id: result.source === 'tmdb' ? result.id : undefined,
           title: result.title,
           mediaType: getMediaType(result),
           year: normalizeYear(result.year),

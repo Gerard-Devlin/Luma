@@ -276,6 +276,29 @@ function normalizeMediaType(value?: string, episodes?: number): TmdbMediaType {
   return 'movie';
 }
 
+function getTmdbDetailId(
+  id: string | undefined,
+  source: string | undefined,
+  from: VideoCardProps['from']
+): string {
+  const normalizedId = String(id || '').trim();
+  if (!normalizedId) return '';
+
+  const tmdbStorage =
+    source === 'tmdb' ? parseTmdbStorageId(normalizedId) : null;
+  if (tmdbStorage?.tmdbId) return tmdbStorage.tmdbId;
+
+  if (source === 'tmdb' && /^\d+$/.test(normalizedId)) {
+    return normalizedId;
+  }
+
+  if (from === 'discover' && /^\d+$/.test(normalizedId)) {
+    return normalizedId;
+  }
+
+  return '';
+}
+
 function normalizeDetailCacheTitle(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -1418,13 +1441,7 @@ export default function VideoCard({
       return;
     }
 
-    const tmdbStorage =
-      actualSource === 'tmdb' ? parseTmdbStorageId(String(actualId || '')) : null;
-    const tmdbDetailId =
-      tmdbStorage?.tmdbId ||
-      (actualSource === 'tmdb' && /^\d+$/.test(String(actualId || ''))
-        ? String(actualId)
-        : '');
+    const tmdbDetailId = getTmdbDetailId(actualId, actualSource, from);
 
     const detailUrl = buildTmdbDetailPageUrl({
       id: tmdbDetailId || undefined,

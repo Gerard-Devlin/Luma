@@ -1050,6 +1050,8 @@ function DiscoverPageClient() {
                 : (type === 'show' ? showItems : items).map((item, index) => (
                     <div key={`${item.id}-${index}`} className='w-full'>
                       <VideoCard
+                        id={item.id}
+                        source='tmdb'
                         from='discover'
                         title={item.title}
                         poster={item.poster}

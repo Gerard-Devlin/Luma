@@ -180,6 +180,8 @@ export default function CuratedPageClient() {
                   <div key={`${item.id}-${item.title}`} className='w-full'>
                     <VideoCard
                       from='discover'
+                      id={item.id}
+                      source='tmdb'
                       title={item.title}
                       poster={item.poster}
                       rate={item.rate}

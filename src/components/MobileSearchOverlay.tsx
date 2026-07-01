@@ -154,6 +154,7 @@ export default function MobileSearchOverlay({
       onClose();
       router.push(
         buildTmdbDetailPageUrl({
+          id: result.source === 'tmdb' ? result.id : undefined,
           title: result.title,
           mediaType: getMediaType(result),
           year: normalizeYear(result.year),
