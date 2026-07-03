@@ -11,6 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Copy,
+  Download,
+  ExternalLink,
   Film,
   Info,
   RefreshCw,
@@ -314,6 +317,136 @@ function addResumeParamsToEmbedUrl(url: string, resumeTime: number): string {
   }
 }
 
+const DIRECT_VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'mkv']);
+const STREAMING_PLAYLIST_EXTENSIONS = new Set(['m3u8', 'mpd']);
+const CAPTURED_MEDIA_MESSAGE_TYPES = new Set([
+  'LUMA_MEDIA_URL_FOUND',
+  'luma:media-url-found',
+  'm3u8-found',
+]);
+
+function toBrowserUrl(value: string): string {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+
+  try {
+    if (typeof window === 'undefined') return trimmed;
+    return new URL(trimmed, window.location.href).toString();
+  } catch {
+    return trimmed;
+  }
+}
+
+function getPlaybackUrlExtension(value: string): string {
+  const url = toBrowserUrl(value);
+  if (!url) return '';
+
+  try {
+    const base =
+      typeof window !== 'undefined' ? window.location.href : 'http://localhost';
+    const parsed = new URL(url, base);
+    const match = parsed.pathname.toLowerCase().match(/\.([a-z0-9]{2,5})$/);
+    return match?.[1] || '';
+  } catch {
+    const path = url.split(/[?#]/)[0] || '';
+    const match = path.toLowerCase().match(/\.([a-z0-9]{2,5})$/);
+    return match?.[1] || '';
+  }
+}
+
+function isDirectVideoDownloadUrl(value: string): boolean {
+  const extension = getPlaybackUrlExtension(value);
+  return DIRECT_VIDEO_EXTENSIONS.has(extension);
+}
+
+function isStreamingPlaylistUrl(value: string): boolean {
+  const extension = getPlaybackUrlExtension(value);
+  return STREAMING_PLAYLIST_EXTENSIONS.has(extension);
+}
+
+function isSupportedCapturedMediaUrl(value: string): boolean {
+  const url = toBrowserUrl(value);
+  if (!url) return false;
+
+  try {
+    const base =
+      typeof window !== 'undefined' ? window.location.href : 'http://localhost';
+    const parsed = new URL(url, base);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return isDirectVideoDownloadUrl(url) || isStreamingPlaylistUrl(url);
+}
+
+function extractCapturedMediaUrl(data: unknown): string {
+  const parsed = parseMessagePayload(data);
+  if (!parsed || typeof parsed !== 'object') return '';
+
+  const record = parsed as Record<string, unknown>;
+  const messageType =
+    typeof record.type === 'string'
+      ? record.type
+      : typeof record.kind === 'string'
+      ? record.kind
+      : '';
+  if (!CAPTURED_MEDIA_MESSAGE_TYPES.has(messageType)) return '';
+
+  const url =
+    typeof record.url === 'string'
+      ? record.url
+      : typeof record.href === 'string'
+      ? record.href
+      : '';
+  return isSupportedCapturedMediaUrl(url) ? toBrowserUrl(url) : '';
+}
+
+function sanitizeDownloadFileName(value: string): string {
+  return (
+    (value || '')
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .slice(0, 120)
+      .trim() || 'luma-video'
+  );
+}
+
+function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand('copy');
+    return Promise.resolve();
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+function triggerBrowserDownload(url: string, fileName: string): void {
+  const anchor = document.createElement('a');
+  anchor.href = toBrowserUrl(url);
+  anchor.download = fileName;
+  anchor.rel = 'noopener noreferrer';
+  anchor.target = '_blank';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 function PlayPageClient() {
   const { i18n, t } = useTranslation();
   const router = useRouter();
@@ -453,6 +586,10 @@ function PlayPageClient() {
   const tmdbEmbedIframeRef = useRef<HTMLIFrameElement | null>(null);
   const tmdbEmbedProgressRef = useRef<TmdbEmbedProgressState | null>(null);
   const historyResumeKeysRef = useRef<Set<string>>(new Set());
+  const downloadPanelRef = useRef<HTMLDivElement | null>(null);
+  const [downloadPanelOpen, setDownloadPanelOpen] = useState(false);
+  const [downloadNotice, setDownloadNotice] = useState('');
+  const [capturedPlaybackUrl, setCapturedPlaybackUrl] = useState('');
 
   // 同步最新值到 refs
   useEffect(() => {
@@ -1572,6 +1709,70 @@ function PlayPageClient() {
   }, [playerEmbedUrl, tmdbDetail]);
 
   useEffect(() => {
+    if (!downloadPanelOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        downloadPanelRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setDownloadPanelOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDownloadPanelOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, {
+      passive: true,
+    });
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [downloadPanelOpen]);
+
+  useEffect(() => {
+    setCapturedPlaybackUrl('');
+  }, [playerEmbedUrl, currentEpisodeIndex, currentSeason, playerProvider]);
+
+  useEffect(() => {
+    const captureUrl = (url: string) => {
+      if (!isSupportedCapturedMediaUrl(url)) return;
+      setCapturedPlaybackUrl(toBrowserUrl(url));
+    };
+    const handleMessage = (event: MessageEvent) => {
+      const url = extractCapturedMediaUrl(event.data);
+      if (url) captureUrl(url);
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    const mediaBridge = (
+      window as Window & {
+        electron?: {
+          onM3u8Found?: (callback: (url: string) => void) => unknown;
+          offM3u8Found?: (handler: unknown) => void;
+        };
+      }
+    ).electron;
+    const m3u8Handler = mediaBridge?.onM3u8Found?.(captureUrl);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (m3u8Handler) {
+        mediaBridge?.offM3u8Found?.(m3u8Handler);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     // 页面即将卸载时保存播放进度
     const handleBeforeUnload = () => {
       saveTmdbEmbedPlayProgress(true);
@@ -1941,6 +2142,58 @@ function PlayPageClient() {
     (a, b) => a.episodeNumber - b.episodeNumber
   );
   const currentTmdbEpisodeNumber = currentEpisodeIndex + 1;
+  const rawPlaybackSource =
+    capturedPlaybackUrl ||
+    detail?.episodes?.[currentEpisodeIndex] ||
+    playerEmbedUrl ||
+    '';
+  const downloadSourceUrl = toBrowserUrl(rawPlaybackSource);
+  const canDirectDownload = isDirectVideoDownloadUrl(downloadSourceUrl);
+  const isStreamingDownloadSource = isStreamingPlaylistUrl(downloadSourceUrl);
+  const downloadExtension = getPlaybackUrlExtension(downloadSourceUrl);
+  const downloadFileName = `${sanitizeDownloadFileName(
+    `${displayTitle}${
+      tmdbMediaType === 'tv' || totalEpisodes > 1
+        ? ` S${currentSeason}E${currentTmdbEpisodeNumber}`
+        : ''
+    }`
+  )}.${canDirectDownload && downloadExtension ? downloadExtension : 'mp4'}`;
+  const downloadHintKey = canDirectDownload
+    ? 'play.directDownloadHint'
+    : isStreamingDownloadSource
+    ? 'play.streamingDownloadHint'
+    : 'play.externalDownloadHint';
+  const handlePrimaryDownloadClick = () => {
+    if (!downloadSourceUrl) {
+      setDownloadNotice(t('play.downloadUnavailable'));
+      setDownloadPanelOpen(true);
+      return;
+    }
+
+    if (canDirectDownload) {
+      triggerBrowserDownload(downloadSourceUrl, downloadFileName);
+      setDownloadNotice(t('play.downloadStarted'));
+      return;
+    }
+
+    setDownloadNotice('');
+    setDownloadPanelOpen((open) => !open);
+  };
+  const handleCopyPlaybackSource = async () => {
+    if (!downloadSourceUrl) return;
+
+    try {
+      await copyTextToClipboard(downloadSourceUrl);
+      setDownloadNotice(t('play.playbackSourceCopied'));
+    } catch {
+      setDownloadNotice(t('play.copyPlaybackSourceFailed'));
+    }
+  };
+  const handleOpenPlaybackSource = () => {
+    if (!downloadSourceUrl) return;
+    window.open(downloadSourceUrl, '_blank', 'noopener,noreferrer');
+    setDownloadNotice(t('play.playbackSourceOpened'));
+  };
   const formatEpisodeMeta = (episode: TmdbEpisodeItem): string => {
     const chunks: string[] = [];
     if (episode.runtime) {
@@ -2237,6 +2490,98 @@ function PlayPageClient() {
                       }}
                       className='h-full w-full rounded-[var(--ui-radius-card)] border-0 bg-black'
                     />
+                  ) : null}
+
+                  {downloadSourceUrl ? (
+                    <div
+                      ref={downloadPanelRef}
+                      className='absolute right-3 top-3 z-[650] flex flex-col items-end gap-2'
+                    >
+                      <button
+                        type='button'
+                        onClick={handlePrimaryDownloadClick}
+                        className={`ui-glass-control inline-flex h-11 min-w-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] ${
+                          downloadPanelOpen ? 'ui-glass-control-active' : ''
+                        }`}
+                        aria-label={t('play.downloadCurrentVideo')}
+                        title={t('play.downloadCurrentVideo')}
+                      >
+                        <Download className='h-4 w-4' />
+                        <span className='hidden sm:inline'>
+                          {t('play.download')}
+                        </span>
+                      </button>
+
+                      {downloadPanelOpen ? (
+                        <div
+                          className='ui-glass-panel w-[min(86vw,21rem)] p-3 text-left text-white shadow-[var(--ui-shadow-panel)]'
+                          style={{ borderRadius: 'var(--ui-radius-panel)' }}
+                        >
+                          <div className='mb-2 flex items-start gap-2'>
+                            <Info className='mt-0.5 h-4 w-4 flex-shrink-0 text-sky-200' />
+                            <div className='min-w-0'>
+                              <p className='text-sm font-semibold'>
+                                {t('play.downloadOptions')}
+                              </p>
+                              <p className='mt-1 text-xs leading-5 text-white/72'>
+                                {t(downloadHintKey)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className='flex flex-col gap-2'>
+                            {canDirectDownload ? (
+                              <button
+                                type='button'
+                                onClick={() => {
+                                  triggerBrowserDownload(
+                                    downloadSourceUrl,
+                                    downloadFileName
+                                  );
+                                  setDownloadNotice(t('play.downloadStarted'));
+                                }}
+                                className='ui-glass-control inline-flex h-10 w-full items-center justify-center gap-2 px-3 text-sm font-medium'
+                                style={{
+                                  borderRadius: 'var(--ui-radius-row)',
+                                }}
+                              >
+                                <Download className='h-4 w-4' />
+                                {t('play.saveVideo')}
+                              </button>
+                            ) : null}
+                            <button
+                              type='button'
+                              onClick={handleOpenPlaybackSource}
+                              className='ui-glass-control inline-flex h-10 w-full items-center justify-center gap-2 px-3 text-sm font-medium'
+                              style={{ borderRadius: 'var(--ui-radius-row)' }}
+                            >
+                              <ExternalLink className='h-4 w-4' />
+                              {t('play.openPlaybackSource')}
+                            </button>
+                            <button
+                              type='button'
+                              onClick={handleCopyPlaybackSource}
+                              className='ui-glass-control inline-flex h-10 w-full items-center justify-center gap-2 px-3 text-sm font-medium'
+                              style={{ borderRadius: 'var(--ui-radius-row)' }}
+                            >
+                              {downloadNotice ===
+                              t('play.playbackSourceCopied') ? (
+                                <Check className='h-4 w-4' />
+                              ) : (
+                                <Copy className='h-4 w-4' />
+                              )}
+                              {t('play.copyPlaybackSource')}
+                            </button>
+                          </div>
+
+                          {downloadNotice ? (
+                            <p className='mt-2 text-xs leading-5 text-white/70'>
+                              {downloadNotice}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
 
                   {isVideoLoading && (

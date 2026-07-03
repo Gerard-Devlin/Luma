@@ -4,10 +4,10 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
+  ArrowLeft,
   Clapperboard,
   HeartPulse,
   Home,
-  ArrowLeft,
   Menu,
   Search,
   Tv,
@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
 
+import GitHubStarButton from '@/components/GitHubStarButton';
 import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 
 interface SidebarContextType {
@@ -242,69 +243,69 @@ const Sidebar = ({
               >
                 {/* Primary navigation */}
                 <nav className='space-y-1'>
-              <Link
-                href='/'
-                onClick={(event) => {
-                  setActive('/');
-                  collapseSidebar();
-                  navigateLinkWithMatrixLoading(event, '/');
-                }}
-                data-active={active === '/'}
-                className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:text-white font-medium duration-200 min-h-[40px] ${
-                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                } gap-3 justify-start`}
-              >
-                <div className='w-4 h-4 flex items-center justify-center'>
-                  <Home className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
-                </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    {t('common.home')}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href='/search'
-                onClick={(event) => {
-                  setActive('/search');
-                  collapseSidebar();
-                  navigateLinkWithMatrixLoading(event, '/search');
-                }}
-                data-active={active === '/search'}
-                className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:text-white font-medium duration-200 min-h-[40px] ${
-                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                } gap-3 justify-start`}
-              >
-                <div className='w-4 h-4 flex items-center justify-center'>
-                  <Search className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
-                </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    {t('common.search')}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href='/my'
-                onClick={(event) => {
-                  setActive('/my');
-                  collapseSidebar();
-                  navigateLinkWithMatrixLoading(event, '/my');
-                }}
-                data-active={active === '/my'}
-                className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:text-white font-medium duration-200 min-h-[40px] ${
-                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                } gap-3 justify-start`}
-              >
-                <div className='w-4 h-4 flex items-center justify-center'>
-                  <UserRound className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
-                </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    {t('common.myLibrary')}
-                  </span>
-                )}
-              </Link>
+                  <Link
+                    href='/'
+                    onClick={(event) => {
+                      setActive('/');
+                      collapseSidebar();
+                      navigateLinkWithMatrixLoading(event, '/');
+                    }}
+                    data-active={active === '/'}
+                    className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
+                      isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                    } gap-3 justify-start`}
+                  >
+                    <div className='w-4 h-4 flex items-center justify-center'>
+                      <Home className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
+                    </div>
+                    {!isCollapsed && (
+                      <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
+                        {t('common.home')}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href='/search'
+                    onClick={(event) => {
+                      setActive('/search');
+                      collapseSidebar();
+                      navigateLinkWithMatrixLoading(event, '/search');
+                    }}
+                    data-active={active === '/search'}
+                    className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
+                      isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                    } gap-3 justify-start`}
+                  >
+                    <div className='w-4 h-4 flex items-center justify-center'>
+                      <Search className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
+                    </div>
+                    {!isCollapsed && (
+                      <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
+                        {t('common.search')}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href='/my'
+                    onClick={(event) => {
+                      setActive('/my');
+                      collapseSidebar();
+                      navigateLinkWithMatrixLoading(event, '/my');
+                    }}
+                    data-active={active === '/my'}
+                    className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
+                      isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                    } gap-3 justify-start`}
+                  >
+                    <div className='w-4 h-4 flex items-center justify-center'>
+                      <UserRound className='h-4 w-4 text-zinc-400 group-hover:text-white data-[active=true]:text-white' />
+                    </div>
+                    {!isCollapsed && (
+                      <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
+                        {t('common.myLibrary')}
+                      </span>
+                    )}
+                  </Link>
                 </nav>
 
                 {/* Divider */}
@@ -336,7 +337,7 @@ const Sidebar = ({
                             navigateLinkWithMatrixLoading(event, item.href);
                           }}
                           data-active={isActive}
-                          className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-sm text-zinc-300 hover:text-white data-[active=true]:text-white duration-200 min-h-[40px] ${
+                          className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-sm text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] duration-200 min-h-[40px] ${
                             isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
                           } gap-3 justify-start`}
                         >
@@ -353,6 +354,12 @@ const Sidebar = ({
                     })}
                   </div>
                 </div>
+
+                <GitHubStarButton
+                  fullWidth
+                  onClick={collapseSidebar}
+                  className='mt-2'
+                />
               </motion.div>
             ) : null}
           </AnimatePresence>

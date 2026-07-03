@@ -48,8 +48,7 @@ const MobileBottomNav = ({
     useMatrixRouteTransition();
 
   const currentActive = activePath ?? pathname;
-  const useHomeHeaderPosition =
-    activePath === '/' || useHeroHeaderStyle;
+  const useHomeHeaderPosition = activePath === '/' || useHeroHeaderStyle;
 
   const navItems = [
     { icon: Home, label: t('common.home'), href: '/' },
@@ -147,7 +146,7 @@ const MobileBottomNav = ({
                       stiffness: 520,
                       damping: 38,
                       mass: 0.72,
-                }
+                    }
               }
             >
               <div
