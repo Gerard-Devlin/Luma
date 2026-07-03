@@ -9,18 +9,19 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
   HOME_CURATED_CATEGORY_CONFIGS,
 } from '@/lib/curated-categories';
 import { uniqueById } from '@/lib/unique-list';
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 import ScrollableRow from '@/components/ScrollableRow';
 import VideoCard from '@/components/VideoCard';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface CuratedDiscoverItem {
   id: string;
@@ -43,7 +44,7 @@ const HOME_CURATED_ROWS = HOME_CURATED_CATEGORY_CONFIGS.filter(
 
 interface CuratedRowSectionProps {
   row: CuratedCategoryConfig;
-  onNavigateWithMatrixLoading: (
+  onNavigateWithWarpLoading: (
     event: ReactMouseEvent<HTMLAnchorElement>,
     href: string
   ) => void;
@@ -51,7 +52,7 @@ interface CuratedRowSectionProps {
 
 function CuratedRowSection({
   row,
-  onNavigateWithMatrixLoading,
+  onNavigateWithWarpLoading,
 }: CuratedRowSectionProps) {
   const { i18n, t } = useTranslation();
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -139,13 +140,13 @@ function CuratedRowSection({
         <Link
           href={`/curated/${row.slug}`}
           onClick={(event) =>
-            onNavigateWithMatrixLoading(event, `/curated/${row.slug}`)
+            onNavigateWithWarpLoading(event, `/curated/${row.slug}`)
           }
           className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
         >
           <span>{t('common.seeAll')}</span>
           <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-            ›
+            �?{' '}
           </span>
         </Link>
       </div>
@@ -172,10 +173,14 @@ function CuratedRowSection({
                 <div
                   key={`${row.slug}-${item.id}`}
                   className={`min-w-[160px] w-40 transform-gpu transition-all duration-500 ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none motion-reduce:opacity-100 sm:min-w-[180px] sm:w-44 ${
-                    hasRevealedItems ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                    hasRevealedItems
+                      ? 'translate-y-0 opacity-100'
+                      : 'translate-y-4 opacity-0'
                   }`}
                   style={{
-                    transitionDelay: hasRevealedItems ? `${Math.min(index, 11) * 55}ms` : '0ms',
+                    transitionDelay: hasRevealedItems
+                      ? `${Math.min(index, 11) * 55}ms`
+                      : '0ms',
                   }}
                 >
                   <VideoCard
@@ -202,14 +207,11 @@ export default function HomeCuratedRows() {
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState(LOAD_BATCH_SIZE);
   const [loadingMoreRows, setLoadingMoreRows] = useState(false);
-  const { showMatrixLoading, navigateLinkWithMatrixLoading } =
-    useMatrixRouteTransition();
+  const { showWarpLoading, navigateLinkWithWarpLoading } =
+    useWarpRouteTransition();
 
   useEffect(() => {
-    if (
-      loadingMoreRows ||
-      visibleCount >= HOME_CURATED_ROWS.length
-    ) {
+    if (loadingMoreRows || visibleCount >= HOME_CURATED_ROWS.length) {
       return;
     }
 
@@ -248,14 +250,14 @@ export default function HomeCuratedRows() {
 
   return (
     <>
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
 
       <div className='mb-3'>
         {HOME_CURATED_ROWS.slice(0, visibleCount).map((row) => (
           <CuratedRowSection
             key={row.slug}
             row={row}
-            onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
+            onNavigateWithWarpLoading={navigateLinkWithWarpLoading}
           />
         ))}
 

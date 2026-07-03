@@ -1,27 +1,32 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useState } from 'react';
+import {
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 
-interface MatrixNavigateOptions {
+interface WarpNavigateOptions {
   onBeforeNavigate?: () => void;
 }
 
-const DEFAULT_MATRIX_HIDE_TIMEOUT_MS = 10000;
+const DEFAULT_WARP_HIDE_TIMEOUT_MS = 10000;
 
-export function useMatrixRouteTransition() {
+export function useWarpRouteTransition() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
-  const [showMatrixLoading, setShowMatrixLoading] = useState(false);
+  const [showWarpLoading, setShowWarpLoading] = useState(false);
 
   const getCurrentFullPath = useCallback(() => {
     return searchParamString ? `${pathname}?${searchParamString}` : pathname;
   }, [pathname, searchParamString]);
 
-  const navigateWithMatrixLoading = useCallback(
-    (href: string, options?: MatrixNavigateOptions): boolean => {
+  const navigateWithWarpLoading = useCallback(
+    (href: string, options?: WarpNavigateOptions): boolean => {
       options?.onBeforeNavigate?.();
 
       const currentFullPath = getCurrentFullPath();
@@ -29,9 +34,9 @@ export function useMatrixRouteTransition() {
         return false;
       }
 
-      setShowMatrixLoading(true);
+      setShowWarpLoading(true);
 
-      // Ensure the matrix overlay paints before route change starts.
+      // Ensure the shader overlay paints before route change starts.
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           router.push(href);
@@ -43,11 +48,11 @@ export function useMatrixRouteTransition() {
     [getCurrentFullPath, router]
   );
 
-  const navigateLinkWithMatrixLoading = useCallback(
+  const navigateLinkWithWarpLoading = useCallback(
     (
       event: ReactMouseEvent<HTMLAnchorElement>,
       href: string,
-      options?: MatrixNavigateOptions
+      options?: WarpNavigateOptions
     ): boolean => {
       if (event.defaultPrevented) return false;
       if (
@@ -61,28 +66,27 @@ export function useMatrixRouteTransition() {
       }
 
       event.preventDefault();
-      return navigateWithMatrixLoading(href, options);
+      return navigateWithWarpLoading(href, options);
     },
-    [navigateWithMatrixLoading]
+    [navigateWithWarpLoading]
   );
 
   useEffect(() => {
-    if (!showMatrixLoading) return;
+    if (!showWarpLoading) return;
     const timer = window.setTimeout(() => {
-      setShowMatrixLoading(false);
-    }, DEFAULT_MATRIX_HIDE_TIMEOUT_MS);
+      setShowWarpLoading(false);
+    }, DEFAULT_WARP_HIDE_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
-  }, [showMatrixLoading]);
+  }, [showWarpLoading]);
 
   useEffect(() => {
-    setShowMatrixLoading(false);
+    setShowWarpLoading(false);
   }, [pathname, searchParamString]);
 
   return {
-    showMatrixLoading,
-    setShowMatrixLoading,
-    navigateWithMatrixLoading,
-    navigateLinkWithMatrixLoading,
+    showWarpLoading,
+    setShowWarpLoading,
+    navigateWithWarpLoading,
+    navigateLinkWithWarpLoading,
   };
 }
-

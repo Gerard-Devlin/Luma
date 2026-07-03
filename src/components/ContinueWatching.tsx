@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-console */
+/* eslint-disable no-console */
 'use client';
 
 import {
@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   deletePlayRecord,
@@ -28,7 +27,7 @@ import {
   parseStorageKey,
   parseTmdbStorageId,
 } from '@/lib/tmdb-history';
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
 import {
   glassDialogCancelClass,
@@ -36,7 +35,6 @@ import {
   glassDialogDangerActionClass,
   glassDialogDescriptionClass,
 } from '@/components/dialogStyles';
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +45,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
 import WatchHistoryRailCard from '@/components/WatchHistoryRailCard';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface ContinueWatchingProps {
   className?: string;
@@ -225,8 +226,7 @@ function resolveHistoryBackdrop(
 
 export default function ContinueWatching({ className }: ContinueWatchingProps) {
   const { i18n, t } = useTranslation();
-  const { showMatrixLoading, navigateWithMatrixLoading } =
-    useMatrixRouteTransition();
+  const { showWarpLoading, navigateWithWarpLoading } = useWarpRouteTransition();
   const [playRecords, setPlayRecords] = useState<
     (PlayRecord & { key: string })[]
   >([]);
@@ -438,7 +438,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
 
   return (
     <>
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
       <section className={`mb-8 ${className || ''}`}>
         <div className='mb-4 flex items-center justify-between'>
           <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
@@ -470,13 +470,13 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
               <button
                 type='button'
                 onClick={() => {
-                  navigateWithMatrixLoading('/my');
+                  navigateWithWarpLoading('/my');
                 }}
                 className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
               >
                 <span>{t('common.seeAll')}</span>
                 <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-                  ›
+                  ?
                 </span>
               </button>
             )
@@ -503,8 +503,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                   );
                   const resolvedImage = historyImageByKey[record.key];
                   const title =
-                    resolvedImage?.cacheKey === cacheKey &&
-                    resolvedImage.title
+                    resolvedImage?.cacheKey === cacheKey && resolvedImage.title
                       ? resolvedImage.title
                       : record.title ||
                         record.search_title ||
@@ -527,7 +526,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                       selected={isSelected}
                       batchMode={isBatchMode}
                       onClick={() =>
-                        navigateWithMatrixLoading(
+                        navigateWithWarpLoading(
                           buildTmdbHistoryPlayUrl(record.key, record)
                         )
                       }

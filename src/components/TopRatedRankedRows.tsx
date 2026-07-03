@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ChevronLeft, ChevronRight, Play, Star } from 'lucide-react';
 import Image from 'next/image';
@@ -13,7 +13,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
@@ -23,11 +22,15 @@ import {
 import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 import SeasonPickerModal from '@/components/SeasonPickerModal';
-import TmdbDetailModal, { TmdbDetailModalData } from '@/components/TmdbDetailModal';
+import TmdbDetailModal, {
+  TmdbDetailModalData,
+} from '@/components/TmdbDetailModal';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 type TmdbMediaType = 'movie' | 'tv';
 type LogoLanguagePreference = 'zh' | 'en';
@@ -63,7 +66,7 @@ interface RankedSectionProps {
   items: RankedDiscoverItem[];
   loading: boolean;
   onOpenDetail: (item: RankedDiscoverItem, mediaType: TmdbMediaType) => void;
-  onNavigateWithMatrixLoading: (
+  onNavigateWithWarpLoading: (
     event: ReactMouseEvent<HTMLAnchorElement>,
     href: string
   ) => void;
@@ -92,22 +95,34 @@ const MOVIE_TOP_RATED_CONFIG =
     slug: 'top-rated-movies',
     title: 'Top Rated Movies',
     mediaType: 'movie',
-    query: { sort_by: 'vote_average.desc', vote_average_gte: '7.0', vote_count_gte: '3000' },
+    query: {
+      sort_by: 'vote_average.desc',
+      vote_average_gte: '7.0',
+      vote_count_gte: '3000',
+    },
     fallbackQuery: { sort_by: 'popularity.desc', vote_count_gte: '1000' },
   } satisfies CuratedCategoryConfig);
 
 const TV_TOP_RATED_CONFIG =
-  TOP_RATED_CATEGORY_CONFIGS.find((item) => item.slug === 'top-rated-tvshows') ||
+  TOP_RATED_CATEGORY_CONFIGS.find(
+    (item) => item.slug === 'top-rated-tvshows'
+  ) ||
   ({
     slug: 'top-rated-tvshows',
     title: 'Top Rated Series',
     mediaType: 'tv',
-    query: { sort_by: 'vote_average.desc', vote_average_gte: '7.0', vote_count_gte: '500' },
+    query: {
+      sort_by: 'vote_average.desc',
+      vote_average_gte: '7.0',
+      vote_count_gte: '500',
+    },
     fallbackQuery: { sort_by: 'popularity.desc', vote_count_gte: '300' },
   } satisfies CuratedCategoryConfig);
 
 const POPULAR_MOVIE_CONFIG =
-  HOME_CURATED_CATEGORY_CONFIGS.find((item) => item.slug === 'popular-movies') ||
+  HOME_CURATED_CATEGORY_CONFIGS.find(
+    (item) => item.slug === 'popular-movies'
+  ) ||
   ({
     slug: 'popular-movies',
     title: 'Popular Movies',
@@ -285,13 +300,18 @@ function RankedCard({
                 </div>
               </div>
             ) : (
-              <h3 className='truncate text-xl font-bold text-white'>{item.title}</h3>
+              <h3 className='truncate text-xl font-bold text-white'>
+                {item.title}
+              </h3>
             )}
             <div className='mt-2 flex items-center gap-2 text-sm text-zinc-200/90'>
               {item.year ? <span>{item.year}</span> : null}
               <span className='text-zinc-400'>{'\u00b7'}</span>
               <span className='inline-flex items-center gap-1'>
-                <Star className='h-3.5 w-3.5 text-amber-400' fill='currentColor' />
+                <Star
+                  className='h-3.5 w-3.5 text-amber-400'
+                  fill='currentColor'
+                />
                 {score}
               </span>
             </div>
@@ -347,7 +367,7 @@ function RankedSection({
   items,
   loading,
   onOpenDetail,
-  onNavigateWithMatrixLoading,
+  onNavigateWithWarpLoading,
 }: RankedSectionProps) {
   const { t } = useTranslation();
   const desktopScrollRef = useRef<HTMLDivElement | null>(null);
@@ -414,15 +434,17 @@ function RankedSection({
   return (
     <section className='mb-6'>
       <div className='relative z-[650] mb-4 flex items-center justify-between'>
-        <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>{title}</h2>
+        <h2 className='text-xl font-bold text-gray-900 dark:text-zinc-100'>
+          {title}
+        </h2>
         <Link
           href={href}
-          onClick={(event) => onNavigateWithMatrixLoading(event, href)}
+          onClick={(event) => onNavigateWithWarpLoading(event, href)}
           className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
         >
           <span>{t('common.seeAll')}</span>
           <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-            ›
+            ?
           </span>
         </Link>
       </div>
@@ -545,11 +567,13 @@ interface TopRatedRankedRowsProps {
   className?: string;
 }
 
-export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProps) {
+export default function TopRatedRankedRows({
+  className,
+}: TopRatedRankedRowsProps) {
   const { i18n, t } = useTranslation();
   const router = useRouter();
-  const { showMatrixLoading, navigateLinkWithMatrixLoading } =
-    useMatrixRouteTransition();
+  const { showWarpLoading, navigateLinkWithWarpLoading } =
+    useWarpRouteTransition();
   const [popularMovieItems, setPopularMovieItems] = useState<
     RankedDiscoverItem[]
   >([]);
@@ -678,11 +702,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
       const logoLanguagePreference = getLogoLanguagePreferenceForMediaType(
         target.mediaType
       );
-      const key = cacheKey(
-        target.id,
-        target.mediaType,
-        logoLanguagePreference
-      );
+      const key = cacheKey(target.id, target.mediaType, logoLanguagePreference);
       const cached = detailCacheRef.current.get(key);
       if (cached) {
         setDetailData(cached);
@@ -792,10 +812,11 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
 
       if (targetId) {
         try {
-          const detail = await fetchTmdbDetailWithClientCache<TmdbDetailResponse>({
-            id: targetId,
-            mediaType: 'tv',
-          });
+          const detail =
+            await fetchTmdbDetailWithClientCache<TmdbDetailResponse>({
+              id: targetId,
+              mediaType: 'tv',
+            });
           if (
             typeof detail.seasons === 'number' &&
             Number.isFinite(detail.seasons) &&
@@ -817,7 +838,11 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           year,
         });
         const seasons = detail.seasons;
-        if (typeof seasons !== 'number' || !Number.isFinite(seasons) || seasons <= 1) {
+        if (
+          typeof seasons !== 'number' ||
+          !Number.isFinite(seasons) ||
+          seasons <= 1
+        ) {
           return 0;
         }
         return Math.floor(seasons);
@@ -856,7 +881,11 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
     const mediaType = detailData?.mediaType || activeItem?.mediaType || 'movie';
 
     if (mediaType === 'tv' && !hasSeasonHint(title)) {
-      const seasonCount = await resolveSeasonCountForPlay(title, year, activeItem);
+      const seasonCount = await resolveSeasonCountForPlay(
+        title,
+        year,
+        activeItem
+      );
       if (seasonCount > 1) {
         setDetailOpen(false);
         setSeasonPicker({
@@ -929,7 +958,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
 
   return (
     <>
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
 
       <div className={`mb-2 ${className || ''}`}>
         <RankedSection
@@ -941,7 +970,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           items={popularMovieItems}
           loading={loading}
           onOpenDetail={handleOpenDetail}
-          onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
+          onNavigateWithWarpLoading={navigateLinkWithWarpLoading}
         />
         <RankedSection
           title={t(`curated.${MOVIE_TOP_RATED_CONFIG.slug}`, {
@@ -952,7 +981,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           items={movieItems}
           loading={loading}
           onOpenDetail={handleOpenDetail}
-          onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
+          onNavigateWithWarpLoading={navigateLinkWithWarpLoading}
         />
         <RankedSection
           title={t(`curated.${TV_TOP_RATED_CONFIG.slug}`, {
@@ -963,7 +992,7 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
           items={tvItems}
           loading={loading}
           onOpenDetail={handleOpenDetail}
-          onNavigateWithMatrixLoading={navigateLinkWithMatrixLoading}
+          onNavigateWithWarpLoading={navigateLinkWithWarpLoading}
         />
       </div>
 
@@ -990,4 +1019,3 @@ export default function TopRatedRankedRows({ className }: TopRatedRankedRowsProp
     </>
   );
 }
-

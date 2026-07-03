@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client';
 
@@ -17,9 +17,9 @@ import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
 
 interface MobileBottomNavProps {
   /**
@@ -44,8 +44,8 @@ const MobileBottomNav = ({
   const { t } = useTranslation();
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
-  const { showMatrixLoading, navigateLinkWithMatrixLoading } =
-    useMatrixRouteTransition();
+  const { showWarpLoading, navigateLinkWithWarpLoading } =
+    useWarpRouteTransition();
 
   const currentActive = activePath ?? pathname;
   const useHomeHeaderPosition = activePath === '/' || useHeroHeaderStyle;
@@ -90,7 +90,7 @@ const MobileBottomNav = ({
         <Link
           href={item.href}
           onClick={(event) =>
-            navigateLinkWithMatrixLoading(event, item.href, {
+            navigateLinkWithWarpLoading(event, item.href, {
               onBeforeNavigate: onClose,
             })
           }
@@ -109,7 +109,7 @@ const MobileBottomNav = ({
 
   return (
     <>
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
 
       <AnimatePresence>
         {isOpen ? (

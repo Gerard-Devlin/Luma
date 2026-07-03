@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client';
 
@@ -25,10 +25,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
 import GitHubStarButton from '@/components/GitHubStarButton';
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -46,7 +46,7 @@ interface SidebarProps {
   showBackButton?: boolean;
 }
 
-// 在浏览器环境下通过全局变量缓存折叠状态，避免组件重新挂载时出现初始值闪烁
+// Cache collapsed state on the window to avoid a flash during remounts.
 declare global {
   interface Window {
     __sidebarCollapsed?: boolean;
@@ -62,12 +62,12 @@ const Sidebar = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const shouldReduceMotion = useReducedMotion();
-  const { showMatrixLoading, navigateLinkWithMatrixLoading } =
-    useMatrixRouteTransition();
-  // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
+  const { showWarpLoading, navigateLinkWithWarpLoading } =
+    useWarpRouteTransition();
+  // 鑻ュ悓涓€娆?SPA 浼氳瘽涓凡缁忚鍙栬繃鎶樺彔鐘舵€侊紝鍒欑洿鎺ュ鐢紝閬垮厤闂儊
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
 
-  // 当折叠状态变化时，同步到 <html> data 属性，供首屏 CSS 使用
+  // 褰撴姌鍙犵姸鎬佸彉鍖栨椂锛屽悓姝ュ埌 <html> data 灞炴€э紝渚涢灞?CSS 浣跨敤
   useLayoutEffect(() => {
     if (typeof document !== 'undefined') {
       if (isCollapsed) {
@@ -81,11 +81,11 @@ const Sidebar = ({
   const [active, setActive] = useState(activePath);
 
   useEffect(() => {
-    // 优先使用传入的 activePath
+    // 浼樺厛浣跨敤浼犲叆鐨?activePath
     if (activePath) {
       setActive(activePath);
     } else {
-      // 否则使用当前路径
+      // 鍚﹀垯浣跨敤褰撳墠璺緞
       const getCurrentFullPath = () => {
         const queryString = searchParams.toString();
         return queryString ? `${pathname}?${queryString}` : pathname;
@@ -142,7 +142,7 @@ const Sidebar = ({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
       {/* Hide the desktop sidebar on mobile. */}
       <div className='hidden md:block'>
         <div
@@ -248,7 +248,7 @@ const Sidebar = ({
                     onClick={(event) => {
                       setActive('/');
                       collapseSidebar();
-                      navigateLinkWithMatrixLoading(event, '/');
+                      navigateLinkWithWarpLoading(event, '/');
                     }}
                     data-active={active === '/'}
                     className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
@@ -269,7 +269,7 @@ const Sidebar = ({
                     onClick={(event) => {
                       setActive('/search');
                       collapseSidebar();
-                      navigateLinkWithMatrixLoading(event, '/search');
+                      navigateLinkWithWarpLoading(event, '/search');
                     }}
                     data-active={active === '/search'}
                     className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
@@ -290,7 +290,7 @@ const Sidebar = ({
                     onClick={(event) => {
                       setActive('/my');
                       collapseSidebar();
-                      navigateLinkWithMatrixLoading(event, '/my');
+                      navigateLinkWithWarpLoading(event, '/my');
                     }}
                     data-active={active === '/my'}
                     className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] font-medium duration-200 min-h-[40px] ${
@@ -334,7 +334,7 @@ const Sidebar = ({
                           onClick={(event) => {
                             setActive(item.href);
                             collapseSidebar();
-                            navigateLinkWithMatrixLoading(event, item.href);
+                            navigateLinkWithWarpLoading(event, item.href);
                           }}
                           data-active={isActive}
                           className={`ui-glass-row group flex items-center px-2 py-2 pl-4 text-sm text-zinc-300 hover:text-white data-[active=true]:bg-white/[0.075] data-[active=true]:text-white data-[active=true]:ring-1 data-[active=true]:ring-white/[0.08] duration-200 min-h-[40px] ${

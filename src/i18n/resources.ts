@@ -181,7 +181,8 @@ export const resources = {
         countryUnitedStates: 'United States',
       },
       home: {
-        deleteHistoryDescription_one: 'This will delete {{count}} history item.',
+        deleteHistoryDescription_one:
+          'This will delete {{count}} history item.',
         deleteHistoryDescription_other:
           'This will delete {{count}} history items.',
         deleteThisItem: 'Delete this item?',
@@ -285,17 +286,6 @@ export const resources = {
         works: 'Works',
       },
       play: {
-        copyPlaybackSource: 'Copy source link',
-        copyPlaybackSourceFailed: 'Failed to copy source link',
-        directDownloadHint:
-          'A direct media link is available. If the browser opens a new tab instead, use Save video as from that tab.',
-        download: 'Download',
-        downloadCurrentVideo: 'Download current video',
-        downloadOptions: 'Download options',
-        downloadStarted: 'Download started',
-        downloadUnavailable: 'No downloadable playback link is available yet.',
-        externalDownloadHint:
-          'This provider is embedded in an iframe, so this page can only expose the current player link unless a browser extension or desktop shell captures the media request.',
         failedToLoadDetailsLater:
           'Failed to load details. Please try again later.',
         failedToResolvePlayback: 'Failed to resolve playback',
@@ -303,18 +293,12 @@ export const resources = {
         failedToSwitchPlaybackSource: 'Failed to switch playback source',
         missingTmdbPlaybackId: 'Missing TMDB playback id',
         noPlayableSourceFound: 'No playable source found',
-        openPlaybackSource: 'Open playback source',
-        playbackSourceCopied: 'Source link copied',
-        playbackSourceOpened: 'Playback source opened',
         readyStartingPlayback: 'Ready. Starting playback...',
         resolvingPlaybackSource: 'Resolving playback source...',
         runtimeMinutes: '{{count}} min',
-        saveVideo: 'Save video',
         searchingPlaybackSources: 'Searching playback sources...',
         sourceUnavailable:
           'The current source is temporarily unavailable, or no matching title was found. Go back and try a different keyword.',
-        streamingDownloadHint:
-          'This source is a streaming playlist, not a single file. Use an authorized downloader that can handle HLS playlists.',
       },
       my: {
         confirmDeletion: 'Confirm deletion?',
@@ -340,10 +324,8 @@ export const resources = {
         title: 'Title',
         titleAsc: 'Title A-Z',
         titleDesc: 'Title Z-A',
-        deleteFavoritesDescription:
-          '{{count}} favorites will be removed.',
-        deleteHistoryDescription:
-          '{{count}} history records will be deleted.',
+        deleteFavoritesDescription: '{{count}} favorites will be removed.',
+        deleteHistoryDescription: '{{count}} history records will be deleted.',
         watchHistory: 'Watch History',
       },
       seasonPicker: {

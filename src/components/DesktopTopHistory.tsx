@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   deletePlayRecord,
@@ -15,16 +14,16 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import {
+  type TmdbDetailMediaType,
+  fetchTmdbDetailWithClientCache,
+} from '@/lib/tmdb-detail.client';
+import {
   buildTmdbHistoryPlayUrl,
   filterTmdbHistoryRecords,
   parseStorageKey,
   parseTmdbStorageId,
 } from '@/lib/tmdb-history';
-import {
-  fetchTmdbDetailWithClientCache,
-  type TmdbDetailMediaType,
-} from '@/lib/tmdb-detail.client';
-import { useMatrixRouteTransition } from '@/hooks/useMatrixRouteTransition';
+import { useWarpRouteTransition } from '@/hooks/useWarpRouteTransition';
 
 import {
   glassDialogCancelClass,
@@ -32,7 +31,6 @@ import {
   glassDialogDangerActionClass,
   glassDialogDescriptionClass,
 } from '@/components/dialogStyles';
-import MatrixLoadingOverlay from '@/components/MatrixLoadingOverlay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +41,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import WarpLoadingOverlay from '@/components/WarpLoadingOverlay';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface PlayHistoryItem extends PlayRecord {
   key: string;
@@ -135,8 +136,7 @@ export default function DesktopTopHistory() {
   const { i18n, t } = useTranslation();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
-  const { showMatrixLoading, navigateWithMatrixLoading } =
-    useMatrixRouteTransition();
+  const { showWarpLoading, navigateWithWarpLoading } = useWarpRouteTransition();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -299,15 +299,15 @@ export default function DesktopTopHistory() {
     }
   }, [deleteTarget]);
 
-  const handleNavigateWithMatrixLoading = useCallback(
+  const handleNavigateWithWarpLoading = useCallback(
     (href: string) => {
-      navigateWithMatrixLoading(href, {
+      navigateWithWarpLoading(href, {
         onBeforeNavigate: () => {
           setOpen(false);
         },
       });
     },
-    [navigateWithMatrixLoading]
+    [navigateWithWarpLoading]
   );
 
   const clearCloseTimer = useCallback(() => {
@@ -340,7 +340,7 @@ export default function DesktopTopHistory() {
       onMouseLeave={handlePointerLeave}
       className='relative m-0'
     >
-      <MatrixLoadingOverlay visible={showMatrixLoading} />
+      <WarpLoadingOverlay visible={showWarpLoading} />
 
       <button
         type='button'
@@ -389,111 +389,111 @@ export default function DesktopTopHistory() {
                   }
             }
           >
-          <div className='flex items-center justify-between border-b border-[var(--ui-glass-divider)] px-2.5 pb-2.5 pt-1.5'>
-            <div className='flex items-center gap-2 text-sm font-semibold text-zinc-100'>
-              <Clock3 className='h-4 w-4 text-zinc-300' />
-              <span>{t('common.watchHistory')}</span>
-            </div>
-            <button
-              type='button'
-              onClick={() => handleNavigateWithMatrixLoading('/my')}
-              className='text-xs text-zinc-300 transition-colors hover:text-white'
-            >
-              {t('common.viewAll')}
-            </button>
-          </div>
-
-          <div className='max-h-[440px] overflow-y-auto pt-1.5'>
-            {loading ? (
-              <div className='space-y-1.5 py-1'>
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={`desktop-top-history-skeleton-${index}`}
-                    className='flex items-center gap-3 rounded-[var(--ui-radius-row)] px-2 py-2'
-                  >
-                    <div className='h-16 w-11 shrink-0 animate-pulse rounded-md bg-[var(--ui-glass-row-hover)]' />
-                    <div className='min-w-0 flex-1 space-y-2'>
-                      <div className='h-4 w-2/3 animate-pulse rounded bg-[var(--ui-glass-row-hover)]' />
-                      <div className='h-3 w-1/2 animate-pulse rounded bg-[var(--ui-glass-row-hover)]' />
-                    </div>
-                  </div>
-                ))}
+            <div className='flex items-center justify-between border-b border-[var(--ui-glass-divider)] px-2.5 pb-2.5 pt-1.5'>
+              <div className='flex items-center gap-2 text-sm font-semibold text-zinc-100'>
+                <Clock3 className='h-4 w-4 text-zinc-300' />
+                <span>{t('common.watchHistory')}</span>
               </div>
-            ) : displayItems.length > 0 ? (
-              displayItems.map((item, index) => {
-                const localizedDisplay =
-                  localizedDisplayByKey[`${tmdbLanguage}:${item.key}`];
-                const displayTitle =
-                  localizedDisplay?.title ||
-                  item.title ||
-                  t('common.untitled');
-                const displayPoster = localizedDisplay?.poster || item.cover;
-                return (
-                <div
-                  key={item.key}
-                  className='ui-glass-row group flex items-center gap-2.5 px-2 py-2'
-                >
-                  <button
-                    type='button'
-                    onClick={() => {
-                      setOpen(false);
-                      router.push(buildPlayUrl(item));
-                    }}
-                    className='flex min-w-0 flex-1 items-center gap-2.5 text-left'
-                  >
-                    <Image
-                      src={displayPoster}
-                      alt={displayTitle}
-                      width={44}
-                      height={64}
-                      unoptimized
-                      className='h-16 w-11 shrink-0 rounded-md object-cover ring-1 ring-[var(--ui-glass-border)]'
-                      loading={index < 3 ? 'eager' : 'lazy'}
-                      referrerPolicy='no-referrer'
-                    />
-                    <div className='min-w-0'>
-                      <p className='truncate text-sm font-medium text-zinc-100'>
-                        {displayTitle}
-                      </p>
-                      <div className='mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400'>
-                        <Play className='h-3.5 w-3.5 shrink-0 text-zinc-500' />
-                        <span className='truncate'>
-                          {formatProgress(item, t)}
-                        </span>
-                        <span className='text-zinc-500'>·</span>
-                        <span className='truncate'>
-                          {formatRelativeTime(item.save_time, t)}
-                        </span>
+              <button
+                type='button'
+                onClick={() => handleNavigateWithWarpLoading('/my')}
+                className='text-xs text-zinc-300 transition-colors hover:text-white'
+              >
+                {t('common.viewAll')}
+              </button>
+            </div>
+
+            <div className='max-h-[440px] overflow-y-auto pt-1.5'>
+              {loading ? (
+                <div className='space-y-1.5 py-1'>
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={`desktop-top-history-skeleton-${index}`}
+                      className='flex items-center gap-3 rounded-[var(--ui-radius-row)] px-2 py-2'
+                    >
+                      <div className='h-16 w-11 shrink-0 animate-pulse rounded-md bg-[var(--ui-glass-row-hover)]' />
+                      <div className='min-w-0 flex-1 space-y-2'>
+                        <div className='h-4 w-2/3 animate-pulse rounded bg-[var(--ui-glass-row-hover)]' />
+                        <div className='h-3 w-1/2 animate-pulse rounded bg-[var(--ui-glass-row-hover)]' />
                       </div>
                     </div>
-                  </button>
-
-                  <button
-                    type='button'
-                    aria-label={t('common.deleteHistoryItem')}
-                    disabled={deleting}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setDeleteTarget(item);
-                    }}
-                    className='inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-zinc-500 opacity-0 transition-colors hover:bg-[var(--ui-glass-row-hover)] hover:text-red-300 group-hover:opacity-100 disabled:cursor-not-allowed disabled:text-zinc-600'
-                  >
-                    {deleting && deleteTarget?.key === item.key ? (
-                      <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                    ) : (
-                      <Trash2 className='h-3.5 w-3.5' />
-                    )}
-                  </button>
+                  ))}
                 </div>
-              );
-              })
-            ) : (
-              <div className='px-4 py-8 text-center text-sm text-zinc-400'>
-                {t('common.noHistoryYet')}
-              </div>
-            )}
-          </div>
+              ) : displayItems.length > 0 ? (
+                displayItems.map((item, index) => {
+                  const localizedDisplay =
+                    localizedDisplayByKey[`${tmdbLanguage}:${item.key}`];
+                  const displayTitle =
+                    localizedDisplay?.title ||
+                    item.title ||
+                    t('common.untitled');
+                  const displayPoster = localizedDisplay?.poster || item.cover;
+                  return (
+                    <div
+                      key={item.key}
+                      className='ui-glass-row group flex items-center gap-2.5 px-2 py-2'
+                    >
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setOpen(false);
+                          router.push(buildPlayUrl(item));
+                        }}
+                        className='flex min-w-0 flex-1 items-center gap-2.5 text-left'
+                      >
+                        <Image
+                          src={displayPoster}
+                          alt={displayTitle}
+                          width={44}
+                          height={64}
+                          unoptimized
+                          className='h-16 w-11 shrink-0 rounded-md object-cover ring-1 ring-[var(--ui-glass-border)]'
+                          loading={index < 3 ? 'eager' : 'lazy'}
+                          referrerPolicy='no-referrer'
+                        />
+                        <div className='min-w-0'>
+                          <p className='truncate text-sm font-medium text-zinc-100'>
+                            {displayTitle}
+                          </p>
+                          <div className='mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400'>
+                            <Play className='h-3.5 w-3.5 shrink-0 text-zinc-500' />
+                            <span className='truncate'>
+                              {formatProgress(item, t)}
+                            </span>
+                            <span className='text-zinc-500'>·</span>
+                            <span className='truncate'>
+                              {formatRelativeTime(item.save_time, t)}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type='button'
+                        aria-label={t('common.deleteHistoryItem')}
+                        disabled={deleting}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setDeleteTarget(item);
+                        }}
+                        className='inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-zinc-500 opacity-0 transition-colors hover:bg-[var(--ui-glass-row-hover)] hover:text-red-300 group-hover:opacity-100 disabled:cursor-not-allowed disabled:text-zinc-600'
+                      >
+                        {deleting && deleteTarget?.key === item.key ? (
+                          <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                        ) : (
+                          <Trash2 className='h-3.5 w-3.5' />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className='px-4 py-8 text-center text-sm text-zinc-400'>
+                  {t('common.noHistoryYet')}
+                </div>
+              )}
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
