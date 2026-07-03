@@ -443,9 +443,7 @@ function RankedSection({
           className='group inline-flex items-center gap-2 text-base font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white'
         >
           <span>{t('common.seeAll')}</span>
-          <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-            ?
-          </span>
+          <ChevronRight className='h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5' />
         </Link>
       </div>
 

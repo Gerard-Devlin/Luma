@@ -7,11 +7,10 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
-
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface PersonCredit {
   id: number;
@@ -50,10 +49,7 @@ interface CreditRailSection {
 }
 
 type PersonCreditSectionKey = 'movie' | 'tv' | 'producer' | 'director';
-type TranslateFn = (
-  key: string,
-  options?: Record<string, unknown>
-) => string;
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 const SECTION_TITLE_KEYS: Record<PersonCreditSectionKey, string> = {
   movie: 'common.movies',
@@ -192,9 +188,7 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
             aria-label={t('person.viewAllSection', { section: title })}
           >
             <span>{t('common.seeAll')}</span>
-            <span className='text-2xl leading-none transition-transform duration-200 group-hover:translate-x-0.5'>
-              ›
-            </span>
+            <ChevronRight className='h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Link>
         ) : null}
       </div>
@@ -215,7 +209,9 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
           <div className='flex min-w-max gap-[18px] px-1'>
             {items.map((item, index) => (
               <div
-                key={`${title}-${item.mediaType}-${item.id}-${item.role || 'role'}-${index}`}
+                key={`${title}-${item.mediaType}-${item.id}-${
+                  item.role || 'role'
+                }-${index}`}
                 className='w-40 flex-shrink-0 sm:w-44'
               >
                 <VideoCard
@@ -294,7 +290,9 @@ function CreditRail({ title, items, showAllHref }: CreditRailSection) {
         <div className='flex min-w-max gap-[18px]'>
           {items.map((item, index) => (
             <div
-              key={`${title}-mobile-${item.mediaType}-${item.id}-${item.role || 'role'}-${index}`}
+              key={`${title}-mobile-${item.mediaType}-${item.id}-${
+                item.role || 'role'
+              }-${index}`}
               className='w-40 flex-shrink-0 sm:w-44'
             >
               <VideoCard
@@ -361,7 +359,7 @@ function RailSkeleton({
         {showSeeAll ? (
           <span className='inline-flex items-center gap-2 text-base font-semibold text-zinc-500 dark:text-zinc-300'>
             <span>{t('common.seeAll')}</span>
-            <span className='text-2xl leading-none'>›</span>
+            <ChevronRight className='h-5 w-5' />
           </span>
         ) : null}
       </div>
@@ -599,10 +597,19 @@ export default function PersonDetailPage() {
                 />
               ) : (
                 <>
-                  <RailSkeleton title={getSectionTitle('movie', t)} showSeeAll />
+                  <RailSkeleton
+                    title={getSectionTitle('movie', t)}
+                    showSeeAll
+                  />
                   <RailSkeleton title={getSectionTitle('tv', t)} showSeeAll />
-                  <RailSkeleton title={getSectionTitle('producer', t)} showSeeAll />
-                  <RailSkeleton title={getSectionTitle('director', t)} showSeeAll />
+                  <RailSkeleton
+                    title={getSectionTitle('producer', t)}
+                    showSeeAll
+                  />
+                  <RailSkeleton
+                    title={getSectionTitle('director', t)}
+                    showSeeAll
+                  />
                 </>
               )}
             </div>
