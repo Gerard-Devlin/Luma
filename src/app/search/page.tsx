@@ -372,46 +372,48 @@ function SearchPageClient() {
     addSearchHistory(trimmed);
   };
 
-  const loadDetailForResult = useCallback(async (result: SearchResult) => {
-    const mediaType = getMediaType(result);
-    const year = normalizeYear(result.year);
-    const tmdbLanguage = getCurrentTmdbLanguage();
-    const cacheKey = `${tmdbLanguage}-${mediaType}-${result.title.trim()}-${year}`;
-    const cached = detailCacheRef.current[cacheKey];
-    if (cached) {
-      setDetailData(cached);
-      setDetailError(null);
-      setDetailLoading(false);
-      return;
-    }
-
-    const requestId = ++detailRequestIdRef.current;
-    setDetailLoading(true);
-    setDetailError(null);
-    setDetailData(null);
-
-    try {
-      const payload = await fetchTmdbDetailWithClientCache<TmdbTopSearchDetail>(
-        {
-          title: result.title,
-          mediaType,
-          year,
-          poster: result.poster,
-          tmdbLanguage,
-        }
-      );
-      if (detailRequestIdRef.current !== requestId) return;
-      detailCacheRef.current[cacheKey] = payload;
-      setDetailData(payload);
-    } catch {
-      if (detailRequestIdRef.current !== requestId) return;
-      setDetailError(t('detail.failedToLoad'));
-    } finally {
-      if (detailRequestIdRef.current === requestId) {
+  const loadDetailForResult = useCallback(
+    async (result: SearchResult) => {
+      const mediaType = getMediaType(result);
+      const year = normalizeYear(result.year);
+      const tmdbLanguage = getCurrentTmdbLanguage();
+      const cacheKey = `${tmdbLanguage}-${mediaType}-${result.title.trim()}-${year}`;
+      const cached = detailCacheRef.current[cacheKey];
+      if (cached) {
+        setDetailData(cached);
+        setDetailError(null);
         setDetailLoading(false);
+        return;
       }
-    }
-  }, [t]);
+
+      const requestId = ++detailRequestIdRef.current;
+      setDetailLoading(true);
+      setDetailError(null);
+      setDetailData(null);
+
+      try {
+        const payload =
+          await fetchTmdbDetailWithClientCache<TmdbTopSearchDetail>({
+            title: result.title,
+            mediaType,
+            year,
+            poster: result.poster,
+            tmdbLanguage,
+          });
+        if (detailRequestIdRef.current !== requestId) return;
+        detailCacheRef.current[cacheKey] = payload;
+        setDetailData(payload);
+      } catch {
+        if (detailRequestIdRef.current !== requestId) return;
+        setDetailError(t('detail.failedToLoad'));
+      } finally {
+        if (detailRequestIdRef.current === requestId) {
+          setDetailLoading(false);
+        }
+      }
+    },
+    [t]
+  );
 
   const handleOpenDetail = useCallback(
     (result: SearchResult) => {
@@ -606,175 +608,181 @@ function SearchPageClient() {
     <div className='min-h-screen w-full'>
       <div className='relative w-full'>
         <PageLayout activePath='/search'>
-          <div className='px-4 sm:px-10 py-4 sm:pb-8 sm:pt-4 overflow-visible mb-10'>
-            <div
-              ref={searchInputRef}
-              className='relative mx-auto mb-8 w-full max-w-[720px] md:max-w-[calc(100vw_-_9rem)] lg:max-w-[720px]'
-            >
-              <SearchGlassInput
-                inputRef={searchFieldRef}
-                inputId='searchInput'
-                value={searchQuery}
-                onValueChange={(nextQuery) => {
-                  setSearchQuery(nextQuery);
-                  setSuggestionOpen(true);
-                }}
-                onSubmit={handleSearch}
-                active={suggestionOpen || trimmedSearchQuery.length > 0}
-                className='w-full'
-                onFocus={() => setSuggestionOpen(true)}
-                onInputKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    setSuggestionOpen(false);
-                  }
-                }}
-                onClear={clearSearch}
-                onShortcutClick={() => focusSearchField(false)}
-              />
-              {shouldShowSuggestionDropdown && (
-                <SearchPreviewPanel
-                  className='absolute right-0 top-full z-[740] mt-2 w-full'
-                  results={suggestionResults}
-                  loading={suggestionLoading}
-                  keyword={trimmedSearchQuery}
-                  onItemClick={handleOpenDetail}
-                  itemKeyPrefix='search-page-suggest'
+          <div className='overflow-visible px-0 pb-4 sm:px-10 sm:pb-8'>
+            <div className='px-4 pt-3 sm:px-0'>
+              <div
+                ref={searchInputRef}
+                className='relative mx-auto mb-8 w-full max-w-[720px] md:max-w-[calc(100vw_-_9rem)] lg:max-w-[720px]'
+              >
+                <SearchGlassInput
+                  inputRef={searchFieldRef}
+                  inputId='searchInput'
+                  value={searchQuery}
+                  onValueChange={(nextQuery) => {
+                    setSearchQuery(nextQuery);
+                    setSuggestionOpen(true);
+                  }}
+                  onSubmit={handleSearch}
+                  active={suggestionOpen || trimmedSearchQuery.length > 0}
+                  className='w-full'
+                  onFocus={() => setSuggestionOpen(true)}
+                  onInputKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      setSuggestionOpen(false);
+                    }
+                  }}
+                  onClear={clearSearch}
+                  onShortcutClick={() => focusSearchField(false)}
                 />
-              )}
-            </div>
+                {shouldShowSuggestionDropdown && (
+                  <SearchPreviewPanel
+                    className='absolute right-0 top-full z-[740] mt-2 w-full'
+                    results={suggestionResults}
+                    loading={suggestionLoading}
+                    keyword={trimmedSearchQuery}
+                    onItemClick={handleOpenDetail}
+                    itemKeyPrefix='search-page-suggest'
+                  />
+                )}
+              </div>
 
-            <div className='max-w-[95%] mx-auto mt-12 overflow-visible'>
-              {isLoading ? (
-                <div className='flex justify-center items-center h-40'>
-                  <Loader />
-                </div>
-              ) : showResults ? (
-                <section className='mb-12'>
-                  {personResults.length > 0 && (
-                    <div className='mb-10'>
-                      <h3 className='mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200'>
-                        {t('searchPage.people')}
-                      </h3>
-                      <div className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scroll-smooth scrollbar-hide'>
-                        {personResults.map((person) => (
-                          <Link
-                            key={`person-${person.id}`}
-                            href={`/person/${person.id}`}
-                            className='group flex w-[88px] flex-shrink-0 flex-col items-center text-center sm:w-[104px]'
-                          >
-                            <div className='relative h-[82px] w-[82px] overflow-hidden rounded-full border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] shadow-[var(--ui-shadow-control)] sm:h-24 sm:w-24'>
-                              {person.profile ? (
-                                <Image
-                                  src={person.profile}
-                                  alt={person.name}
-                                  fill
-                                  unoptimized
-                                  className='object-cover transition-transform duration-300 group-hover:scale-105'
-                                />
-                              ) : (
-                                <div className='flex h-full w-full items-center justify-center text-white/50'>
-                                  <Users className='h-5 w-5' />
-                                </div>
-                              )}
-                            </div>
-                            <div className='mt-2 w-full'>
-                              <p className='truncate text-xs font-semibold leading-4 text-gray-900 dark:text-gray-100 sm:text-[13px]'>
-                                {person.name}
-                              </p>
-                              {person.department && (
-                                <p className='mt-0.5 truncate text-[11px] leading-4 text-gray-500 dark:text-gray-400'>
-                                  {formatDepartment(person.department, t)}
-                                </p>
-                              )}
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className='mb-8 flex items-center justify-between'>
-                    <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      {t('searchPage.searchResults')}
-                    </h2>
+              <div className='mt-8 overflow-visible'>
+                {isLoading ? (
+                  <div className='flex justify-center items-center h-40'>
+                    <Loader />
                   </div>
-                  <div className='justify-start grid grid-cols-2 gap-x-2 gap-y-8 sm:gap-y-8 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px]'>
-                    {searchResults.map((item) => (
-                      <div
-                        key={`all-${item.source}-${item.id}`}
-                        className='w-full'
-                      >
-                        <VideoCard
-                          id={item.id}
-                          title={item.title}
-                          poster={item.poster}
-                          episodes={getEpisodeCount(item)}
-                          source={item.source}
-                          source_name={item.source_name}
-                          query={
-                            searchQuery.trim() !== item.title
-                              ? searchQuery.trim()
-                              : ''
-                          }
-                          year={item.year}
-                          from='search'
-                          type={isTvResult(item) ? 'tv' : 'movie'}
-                          displayVariant='poster-info'
-                        />
-                      </div>
-                    ))}
-                    {searchResults.length === 0 && (
-                      <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                        {personResults.length > 0
-                          ? t('searchPage.noMovieTvResults')
-                          : t('common.noSearchResults')}
+                ) : showResults ? (
+                  <section className='mb-12'>
+                    {personResults.length > 0 && (
+                      <div className='mb-10'>
+                        <h3 className='mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200'>
+                          {t('searchPage.people')}
+                        </h3>
+                        <div className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scroll-smooth scrollbar-hide'>
+                          {personResults.map((person) => (
+                            <Link
+                              key={`person-${person.id}`}
+                              href={`/person/${person.id}`}
+                              className='group flex w-[88px] flex-shrink-0 flex-col items-center text-center sm:w-[104px]'
+                            >
+                              <div className='relative h-[82px] w-[82px] overflow-hidden rounded-full border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] shadow-[var(--ui-shadow-control)] sm:h-24 sm:w-24'>
+                                {person.profile ? (
+                                  <Image
+                                    src={person.profile}
+                                    alt={person.name}
+                                    fill
+                                    unoptimized
+                                    className='object-cover transition-transform duration-300 group-hover:scale-105'
+                                  />
+                                ) : (
+                                  <div className='flex h-full w-full items-center justify-center text-white/50'>
+                                    <Users className='h-5 w-5' />
+                                  </div>
+                                )}
+                              </div>
+                              <div className='mt-2 w-full'>
+                                <p className='truncate text-xs font-semibold leading-4 text-gray-900 dark:text-gray-100 sm:text-[13px]'>
+                                  {person.name}
+                                </p>
+                                {person.department && (
+                                  <p className='mt-0.5 truncate text-[11px] leading-4 text-gray-500 dark:text-gray-400'>
+                                    {formatDepartment(person.department, t)}
+                                  </p>
+                                )}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
                       </div>
                     )}
-                  </div>
-                </section>
-              ) : searchHistory.length > 0 ? (
-                <section className='mb-12'>
-                  <h2 className='mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200'>
-                    {t('searchPage.searchHistory')}
-                    {/* {searchHistory.length > 0 && (
+                    <div className='mb-8 flex items-center justify-between'>
+                      <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                        {t('searchPage.searchResults')}
+                      </h2>
+                    </div>
+                    <div className='grid grid-cols-2 justify-start gap-x-2 gap-y-8 px-0 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8 sm:px-2'>
+                      {searchResults.map((item) => (
+                        <div
+                          key={`all-${item.source}-${item.id}`}
+                          className='w-full'
+                        >
+                          <VideoCard
+                            id={item.id}
+                            title={item.title}
+                            poster={item.poster}
+                            episodes={getEpisodeCount(item)}
+                            source={item.source}
+                            source_name={item.source_name}
+                            query={
+                              searchQuery.trim() !== item.title
+                                ? searchQuery.trim()
+                                : ''
+                            }
+                            year={item.year}
+                            rate={item.score}
+                            from='search'
+                            type={isTvResult(item) ? 'tv' : 'movie'}
+                            displayVariant='poster-info'
+                          />
+                        </div>
+                      ))}
+                      {searchResults.length === 0 && (
+                        <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
+                          {personResults.length > 0
+                            ? t('searchPage.noMovieTvResults')
+                            : t('common.noSearchResults')}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                ) : searchHistory.length > 0 ? (
+                  <section className='mb-12'>
+                    <h2 className='mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200'>
+                      {t('searchPage.searchHistory')}
+                      {/* {searchHistory.length > 0 && (
                   <button
                     onClick={() => {
                     className='ml-3 text-sm text-gray-500 hover:text-red-500 transition-colors dark:text-gray-400 dark:hover:text-red-500'
                   >
                   </button>
                 )} */}
-                  </h2>
-                  <div className='flex flex-wrap gap-2'>
-                    {searchHistory.map((item) => (
-                      <div key={item} className='relative group'>
-                        <button
-                          onClick={() => {
-                            setSearchQuery(item);
-                            router.push(
-                              `/search?q=${encodeURIComponent(item.trim())}`
-                            );
-                          }}
-                          className='ui-glass-control px-4 py-2 text-sm'
-                        >
-                          {item}
-                        </button>
-                        <button
-                          type='button'
-                          aria-label={t('searchPage.deleteSearchHistoryItem', {
-                            item,
-                          })}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleDeleteSearchHistory(item);
-                          }}
-                          className='absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--ui-glass-control-bg-hover)] text-white opacity-0 shadow-sm ring-1 ring-[var(--ui-glass-border)] transition-all duration-150 hover:bg-red-500 group-hover:opacity-100 focus:opacity-100'
-                        >
-                          <X className='h-3 w-3' />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
+                    </h2>
+                    <div className='flex flex-wrap gap-2'>
+                      {searchHistory.map((item) => (
+                        <div key={item} className='relative group'>
+                          <button
+                            onClick={() => {
+                              setSearchQuery(item);
+                              router.push(
+                                `/search?q=${encodeURIComponent(item.trim())}`
+                              );
+                            }}
+                            className='ui-glass-control px-4 py-2 text-sm'
+                          >
+                            {item}
+                          </button>
+                          <button
+                            type='button'
+                            aria-label={t(
+                              'searchPage.deleteSearchHistoryItem',
+                              {
+                                item,
+                              }
+                            )}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleDeleteSearchHistory(item);
+                            }}
+                            className='absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--ui-glass-control-bg-hover)] text-white opacity-0 shadow-sm ring-1 ring-[var(--ui-glass-border)] transition-all duration-150 hover:bg-red-500 group-hover:opacity-100 focus:opacity-100'
+                          >
+                            <X className='h-3 w-3' />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
             </div>
           </div>
         </PageLayout>

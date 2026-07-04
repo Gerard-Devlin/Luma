@@ -1365,9 +1365,9 @@ export default function VideoCard({
       search: {
         showSourceName: false,
         showProgress: false,
-        showHeart: !isAggregate,
+        showHeart: !isAggregate && displayVariant !== 'poster-info',
         showCheckCircle: false,
-        showRating: false,
+        showRating: displayVariant === 'poster-info' && !!rate,
       },
       discover: {
         showSourceName: false,
@@ -1378,7 +1378,7 @@ export default function VideoCard({
       },
     };
     return configs[from] || configs.search;
-  }, [from, isAggregate, rate]);
+  }, [from, isAggregate, rate, displayVariant]);
 
   const prefetchTmdbDetail = useCallback(() => {
     if (hasScheduledPrefetchRef.current) return;
