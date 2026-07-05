@@ -395,7 +395,7 @@ export const resources = {
         seeAll: '查看全部',
         series: '剧集',
         showEpisodes: '显示剧集',
-        shows: '剧集',
+        shows: '综艺',
         signOut: '退出登录',
         storage: '存储',
         trailer: '预告片',
