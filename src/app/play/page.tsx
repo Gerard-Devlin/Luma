@@ -2538,7 +2538,7 @@ function PlayPageClient() {
                         onScroll={updateCollectionScrollState}
                         className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scroll-smooth scrollbar-hide'
                       >
-                        {displayCollection.parts.slice(0, 24).map((item) => (
+                        {displayCollection.parts.map((item) => (
                           <button
                             type='button'
                             key={`play-collection-${item.id}`}

@@ -1006,7 +1006,7 @@ function DetailPageClient() {
                   onScroll={updateCollectionScrollState}
                   className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scroll-smooth scrollbar-hide'
                 >
-                  {collection.parts.slice(0, 24).map((item) => (
+                  {collection.parts.map((item) => (
                     <button
                       type='button'
                       key={`detail-collection-${item.id}`}
