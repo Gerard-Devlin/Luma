@@ -85,7 +85,6 @@ export default function TrailerStreamVideo({
       className={className}
       controls={false}
       muted={muted}
-      loop
       playsInline
       autoPlay
       preload='auto'
