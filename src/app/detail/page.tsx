@@ -118,7 +118,7 @@ interface SeasonPickerState {
 }
 
 const DETAIL_HERO_STACK_CLASS =
-  'flex max-w-3xl flex-col gap-[clamp(0.5rem,1.45dvh,1rem)] md:max-w-[35rem]';
+  'flex max-w-3xl flex-col gap-4 md:max-w-[35rem] md:gap-[clamp(0.5rem,1.45dvh,1rem)]';
 const DETAIL_HERO_LOGO_CLASS =
   'relative h-28 w-auto max-w-[min(90vw,560px)] sm:h-36 md:h-[clamp(5.5rem,14dvh,10.5rem)] md:max-w-[min(40rem,58vw)]';
 const DETAIL_HERO_ICON_BUTTON_CLASS =
