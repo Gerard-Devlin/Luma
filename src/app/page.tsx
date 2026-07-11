@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import ContinueWatching from '@/components/ContinueWatching';
+import { glassDialogContentClass } from '@/components/dialogStyles';
 import HomeCuratedRows from '@/components/HomeCuratedRows';
 import HomeRecommendedHero from '@/components/HomeRecommendedHero';
 import PageLayout from '@/components/PageLayout';
@@ -95,18 +96,18 @@ function HomeClient() {
             if (!open) handleCloseAnnouncement(announcement);
           }}
         >
-          <AlertDialogContent className='w-[min(92vw,24rem)] max-w-sm overflow-hidden rounded-3xl border border-zinc-200/70 bg-white/90 p-6 text-zinc-900 shadow-[0_30px_80px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-zinc-700/60 dark:bg-zinc-900/85 dark:text-zinc-100'>
+          <AlertDialogContent className={glassDialogContentClass}>
             <AlertDialogHeader className='space-y-3'>
               <div className='flex items-center gap-3'>
-                <span className='inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 text-red-500'>
+                <span className='inline-flex h-10 w-10 items-center justify-center rounded-[var(--ui-radius-row)] bg-red-500/15 text-red-400'>
                   <ShieldAlert className='h-5 w-5' />
                 </span>
-                <AlertDialogTitle className='text-xl text-zinc-900 dark:text-zinc-100'>
+                <AlertDialogTitle className='text-xl text-[var(--ui-text-strong)]'>
                   {t('common.disclaimer')}
                 </AlertDialogTitle>
               </div>
               <AlertDialogDescription asChild>
-                <div className='max-h-[46vh] space-y-3 overflow-y-auto pr-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300'>
+                <div className='max-h-[46vh] space-y-3 overflow-y-auto pr-1 text-sm leading-6 text-[var(--ui-text-muted)]'>
                   {announcementParagraphs.map((paragraph, index) => (
                     <p key={`announcement-${index}`}>{paragraph}</p>
                   ))}
@@ -116,7 +117,7 @@ function HomeClient() {
             <AlertDialogFooter className='mt-2'>
               <AlertDialogAction
                 onClick={() => handleCloseAnnouncement(announcement)}
-                className='w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200'
+                className='w-full'
               >
                 {t('common.iUnderstand')}
               </AlertDialogAction>

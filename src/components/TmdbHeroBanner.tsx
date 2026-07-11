@@ -242,6 +242,20 @@ const TMDB_CLIENT_API_KEY =
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const HERO_ITEM_LIMIT = 7;
+const DESKTOP_HERO_PANEL_CLASS =
+  'absolute bottom-0 left-0 z-20 hidden w-full p-4 md:block md:w-3/4 md:px-[clamp(2rem,3vw,4rem)] md:pt-[clamp(1rem,3dvh,3rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)] lg:w-1/2';
+const DESKTOP_HERO_STACK_CLASS =
+  'flex flex-col gap-[clamp(0.5rem,1.45dvh,1rem)] rounded-lg p-2 md:p-3';
+const DESKTOP_HERO_LOGO_CLASS =
+  'relative h-[clamp(4.5rem,12dvh,9rem)] w-auto max-w-[min(35rem,52vw)]';
+const DESKTOP_HERO_GRID_CLASS =
+  'grid w-fit max-w-full gap-[clamp(0.375rem,0.7dvh,0.5rem)] pb-[clamp(0.25rem,0.7dvh,0.5rem)]';
+
+function getDesktopHeroGridStyle(itemCount: number) {
+  return {
+    gridTemplateColumns: `repeat(${Math.max(itemCount, 1)}, minmax(0, clamp(3.75rem, 8.5dvh, 7.25rem)))`,
+  };
+}
 const SWIPE_THRESHOLD_PX = 48;
 const WHEEL_SWIPE_THRESHOLD_PX = 80;
 const WHEEL_SWIPE_COOLDOWN_MS = 520;
@@ -1439,13 +1453,13 @@ export default function TmdbHeroBanner({
       <section className={fullWidthSectionClass}>
         <div className='relative h-[100svh] overflow-hidden bg-slate-950 text-white md:h-screen'>
           <div className='absolute inset-0 bg-gradient-to-br from-slate-700/30 via-slate-900/50 to-black' />
-          <div className='absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/15 md:from-black/85 md:via-black/30 md:to-transparent' />
-          <div className='absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/10 md:from-black/75 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
           <div className='absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
 
-          <div className='absolute bottom-0 left-0 z-20 hidden w-full p-4 md:block md:w-3/4 md:px-8 md:pt-8 md:pb-6 lg:w-1/2 lg:px-12 lg:pt-12 lg:pb-6'>
-            <div className='space-y-4 rounded-lg p-2 md:p-3 animate-pulse'>
-              <div className='h-20 w-full max-w-[560px] rounded-md bg-white/20 sm:h-24 md:h-28 lg:h-36' />
+          <div className={DESKTOP_HERO_PANEL_CLASS}>
+            <div className={`${DESKTOP_HERO_STACK_CLASS} animate-pulse`}>
+              <div className={`${DESKTOP_HERO_LOGO_CLASS} w-full rounded-md bg-white/20`} />
 
               <div className='flex flex-wrap items-center gap-3'>
                 <span className='h-5 w-16 rounded-full bg-white/25' />
@@ -1476,12 +1490,10 @@ export default function TmdbHeroBanner({
                 <div className='h-9 w-9 rounded-full border border-white/35 bg-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.26)] backdrop-blur-md' />
               </div>
 
-              <div className='hidden pt-2 md:block'>
+              <div className='hidden pt-[clamp(0.25rem,0.7dvh,0.5rem)] md:block'>
                 <div
-                  className='grid gap-2 pb-2'
-                  style={{
-                    gridTemplateColumns: `repeat(${Math.max(HERO_ITEM_LIMIT, 1)}, minmax(0, 1fr))`,
-                  }}
+                  className={DESKTOP_HERO_GRID_CLASS}
+                  style={getDesktopHeroGridStyle(HERO_ITEM_LIMIT)}
                 >
                   {Array.from({ length: HERO_ITEM_LIMIT }).map((_, index) => (
                     <div
@@ -1605,21 +1617,21 @@ export default function TmdbHeroBanner({
                   alt={item.title}
                   fill
                   priority={isCurrent}
-                  className='object-cover object-center brightness-[0.42]'
+                  className='object-cover object-center brightness-[0.56]'
                 />
               </div>
             );
           })}
         </div>
-        <div className='absolute inset-0 z-10 bg-gradient-to-t from-black via-black/45 to-black/15 md:from-black/65 md:via-black/20 md:to-transparent' />
-        <div className='absolute inset-0 z-10 bg-gradient-to-r from-black/25 via-transparent to-black/10 md:from-black/45 md:to-transparent' />
+        <div className='absolute inset-0 z-10 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
+        <div className='absolute inset-0 z-10 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
         <div className='absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
 
-        <div className='absolute bottom-0 left-0 z-20 hidden w-full p-4 md:block md:w-3/4 md:px-8 md:pt-8 md:pb-6 lg:w-1/2 lg:px-12 lg:pt-12 lg:pb-6'>
-          <div className='space-y-4 rounded-lg p-2 md:p-3'>
+        <div className={DESKTOP_HERO_PANEL_CLASS}>
+          <div className={DESKTOP_HERO_STACK_CLASS}>
             {activeItem.logo ? (
               <div
-                className='relative h-20 w-auto max-w-[560px] sm:h-24 md:h-28 lg:h-36'
+                className={DESKTOP_HERO_LOGO_CLASS}
                 style={
                   logoRatios[activeLogoKey]
                     ? { aspectRatio: logoRatios[activeLogoKey] }
@@ -1635,7 +1647,7 @@ export default function TmdbHeroBanner({
                 />
               </div>
             ) : (
-              <h2 className='text-3xl font-extrabold leading-tight text-white sm:text-5xl md:text-6xl'>
+              <h2 className='text-[clamp(2rem,5dvh,3.75rem)] font-extrabold leading-tight text-white'>
                 {activeItem.title}
               </h2>
             )}
@@ -1677,7 +1689,7 @@ export default function TmdbHeroBanner({
               ) : null}
             </div>
 
-            <p className='max-w-xl text-sm leading-6 text-white/90 line-clamp-2 md:line-clamp-3 md:text-base'>
+            <p className='max-w-xl text-[clamp(0.75rem,1.45dvh,1rem)] leading-[clamp(1.2rem,2.2dvh,1.5rem)] text-white/90 line-clamp-2 min-[768px]:line-clamp-3'>
               {activeItem.overview}
             </p>
 
@@ -1731,12 +1743,10 @@ export default function TmdbHeroBanner({
               </button>
             </div>
 
-            <div className='relative hidden pt-2 md:block'>
+            <div className='relative hidden pt-[clamp(0.25rem,0.7dvh,0.5rem)] md:block'>
               <div
-                className='grid gap-2 pb-2'
-                style={{
-                  gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))`,
-                }}
+                className={DESKTOP_HERO_GRID_CLASS}
+                style={getDesktopHeroGridStyle(items.length)}
               >
                 {items.map((item, index) => (
                   <button
@@ -1761,7 +1771,7 @@ export default function TmdbHeroBanner({
                       />
                     </div>
                     <span
-                      className={`mt-2 line-clamp-2 text-[11px] font-medium text-white transition-opacity duration-300 ${
+                      className={`mt-[clamp(0.25rem,0.7dvh,0.5rem)] line-clamp-2 text-[clamp(0.625rem,1.05dvh,0.6875rem)] font-medium text-white transition-opacity duration-300 ${
                         index === activeIndex
                           ? 'opacity-100'
                           : 'opacity-0 group-hover:opacity-100'
