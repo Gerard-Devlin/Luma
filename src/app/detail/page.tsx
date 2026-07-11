@@ -30,6 +30,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useImdbTrailerStream } from '@/hooks/use-imdb-trailer-stream';
 import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   deleteFavorite,
@@ -45,8 +46,6 @@ import {
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { isFutureReleaseDate } from '@/lib/tmdbRelease';
-import { useImdbTrailerStream } from '@/hooks/use-imdb-trailer-stream';
-
 import PageLayout from '@/components/PageLayout';
 import PosterInfoCard from '@/components/PosterInfoCard';
 import ReleaseYearBadge from '@/components/ReleaseYearBadge';
@@ -121,7 +120,7 @@ interface SeasonPickerState {
 const DETAIL_HERO_STACK_CLASS =
   'flex max-w-3xl flex-col gap-[clamp(0.5rem,1.45dvh,1rem)] md:max-w-[35rem]';
 const DETAIL_HERO_LOGO_CLASS =
-  'relative h-24 w-auto max-w-[min(86vw,520px)] sm:h-32 md:h-[clamp(4.5rem,12dvh,9rem)] md:max-w-[min(35rem,52vw)]';
+  'relative h-28 w-auto max-w-[min(90vw,560px)] sm:h-36 md:h-[clamp(5.5rem,14dvh,10.5rem)] md:max-w-[min(40rem,58vw)]';
 const DETAIL_HERO_ICON_BUTTON_CLASS =
   'ui-glass-control inline-flex h-9 w-9 items-center justify-center';
 
@@ -199,10 +198,12 @@ function DetailSkeleton() {
           <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
           <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
           <div className='absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
-          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)]'>
+          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+clamp(1.5rem,4dvh,2.5rem))] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(2.5rem,5dvh,3.5rem)]'>
             <div className='w-full'>
               <div className={`${DETAIL_HERO_STACK_CLASS} animate-pulse`}>
-                <div className={`${DETAIL_HERO_LOGO_CLASS} w-full rounded-xl bg-white/20`} />
+                <div
+                  className={`${DETAIL_HERO_LOGO_CLASS} w-full rounded-xl bg-white/20`}
+                />
                 <div className='space-y-4'>
                   <div className='flex flex-wrap gap-3'>
                     <div className='h-6 w-24 rounded-full bg-white/20' />
@@ -294,6 +295,7 @@ function DetailPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [trailerMuted, setTrailerMuted] = useState(true);
   const [streamTrailerVisible, setStreamTrailerVisible] = useState(false);
+  const [streamTrailerCompleted, setStreamTrailerCompleted] = useState(false);
   const [streamTrailerUnavailable, setStreamTrailerUnavailable] =
     useState(false);
   const [favorited, setFavorited] = useState(false);
@@ -344,6 +346,7 @@ function DetailPageClient() {
   const shouldRenderStreamTrailer = Boolean(
     hasStreamTrailerSource &&
       streamTrailerStatus === 'ready' &&
+      !streamTrailerCompleted &&
       !streamTrailerUnavailable
   );
   const favoriteSource = 'tmdb';
@@ -492,6 +495,7 @@ function DetailPageClient() {
       setError(null);
       setTrailerMuted(true);
       setStreamTrailerVisible(false);
+      setStreamTrailerCompleted(false);
       setStreamTrailerUnavailable(false);
 
       try {
@@ -522,6 +526,7 @@ function DetailPageClient() {
   useEffect(() => {
     setTrailerMuted(true);
     setStreamTrailerVisible(false);
+    setStreamTrailerCompleted(false);
     setStreamTrailerUnavailable(false);
   }, [detail?.imdbId, detail?.trailerUrl]);
 
@@ -686,6 +691,7 @@ function DetailPageClient() {
                 }}
                 onEnded={() => {
                   setStreamTrailerVisible(false);
+                  setStreamTrailerCompleted(true);
                 }}
                 onError={() => {
                   setStreamTrailerVisible(false);
@@ -720,7 +726,7 @@ function DetailPageClient() {
           <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
           <div className='absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
 
-          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)]'>
+          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+clamp(1.5rem,4dvh,2.5rem))] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(2.5rem,5dvh,3.5rem)]'>
             <div className='w-full'>
               <div className={`group ${DETAIL_HERO_STACK_CLASS}`}>
                 {detail.logo ? (
@@ -816,7 +822,7 @@ function DetailPageClient() {
                   ) : null}
                 </div>
 
-                <div className='grid grid-rows-[1fr] transition-[grid-template-rows,opacity,transform,filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-rows-[0fr] md:translate-y-4 md:opacity-0 md:blur-[2px] md:group-hover:grid-rows-[1fr] md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-hover:blur-0 md:group-focus-within:grid-rows-[1fr] md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 md:group-focus-within:blur-0'>
+                <div className='grid grid-rows-[1fr] transition-[grid-template-rows,opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-rows-[0fr] md:translate-y-4 md:opacity-0 md:group-hover:grid-rows-[1fr] md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:grid-rows-[1fr] md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100'>
                   <div className='min-h-0 overflow-hidden'>
                     <div className='space-y-4'>
                       <div className='flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-medium text-white/90'>
@@ -876,7 +882,7 @@ function DetailPageClient() {
                           {detail.genres.map((genre) => (
                             <span
                               key={genre}
-                              className='rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur-md'
+                              className='rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur-xl'
                             >
                               {genre}
                             </span>

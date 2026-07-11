@@ -247,7 +247,7 @@ const DESKTOP_HERO_PANEL_CLASS =
 const DESKTOP_HERO_STACK_CLASS =
   'flex flex-col gap-[clamp(0.5rem,1.45dvh,1rem)] rounded-lg p-2 md:p-3';
 const DESKTOP_HERO_LOGO_CLASS =
-  'relative h-[clamp(4.5rem,12dvh,9rem)] w-auto max-w-[min(35rem,52vw)]';
+  'relative h-[clamp(5.5rem,14dvh,10.5rem)] w-auto max-w-[min(40rem,58vw)]';
 const DESKTOP_HERO_GRID_CLASS =
   'grid w-fit max-w-full gap-[clamp(0.375rem,0.7dvh,0.5rem)] pb-[clamp(0.25rem,0.7dvh,0.5rem)]';
 
@@ -1513,7 +1513,7 @@ export default function TmdbHeroBanner({
 
           <div className='absolute inset-x-0 bottom-0 z-20 md:hidden'>
             <div className='flex w-full flex-col items-center px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] text-center animate-pulse'>
-              <div className='h-32 w-full max-w-[22rem] rounded-md bg-white/20' />
+              <div className='h-36 w-full max-w-[24rem] rounded-md bg-white/20' />
               <div className='mt-4 flex flex-wrap items-center justify-center gap-2'>
                 <span className='h-5 w-14 rounded-full bg-white/20' />
                 <span className='h-5 w-12 rounded-full bg-white/15' />
@@ -1790,7 +1790,7 @@ export default function TmdbHeroBanner({
           <div className='flex w-full flex-col items-center px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] text-center'>
             {activeItem.logo ? (
               <div
-                className='relative h-32 w-auto max-w-[22rem]'
+                className='relative h-36 w-auto max-w-[24rem]'
                 style={
                   logoRatios[activeLogoKey]
                     ? { aspectRatio: logoRatios[activeLogoKey] }
