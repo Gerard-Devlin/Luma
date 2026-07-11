@@ -118,6 +118,13 @@ interface SeasonPickerState {
   backdrop?: string;
 }
 
+const DETAIL_HERO_STACK_CLASS =
+  'flex max-w-3xl flex-col gap-[clamp(0.5rem,1.45dvh,1rem)] md:max-w-[35rem]';
+const DETAIL_HERO_LOGO_CLASS =
+  'relative h-24 w-auto max-w-[min(86vw,520px)] sm:h-32 md:h-[clamp(4.5rem,12dvh,9rem)] md:max-w-[min(35rem,52vw)]';
+const DETAIL_HERO_ICON_BUTTON_CLASS =
+  'ui-glass-control inline-flex h-9 w-9 items-center justify-center';
+
 function safeImageUrl(url?: string): string {
   return url || '';
 }
@@ -189,13 +196,13 @@ function DetailSkeleton() {
       <div className='min-h-screen bg-black text-white'>
         <section className='relative min-h-screen overflow-hidden bg-black'>
           <div className='absolute inset-0 animate-pulse bg-white/10' />
-          <div className='absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/15 md:from-black/65 md:via-black/20 md:to-transparent' />
-          <div className='absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/10 md:from-black/45 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
           <div className='absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
-          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-10 md:pb-14 lg:px-14'>
+          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)]'>
             <div className='w-full'>
-              <div className='flex max-w-3xl animate-pulse flex-col gap-4 md:max-w-[34rem]'>
-                <div className='h-24 w-[min(86vw,520px)] rounded-xl bg-white/20 sm:h-32 lg:h-40' />
+              <div className={`${DETAIL_HERO_STACK_CLASS} animate-pulse`}>
+                <div className={`${DETAIL_HERO_LOGO_CLASS} w-full rounded-xl bg-white/20`} />
                 <div className='space-y-4'>
                   <div className='flex flex-wrap gap-3'>
                     <div className='h-6 w-24 rounded-full bg-white/20' />
@@ -220,9 +227,10 @@ function DetailSkeleton() {
                   </div>
                 </div>
                 <div className='flex flex-wrap gap-3'>
-                  <div className='h-10 w-[120px] rounded-full bg-white/30' />
-                  <div className='h-10 w-10 rounded-full border border-white/35 bg-white/15' />
-                  <div className='h-10 w-[108px] rounded-full border border-white/35 bg-white/15' />
+                  <div className='h-9 w-[120px] rounded-full bg-white/30' />
+                  <div className='h-9 w-9 rounded-full border border-white/35 bg-white/15' />
+                  <div className='h-9 w-[108px] rounded-full border border-white/35 bg-white/15' />
+                  <div className='h-9 w-9 rounded-full border border-white/35 bg-white/15' />
                 </div>
               </div>
             </div>
@@ -647,7 +655,7 @@ function DetailPageClient() {
               alt={detail.title}
               fill
               priority
-              className='object-cover object-center brightness-[0.42]'
+              className='object-cover object-center brightness-[0.56]'
               sizes='100vw'
             />
           ) : (
@@ -699,7 +707,7 @@ function DetailPageClient() {
                   src={safeImageUrl(heroImage)}
                   alt=''
                   fill
-                  className='object-cover object-center brightness-[0.42]'
+                  className='object-cover object-center brightness-[0.56]'
                   sizes='100vw'
                 />
               ) : (
@@ -708,16 +716,16 @@ function DetailPageClient() {
             </div>
           ) : null}
 
-          <div className='absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/15 md:from-black/65 md:via-black/20 md:to-transparent' />
-          <div className='absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/10 md:from-black/45 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
+          <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />
           <div className='absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent md:hidden' />
 
-          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-10 md:pb-14 lg:px-14'>
+          <div className='relative z-10 flex min-h-screen items-end px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-24 md:px-[clamp(2rem,3vw,4rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)]'>
             <div className='w-full'>
-              <div className='group flex max-w-3xl flex-col gap-4 md:max-w-[34rem]'>
+              <div className={`group ${DETAIL_HERO_STACK_CLASS}`}>
                 {detail.logo ? (
                   <div
-                    className='relative h-24 w-auto max-w-[min(86vw,520px)] sm:h-32 lg:h-40'
+                    className={DETAIL_HERO_LOGO_CLASS}
                     style={
                       detail.logoAspectRatio
                         ? { aspectRatio: detail.logoAspectRatio }
@@ -732,7 +740,7 @@ function DetailPageClient() {
                     />
                   </div>
                 ) : (
-                  <h1 className='max-w-3xl text-4xl font-black leading-tight text-white drop-shadow-[0_12px_30px_rgba(0,0,0,0.75)] sm:text-5xl lg:text-6xl'>
+                  <h1 className='max-w-3xl text-4xl font-black leading-tight text-white drop-shadow-[0_12px_30px_rgba(0,0,0,0.75)] sm:text-5xl md:text-[clamp(2rem,5dvh,3.75rem)]'>
                     {detail.title}
                   </h1>
                 )}
@@ -744,7 +752,7 @@ function DetailPageClient() {
                       onClick={() => {
                         void handlePlay();
                       }}
-                      className='inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-all hover:bg-white/90 hover:shadow-xl'
+                      className='inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black shadow-[0_10px_24px_rgba(0,0,0,0.32)] transition-all duration-200 hover:bg-white/90 hover:shadow-xl'
                     >
                       <Play className='h-4 w-4' fill='currentColor' />
                       {t('common.playNow')}
@@ -766,7 +774,7 @@ function DetailPageClient() {
                         ? t('common.removeFromFavorites')
                         : t('common.addToFavorites')
                     }
-                    className={`ui-glass-control inline-flex h-10 w-10 items-center justify-center disabled:pointer-events-none disabled:opacity-60 ${
+                    className={`${DETAIL_HERO_ICON_BUTTON_CLASS} disabled:pointer-events-none disabled:opacity-60 ${
                       favorited
                         ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 hover:bg-yellow-400/20'
                         : ''
@@ -782,7 +790,7 @@ function DetailPageClient() {
                       href={detail.trailerUrl}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='ui-glass-control inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold'
+                      className='ui-glass-control inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold'
                     >
                       <Youtube className='h-4 w-4' />
                       {t('common.trailer')}
@@ -797,7 +805,7 @@ function DetailPageClient() {
                           ? t('detail.turnTrailerSoundOn')
                           : t('detail.turnTrailerSoundOff')
                       }
-                      className='ui-glass-control inline-flex h-10 w-10 items-center justify-center'
+                      className={DETAIL_HERO_ICON_BUTTON_CLASS}
                     >
                       {trailerMuted ? (
                         <VolumeX className='h-4 w-4' />
