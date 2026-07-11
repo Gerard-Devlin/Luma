@@ -118,7 +118,7 @@ interface SeasonPickerState {
 }
 
 const DETAIL_HERO_STACK_CLASS =
-  'flex max-w-3xl flex-col gap-4 md:max-w-[35rem] md:gap-[clamp(0.5rem,1.45dvh,1rem)]';
+  'flex max-w-3xl flex-col gap-4 md:max-w-[35rem]';
 const DETAIL_HERO_LOGO_CLASS =
   'relative h-28 w-auto max-w-[min(90vw,560px)] sm:h-36 md:h-[clamp(5.5rem,14dvh,10.5rem)] md:max-w-[min(40rem,58vw)]';
 const DETAIL_HERO_ICON_BUTTON_CLASS =
@@ -894,7 +894,7 @@ function DetailPageClient() {
                         {detail.overview}
                       </p>
 
-                      <div className='flex flex-wrap items-center gap-4 text-xs text-white/60 sm:text-sm'>
+                      <div className='!mt-3 flex flex-wrap items-center gap-4 text-xs text-white/60 sm:text-sm'>
                         {detail.language ? (
                           <span className='inline-flex items-center gap-1'>
                             <Globe2 className='h-4 w-4' />
