@@ -35,6 +35,14 @@ interface TmdbDetailRawCast {
   profile_path?: string | null;
 }
 
+interface TmdbDetailRawCrew {
+  id?: number;
+  name?: string;
+  original_name?: string;
+  job?: string;
+  profile_path?: string | null;
+}
+
 interface TmdbDetailRawAggregateRole {
   character?: string;
   episode_count?: number;
@@ -46,6 +54,19 @@ interface TmdbDetailRawAggregateCast {
   original_name?: string;
   profile_path?: string | null;
   roles?: TmdbDetailRawAggregateRole[];
+}
+
+interface TmdbDetailRawAggregateJob {
+  job?: string;
+  episode_count?: number;
+}
+
+interface TmdbDetailRawAggregateCrew {
+  id?: number;
+  name?: string;
+  original_name?: string;
+  profile_path?: string | null;
+  jobs?: TmdbDetailRawAggregateJob[];
 }
 
 interface TmdbDetailRawVideo {
@@ -104,9 +125,11 @@ interface TmdbDetailRawResponse {
   genres?: TmdbDetailRawGenre[];
   credits?: {
     cast?: TmdbDetailRawCast[];
+    crew?: TmdbDetailRawCrew[];
   };
   aggregate_credits?: {
     cast?: TmdbDetailRawAggregateCast[];
+    crew?: TmdbDetailRawAggregateCrew[];
   };
   videos?: {
     results?: TmdbDetailRawVideo[];
@@ -168,6 +191,11 @@ interface TmdbDetailResponse {
   genres: string[];
   language: string;
   popularity: number | null;
+  directors: Array<{
+    id: number;
+    name: string;
+    profile?: string;
+  }>;
   cast: Array<{
     id: number;
     name: string;
@@ -878,6 +906,38 @@ function mapRawDetailToResponse(
     return true;
   });
 
+  const normalizedMovieDirectors = (raw.credits?.crew || [])
+    .filter((member) => member.job?.trim().toLowerCase() === 'director')
+    .map((member) => ({
+      id: member.id ?? 0,
+      name: (member.name || member.original_name || '').trim(),
+      profile: toImageUrl(member.profile_path, 'w185'),
+    }));
+
+  const normalizedTvAggregateDirectors = (raw.aggregate_credits?.crew || [])
+    .filter((member) =>
+      (member.jobs || []).some(
+        (job) => job.job?.trim().toLowerCase() === 'director'
+      )
+    )
+    .map((member) => ({
+      id: member.id ?? 0,
+      name: (member.name || member.original_name || '').trim(),
+      profile: toImageUrl(member.profile_path, 'w185'),
+    }));
+
+  const directorSource =
+    input.mediaType === 'tv' && normalizedTvAggregateDirectors.length > 0
+      ? normalizedTvAggregateDirectors
+      : normalizedMovieDirectors;
+  const directorDedupe = new Set<number>();
+  const directors = directorSource.filter((member) => {
+    if (member.id <= 0 || !member.name) return false;
+    if (directorDedupe.has(member.id)) return false;
+    directorDedupe.add(member.id);
+    return true;
+  });
+
   const contentRating =
     input.mediaType === 'movie'
       ? pickMovieContentRatingFromRaw(raw)
@@ -1027,6 +1087,7 @@ function mapRawDetailToResponse(
     language: (raw.original_language || '').toUpperCase(),
     popularity:
       typeof raw.popularity === 'number' ? Math.round(raw.popularity) : null,
+    directors,
     cast,
     recommendations,
     collection,

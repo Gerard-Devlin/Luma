@@ -106,6 +106,11 @@ export interface SearchResult {
   score?: string;
   desc?: string;
   type_name?: string;
+  genre_ids?: number[];
+  original_language?: string;
+  popularity?: number;
+  vote_count?: number;
+  runtime?: number;
 }
 
 export interface SkipConfig {

@@ -16,12 +16,15 @@ import { Suspense } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { mergeUniqueById, uniqueById } from '@/lib/unique-list';
+
 import DiscoverCardSkeleton from '@/components/DiscoverCardSkeleton';
+import { MEDIA_RANGE_INPUT_CLASS } from '@/components/MediaFilterControls';
 import PageLayout from '@/components/PageLayout';
 import TmdbHeroBanner from '@/components/TmdbHeroBanner';
 import VideoCard from '@/components/VideoCard';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface GenreOption {
   id: number;
@@ -142,9 +145,7 @@ const DEFAULT_FILTERS: FilterState = {
   runtimeMax: String(MAX_RUNTIME_MINUTES),
 };
 
-function normalizeType(
-  value: string | null
-): 'movie' | 'tv' | 'show' {
+function normalizeType(value: string | null): 'movie' | 'tv' | 'show' {
   if (value === 'tv') return 'tv';
   if (value === 'show') return 'show';
   return 'movie';
@@ -157,9 +158,6 @@ function parseNumberLike(value: string): string {
   if (!Number.isFinite(parsed) || parsed < 0) return '';
   return String(parsed);
 }
-
-const RANGE_INPUT_CLASS =
-  'pointer-events-none absolute inset-0 h-8 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#8C97A8] [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#8C97A8]';
 
 const SHOW_GENRE_FILTER = '10764|10767';
 const SHOW_HERO_COUNTRY_FILTER = 'CN|KR';
@@ -372,9 +370,7 @@ function DiscoverPageClient() {
         const data = (await response.json()) as DiscoverApiResponse;
 
         if (!response.ok || data.code !== 200) {
-          throw new Error(
-            data.message || 'Failed to fetch TMDB show data'
-          );
+          throw new Error(data.message || 'Failed to fetch TMDB show data');
         }
 
         setShowItems((prev) =>
@@ -601,8 +597,8 @@ function DiscoverPageClient() {
                 {type === 'tv'
                   ? t('common.series')
                   : type === 'show'
-                    ? t('common.shows')
-                    : t('common.movies')}
+                  ? t('common.shows')
+                  : t('common.movies')}
               </h1>
             </div>
 
@@ -725,7 +721,7 @@ function DiscoverPageClient() {
                         <CalendarRange className='h-4 w-4' />
                         {t('discover.releaseDate')}
                       </div>
-                  <div className='w-full'>
+                      <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
                           <span>{releaseMinValue}</span>
                           <span>{releaseMaxValue}</span>
@@ -754,7 +750,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-20`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-20`}
                           />
                           <input
                             type='range'
@@ -771,7 +767,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-30`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-30`}
                           />
                         </div>
                         <div className='mt-1 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400'>
@@ -869,7 +865,11 @@ function DiscoverPageClient() {
                       </div>
                     </div>
 
-                    <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
+                    <div
+                      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${
+                        showAdvancedFilters ? '' : 'hidden'
+                      }`}
+                    >
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Languages className='h-4 w-4' />
                         {t('common.language')}
@@ -895,12 +895,16 @@ function DiscoverPageClient() {
                       </select>
                     </div>
 
-                    <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
+                    <div
+                      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${
+                        showAdvancedFilters ? '' : 'hidden'
+                      }`}
+                    >
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Star className='h-4 w-4' />
                         {t('discover.userRating')}
                       </div>
-                  <div className='w-full'>
+                      <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
                           <span>{ratingMinValue}</span>
                           <span>{ratingMaxValue}</span>
@@ -929,7 +933,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-20`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-20`}
                           />
                           <input
                             type='range'
@@ -946,7 +950,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-30`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-30`}
                           />
                         </div>
                         <div className='mt-1 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400'>
@@ -957,7 +961,11 @@ function DiscoverPageClient() {
                       </div>
                     </div>
 
-                    <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
+                    <div
+                      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${
+                        showAdvancedFilters ? '' : 'hidden'
+                      }`}
+                    >
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <UsersRound className='h-4 w-4' />
                         {t('discover.minimumVotes')}
@@ -978,12 +986,16 @@ function DiscoverPageClient() {
                       />
                     </div>
 
-                    <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${showAdvancedFilters ? '' : 'hidden'}`}>
+                    <div
+                      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${
+                        showAdvancedFilters ? '' : 'hidden'
+                      }`}
+                    >
                       <div className='flex items-center gap-1 text-base font-semibold text-gray-700 dark:text-gray-200 sm:w-40 sm:flex-shrink-0'>
                         <Clock3 className='h-4 w-4' />
                         {t('discover.runtime')}
                       </div>
-                  <div className='w-full'>
+                      <div className='w-full'>
                         <div className='mb-1 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300'>
                           <span>{runtimeMinValue} min</span>
                           <span>{runtimeMaxValue} min</span>
@@ -1012,7 +1024,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-20`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-20`}
                           />
                           <input
                             type='range'
@@ -1029,7 +1041,7 @@ function DiscoverPageClient() {
                                 ),
                               }));
                             }}
-                            className={`${RANGE_INPUT_CLASS} z-30`}
+                            className={`${MEDIA_RANGE_INPUT_CLASS} z-30`}
                           />
                         </div>
                         <div className='mt-1 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400'>

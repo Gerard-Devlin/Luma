@@ -69,6 +69,11 @@ interface TmdbPlayDetail {
   genres: string[];
   language: string;
   popularity: number | null;
+  directors: Array<{
+    id: number;
+    name: string;
+    profile?: string;
+  }>;
   cast: Array<{
     id: number;
     name: string;
@@ -1920,6 +1925,7 @@ function PlayPageClient() {
       ? t('common.movie')
       : detail?.type_name || '';
   const displayGenres = tmdbDetail?.genres || [];
+  const displayDirectors = tmdbDetail?.directors || [];
   const displayCast = tmdbDetail?.cast || [];
   const displayCollection = tmdbDetail?.collection;
   const displayRecommendations =
@@ -2397,8 +2403,42 @@ function PlayPageClient() {
                     {displayOverview}
                   </p>
                 )}
+                {displayDirectors.length > 0 ? (
+                  <section className='mt-6 space-y-3'>
+                    <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
+                      {t('detail.director')}
+                    </h2>
+                    <div className='-mx-1 flex items-start gap-5 overflow-x-auto px-1 pb-2 scrollbar-hide sm:gap-6'>
+                      {displayDirectors.map((item) => (
+                        <button
+                          type='button'
+                          key={`play-director-${item.id}-${item.name}`}
+                          onClick={() => router.push(`/person/${item.id}`)}
+                          className='group flex w-[88px] flex-shrink-0 flex-col items-center text-center sm:w-[104px]'
+                        >
+                          <div className='relative h-[82px] w-[82px] overflow-hidden rounded-full border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] shadow-[var(--ui-shadow-control)] sm:h-24 sm:w-24'>
+                            {item.profile ? (
+                              <img
+                                src={item.profile}
+                                alt={item.name}
+                                className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
+                              />
+                            ) : (
+                              <div className='flex h-full w-full items-center justify-center text-gray-300/80'>
+                                <Users size={20} />
+                              </div>
+                            )}
+                          </div>
+                          <p className='mt-2 w-full truncate text-xs font-semibold leading-4 text-gray-900 dark:text-gray-100 sm:text-[13px]'>
+                            {item.name}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
                 {displayCast.length > 0 ? (
-                  <section className='mt-4 space-y-3'>
+                  <section className='mt-6 space-y-3'>
                     <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
                       {t('detail.cast')}
                     </h2>
@@ -2511,7 +2551,7 @@ function PlayPageClient() {
                 ) : null}
 
                 {displayCollection && displayCollection.parts.length > 0 ? (
-                  <section className='mt-4 space-y-3'>
+                  <section className='mt-6 space-y-3'>
                     <div>
                       <h2 className='text-sm font-semibold text-gray-900/90 dark:text-white/90'>
                         {t('detail.collection')}

@@ -1,14 +1,32 @@
 ﻿/* eslint-disable react-hooks/exhaustive-deps, @typescript-eslint/no-explicit-any, @next/next/no-img-element */
 'use client';
 
-import { Users, X } from 'lucide-react';
+import {
+  CalendarRange,
+  ChevronDown,
+  Clock3,
+  Languages,
+  ListFilter,
+  RotateCcw,
+  Star,
+  Tags,
+  Users,
+  UsersRound,
+  X,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   addSearchHistory,
   deleteSearchHistory,
@@ -21,6 +39,11 @@ import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { SearchResult } from '@/lib/types';
 
 import Loader from '@/components/Loader';
+import {
+  MediaDualRange,
+  MediaFilterChip,
+  MediaFilterRow,
+} from '@/components/MediaFilterControls';
 import PageLayout from '@/components/PageLayout';
 import SearchGlassInput from '@/components/SearchGlassInput';
 import SearchPreviewPanel from '@/components/SearchPreviewPanel';
@@ -30,6 +53,8 @@ import TmdbDetailModal, {
   type TmdbDetailModalData,
 } from '@/components/TmdbDetailModal';
 import VideoCard from '@/components/VideoCard';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface SearchPersonResult {
   id: number;
@@ -47,6 +72,69 @@ interface SearchPayload {
 interface TmdbTopSearchDetail extends TmdbDetailModalData {
   logo?: string;
 }
+
+type SearchResultFilter = 'all' | 'movie' | 'tv' | 'people';
+type SearchSortMode = 'date' | 'rating' | 'popularity';
+
+interface AdvancedSearchFilters {
+  yearMin: string;
+  yearMax: string;
+  includedGenres: number[];
+  excludedGenres: number[];
+  language: string;
+  ratingMin: number;
+  ratingMax: number;
+  minVoteCount: number;
+  runtimeMin: number;
+  runtimeMax: number;
+  sort: SearchSortMode;
+}
+
+const CURRENT_YEAR = new Date().getFullYear();
+const DEFAULT_ADVANCED_FILTERS: AdvancedSearchFilters = {
+  yearMin: '1950',
+  yearMax: String(CURRENT_YEAR),
+  includedGenres: [],
+  excludedGenres: [],
+  language: '',
+  ratingMin: 0,
+  ratingMax: 10,
+  minVoteCount: 0,
+  runtimeMin: 0,
+  runtimeMax: 360,
+  sort: 'popularity',
+};
+const SEARCH_GENRES = [
+  { id: 28, labelKey: 'discover.action' },
+  { id: 12, labelKey: 'discover.adventure' },
+  { id: 16, labelKey: 'discover.animation' },
+  { id: 35, labelKey: 'discover.comedy' },
+  { id: 80, labelKey: 'discover.crime' },
+  { id: 99, labelKey: 'discover.documentary' },
+  { id: 18, labelKey: 'discover.drama' },
+  { id: 10751, labelKey: 'discover.family' },
+  { id: 14, labelKey: 'discover.fantasy' },
+  { id: 27, labelKey: 'discover.horror' },
+  { id: 9648, labelKey: 'discover.mystery' },
+  { id: 10749, labelKey: 'discover.romance' },
+  { id: 878, labelKey: 'discover.sciFi' },
+  { id: 53, labelKey: 'discover.thriller' },
+  { id: 36, labelKey: 'discover.history' },
+  { id: 10752, labelKey: 'discover.war' },
+  { id: 10770, labelKey: 'discover.tvMovie' },
+  { id: 37, labelKey: 'discover.western' },
+  { id: 10402, labelKey: 'discover.music' },
+];
+const SEARCH_LANGUAGES = [
+  { value: '', labelKey: 'discover.anyLanguage' },
+  { value: 'zh', labelKey: 'discover.chinese' },
+  { value: 'en', labelKey: 'discover.english' },
+  { value: 'ja', labelKey: 'discover.japanese' },
+  { value: 'ko', labelKey: 'discover.korean' },
+  { value: 'fr', labelKey: 'discover.french' },
+  { value: 'de', labelKey: 'discover.german' },
+  { value: 'es', labelKey: 'discover.spanish' },
+];
 
 const SEARCH_SUGGEST_DEBOUNCE_MS = 220;
 const SEARCH_SUGGEST_LIMIT = 6;
@@ -171,6 +259,89 @@ function SearchPageClient() {
   });
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [personResults, setPersonResults] = useState<SearchPersonResult[]>([]);
+  const [resultFilter, setResultFilter] = useState<SearchResultFilter>('all');
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>(
+    DEFAULT_ADVANCED_FILTERS
+  );
+  const filteredMediaResults = useMemo(() => {
+    const filtered = searchResults.filter((item) => {
+      if (resultFilter === 'movie' && isTvResult(item)) return false;
+      if (resultFilter === 'tv' && !isTvResult(item)) return false;
+      const year = Number(item.year);
+      if (
+        advancedFilters.yearMin &&
+        (!year || year < Number(advancedFilters.yearMin))
+      )
+        return false;
+      if (
+        advancedFilters.yearMax &&
+        (!year || year > Number(advancedFilters.yearMax))
+      )
+        return false;
+      const genres = item.genre_ids || [];
+      if (
+        advancedFilters.includedGenres.length > 0 &&
+        !advancedFilters.includedGenres.every((id) => genres.includes(id))
+      )
+        return false;
+      if (advancedFilters.excludedGenres.some((id) => genres.includes(id)))
+        return false;
+      if (
+        advancedFilters.language &&
+        item.original_language !== advancedFilters.language
+      )
+        return false;
+      if (Number(item.score || 0) < advancedFilters.ratingMin) return false;
+      if (Number(item.score || 0) > advancedFilters.ratingMax) return false;
+      if ((item.vote_count || 0) < advancedFilters.minVoteCount) return false;
+      if (
+        (advancedFilters.runtimeMin > 0 || advancedFilters.runtimeMax < 360) &&
+        (!item.runtime ||
+          item.runtime < advancedFilters.runtimeMin ||
+          item.runtime > advancedFilters.runtimeMax)
+      )
+        return false;
+      return true;
+    });
+    return filtered.sort((a, b) => {
+      if (advancedFilters.sort === 'date')
+        return Number(b.year || 0) - Number(a.year || 0);
+      if (advancedFilters.sort === 'rating')
+        return Number(b.score || 0) - Number(a.score || 0);
+      if (advancedFilters.sort === 'popularity')
+        return (b.popularity || 0) - (a.popularity || 0);
+      return 0;
+    });
+  }, [advancedFilters, resultFilter, searchResults]);
+  const movieResultCount = useMemo(
+    () => searchResults.filter((item) => !isTvResult(item)).length,
+    [searchResults]
+  );
+  const filterOptions = [
+    {
+      key: 'all' as const,
+      label: t('common.all'),
+      count: searchResults.length + personResults.length,
+    },
+    {
+      key: 'movie' as const,
+      label: t('common.movie'),
+      count: movieResultCount,
+    },
+    {
+      key: 'tv' as const,
+      label: t('common.series'),
+      count: searchResults.length - movieResultCount,
+    },
+    {
+      key: 'people' as const,
+      label: t('searchPage.people'),
+      count: personResults.length,
+    },
+  ];
+  const showPeopleResults = resultFilter === 'all' || resultFilter === 'people';
+  const showMediaResults = resultFilter !== 'people';
   const trimmedSearchQuery = searchQuery.trim();
   const shouldShowSuggestionDropdown =
     suggestionOpen &&
@@ -305,6 +476,9 @@ function SearchPageClient() {
   const fetchSearchResults = async (query: string) => {
     try {
       setIsLoading(true);
+      setResultFilter('all');
+      setAdvancedFilters(DEFAULT_ADVANCED_FILTERS);
+      setAdvancedFiltersOpen(false);
       const trimmedQuery = query.trim();
 
       const tmdbPayload = await fetch(
@@ -595,6 +769,9 @@ function SearchPageClient() {
     setHasSuggestionSearched(false);
     setSearchResults([]);
     setPersonResults([]);
+    setAdvancedFilters(DEFAULT_ADVANCED_FILTERS);
+    setAdvancedFiltersOpen(false);
+    setResultFilter('all');
     setShowResults(false);
     router.replace('/search');
     focusSearchField(false);
@@ -653,7 +830,268 @@ function SearchPageClient() {
                   </div>
                 ) : showResults ? (
                   <section className='mb-12'>
-                    {personResults.length > 0 && (
+                    <div className='mb-8 rounded-2xl border border-gray-200/60 bg-white/75 p-4 backdrop-blur-sm dark:border-gray-700/50 dark:bg-gray-900/50 sm:p-6'>
+                      <div className='flex items-center justify-between gap-3'>
+                        <button
+                          type='button'
+                          onClick={() =>
+                            setAdvancedFiltersOpen((open) => !open)
+                          }
+                          className='inline-flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-200'
+                        >
+                          <ListFilter className='h-5 w-5' />
+                          {t('discover.filters')}
+                          <span className='text-xs font-normal text-gray-500 dark:text-gray-400'>
+                            {advancedFiltersOpen
+                              ? t('discover.clickToCollapse')
+                              : t('discover.clickToExpand')}
+                          </span>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${
+                              advancedFiltersOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            setResultFilter('all');
+                            setAdvancedFilters(DEFAULT_ADVANCED_FILTERS);
+                          }}
+                          className='inline-flex items-center gap-1 text-sm font-medium text-red-500'
+                        >
+                          <RotateCcw className='h-3.5 w-3.5' />
+                          {t('discover.reset')}
+                        </button>
+                      </div>
+
+                      <div className='mt-4 space-y-4'>
+                        <MediaFilterRow
+                          icon={<Tags className='h-4 w-4' />}
+                          label={t('searchPage.type')}
+                        >
+                          {filterOptions.map((option) => (
+                            <MediaFilterChip
+                              key={option.key}
+                              active={resultFilter === option.key}
+                              onClick={() => setResultFilter(option.key)}
+                            >
+                              {option.label}
+                              <span className='ml-1 opacity-60'>
+                                {option.count}
+                              </span>
+                            </MediaFilterChip>
+                          ))}
+                        </MediaFilterRow>
+                        <MediaFilterRow
+                          icon={<CalendarRange className='h-4 w-4' />}
+                          label={t('discover.releaseDate')}
+                        >
+                          <MediaDualRange
+                            min={1950}
+                            max={CURRENT_YEAR}
+                            low={Number(advancedFilters.yearMin)}
+                            high={Number(advancedFilters.yearMax)}
+                            midpoint={Math.floor((1950 + CURRENT_YEAR) / 2)}
+                            onLowChange={(value) =>
+                              setAdvancedFilters((prev) => ({
+                                ...prev,
+                                yearMin: String(value),
+                              }))
+                            }
+                            onHighChange={(value) =>
+                              setAdvancedFilters((prev) => ({
+                                ...prev,
+                                yearMax: String(value),
+                              }))
+                            }
+                          />
+                        </MediaFilterRow>
+                        <MediaFilterRow
+                          icon={<Tags className='h-4 w-4' />}
+                          label={t('discover.genres')}
+                        >
+                          {SEARCH_GENRES.map((genre) => (
+                            <MediaFilterChip
+                              key={genre.id}
+                              active={advancedFilters.includedGenres.includes(
+                                genre.id
+                              )}
+                              onClick={() =>
+                                setAdvancedFilters((prev) => ({
+                                  ...prev,
+                                  includedGenres: prev.includedGenres.includes(
+                                    genre.id
+                                  )
+                                    ? prev.includedGenres.filter(
+                                        (id) => id !== genre.id
+                                      )
+                                    : [...prev.includedGenres, genre.id],
+                                  excludedGenres: prev.excludedGenres.filter(
+                                    (id) => id !== genre.id
+                                  ),
+                                }))
+                              }
+                            >
+                              {t(genre.labelKey)}
+                            </MediaFilterChip>
+                          ))}
+                        </MediaFilterRow>
+                        {advancedFiltersOpen ? (
+                          <MediaFilterRow
+                            icon={<Tags className='h-4 w-4' />}
+                            label={t('discover.excludeGenres')}
+                          >
+                            {SEARCH_GENRES.map((genre) => (
+                              <MediaFilterChip
+                                key={genre.id}
+                                danger
+                                active={advancedFilters.excludedGenres.includes(
+                                  genre.id
+                                )}
+                                onClick={() =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    excludedGenres:
+                                      prev.excludedGenres.includes(genre.id)
+                                        ? prev.excludedGenres.filter(
+                                            (id) => id !== genre.id
+                                          )
+                                        : [...prev.excludedGenres, genre.id],
+                                    includedGenres: prev.includedGenres.filter(
+                                      (id) => id !== genre.id
+                                    ),
+                                  }))
+                                }
+                              >
+                                {t(genre.labelKey)}
+                              </MediaFilterChip>
+                            ))}
+                          </MediaFilterRow>
+                        ) : null}
+                        <MediaFilterRow
+                          icon={<Tags className='h-4 w-4' />}
+                          label={t('discover.sort')}
+                        >
+                          {(
+                            ['popularity', 'date', 'rating'] as SearchSortMode[]
+                          ).map((sort) => (
+                            <MediaFilterChip
+                              key={sort}
+                              active={advancedFilters.sort === sort}
+                              onClick={() =>
+                                setAdvancedFilters((prev) => ({
+                                  ...prev,
+                                  sort,
+                                }))
+                              }
+                            >
+                              {t(`discover.${sort}`)}
+                            </MediaFilterChip>
+                          ))}
+                        </MediaFilterRow>
+                        {advancedFiltersOpen ? (
+                          <>
+                            <MediaFilterRow
+                              icon={<Languages className='h-4 w-4' />}
+                              label={t('common.language')}
+                            >
+                              <select
+                                value={advancedFilters.language}
+                                onChange={(event) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    language: event.target.value,
+                                  }))
+                                }
+                                className='w-full max-w-xs rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800'
+                              >
+                                {SEARCH_LANGUAGES.map((language) => (
+                                  <option
+                                    key={language.value || 'all'}
+                                    value={language.value}
+                                  >
+                                    {t(language.labelKey)}
+                                  </option>
+                                ))}
+                              </select>
+                            </MediaFilterRow>
+                            <MediaFilterRow
+                              icon={<Star className='h-4 w-4' />}
+                              label={t('discover.userRating')}
+                            >
+                              <MediaDualRange
+                                min={0}
+                                max={10}
+                                step={0.5}
+                                low={advancedFilters.ratingMin}
+                                high={advancedFilters.ratingMax}
+                                midpoint={5}
+                                onLowChange={(value) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    ratingMin: value,
+                                  }))
+                                }
+                                onHighChange={(value) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    ratingMax: value,
+                                  }))
+                                }
+                              />
+                            </MediaFilterRow>
+                            <MediaFilterRow
+                              icon={<UsersRound className='h-4 w-4' />}
+                              label={t('searchPage.minVoteCount')}
+                            >
+                              <input
+                                type='number'
+                                min='0'
+                                placeholder={t('discover.minVotesPlaceholder')}
+                                value={advancedFilters.minVoteCount || ''}
+                                onChange={(event) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    minVoteCount: Math.max(
+                                      0,
+                                      Number(event.target.value)
+                                    ),
+                                  }))
+                                }
+                                className='w-full max-w-xs rounded-xl border border-gray-200 bg-white px-3 py-2 text-base dark:border-gray-700 dark:bg-gray-800'
+                              />
+                            </MediaFilterRow>
+                            <MediaFilterRow
+                              icon={<Clock3 className='h-4 w-4' />}
+                              label={t('discover.runtime')}
+                            >
+                              <MediaDualRange
+                                min={0}
+                                max={360}
+                                low={advancedFilters.runtimeMin}
+                                high={advancedFilters.runtimeMax}
+                                midpoint={120}
+                                onLowChange={(value) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    runtimeMin: value,
+                                  }))
+                                }
+                                onHighChange={(value) =>
+                                  setAdvancedFilters((prev) => ({
+                                    ...prev,
+                                    runtimeMax: value,
+                                  }))
+                                }
+                              />
+                            </MediaFilterRow>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {showPeopleResults && personResults.length > 0 && (
                       <div className='mb-10'>
                         <h3 className='mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200'>
                           {t('searchPage.people')}
@@ -695,45 +1133,53 @@ function SearchPageClient() {
                         </div>
                       </div>
                     )}
-                    <div className='mb-8 flex items-center justify-between'>
-                      <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                        {t('searchPage.searchResults')}
-                      </h2>
-                    </div>
-                    <div className='grid grid-cols-2 justify-start gap-x-2 gap-y-8 px-0 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8 sm:px-2'>
-                      {searchResults.map((item) => (
-                        <div
-                          key={`all-${item.source}-${item.id}`}
-                          className='w-full'
-                        >
-                          <VideoCard
-                            id={item.id}
-                            title={item.title}
-                            poster={item.poster}
-                            episodes={getEpisodeCount(item)}
-                            source={item.source}
-                            source_name={item.source_name}
-                            query={
-                              searchQuery.trim() !== item.title
-                                ? searchQuery.trim()
-                                : ''
-                            }
-                            year={item.year}
-                            rate={item.score}
-                            from='search'
-                            type={isTvResult(item) ? 'tv' : 'movie'}
-                            displayVariant='poster-info'
-                          />
+                    {showMediaResults ? (
+                      <>
+                        <div className='mb-8 flex items-center justify-between'>
+                          <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                            {t('searchPage.searchResults')}
+                          </h2>
                         </div>
-                      ))}
-                      {searchResults.length === 0 && (
-                        <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                          {personResults.length > 0
-                            ? t('searchPage.noMovieTvResults')
-                            : t('common.noSearchResults')}
+                        <div className='grid grid-cols-2 justify-start gap-x-2 gap-y-8 px-0 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-[18px] sm:gap-y-8 sm:px-2'>
+                          {filteredMediaResults.map((item) => (
+                            <div
+                              key={`all-${item.source}-${item.id}`}
+                              className='w-full'
+                            >
+                              <VideoCard
+                                id={item.id}
+                                title={item.title}
+                                poster={item.poster}
+                                episodes={getEpisodeCount(item)}
+                                source={item.source}
+                                source_name={item.source_name}
+                                query={
+                                  searchQuery.trim() !== item.title
+                                    ? searchQuery.trim()
+                                    : ''
+                                }
+                                year={item.year}
+                                rate={item.score}
+                                from='search'
+                                type={isTvResult(item) ? 'tv' : 'movie'}
+                                displayVariant='poster-info'
+                              />
+                            </div>
+                          ))}
+                          {filteredMediaResults.length === 0 && (
+                            <div className='col-span-full py-8 text-center text-gray-500 dark:text-gray-400'>
+                              {personResults.length > 0
+                                ? t('searchPage.noMovieTvResults')
+                                : t('common.noSearchResults')}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </>
+                    ) : personResults.length === 0 ? (
+                      <div className='py-8 text-center text-gray-500 dark:text-gray-400'>
+                        {t('common.noSearchResults')}
+                      </div>
+                    ) : null}
                   </section>
                 ) : searchHistory.length > 0 ? (
                   <section className='mb-12'>

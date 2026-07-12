@@ -61,6 +61,12 @@ interface TmdbDetailCastItem {
   profile?: string;
 }
 
+interface TmdbDetailDirectorItem {
+  id: number;
+  name: string;
+  profile?: string;
+}
+
 interface TmdbDetailRecommendation {
   id: number;
   mediaType: TmdbMediaType;
@@ -102,6 +108,7 @@ interface TmdbDetailPageData {
   genres: string[];
   language: string;
   popularity: number | null;
+  directors: TmdbDetailDirectorItem[];
   cast: TmdbDetailCastItem[];
   collection?: TmdbDetailCollection;
   recommendations?: TmdbDetailRecommendation[];
@@ -237,7 +244,7 @@ function DetailSkeleton() {
             </div>
           </div>
         </section>
-        <div className='relative z-10 space-y-8 px-5 pb-12 pt-4 sm:px-10 lg:px-14'>
+        <div className='relative z-10 space-y-6 px-5 pb-12 pt-4 sm:px-10 lg:px-14'>
           <section className='space-y-3'>
             <div className='h-5 w-14 animate-pulse rounded bg-white/15' />
             <div className='flex gap-3 overflow-hidden'>
@@ -681,7 +688,7 @@ function DetailPageClient() {
                 mp4Url={streamTrailerMp4Url}
                 hlsUrl={streamTrailerHlsUrl}
                 muted={trailerMuted}
-                className='h-full w-full scale-[1.08] object-cover object-center'
+                className='h-full w-full scale-[1.08] object-cover object-center brightness-[0.56]'
                 onCanPlay={() => {
                   setStreamTrailerUnavailable(false);
                 }}
@@ -917,7 +924,42 @@ function DetailPageClient() {
           </div>
         </section>
 
-        <div className='relative z-10 space-y-8 px-5 pb-12 pt-4 sm:px-10 lg:px-14'>
+        <div className='relative z-10 space-y-6 px-5 pb-12 pt-4 sm:px-10 lg:px-14'>
+          {detail.directors.length > 0 ? (
+            <section className='space-y-3'>
+              <h2 className='text-base font-semibold text-white/92'>
+                {t('detail.director')}
+              </h2>
+              <div className='-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-2 scrollbar-hide'>
+                {detail.directors.map((person) => (
+                  <button
+                    type='button'
+                    key={`detail-director-${person.id}-${person.name}`}
+                    onClick={() => router.push(`/person/${person.id}`)}
+                    className='group flex w-[88px] flex-shrink-0 flex-col items-center text-center sm:w-[104px]'
+                  >
+                    <div className='relative h-[82px] w-[82px] overflow-hidden rounded-full border border-[var(--ui-glass-border)] bg-[var(--ui-glass-control-bg)] shadow-[var(--ui-shadow-control)] sm:h-24 sm:w-24'>
+                      {person.profile ? (
+                        <img
+                          src={safeImageUrl(person.profile)}
+                          alt={person.name}
+                          className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
+                        />
+                      ) : (
+                        <div className='flex h-full w-full items-center justify-center text-white/50'>
+                          <Users className='h-5 w-5' />
+                        </div>
+                      )}
+                    </div>
+                    <p className='mt-2 w-full truncate text-xs font-semibold leading-4 text-white sm:text-[13px]'>
+                      {person.name}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {detail.cast.length > 0 ? (
             <section className='space-y-3'>
               <h2 className='text-base font-semibold text-white/92'>
@@ -1071,7 +1113,7 @@ function DetailPageClient() {
           ) : null}
 
           {recommendations.length > 0 ? (
-            <section className='space-y-3'>
+            <section className='!mt-4 space-y-3'>
               <h2 className='text-base font-semibold text-white/92'>
                 {t('detail.moreLikeThis')}
               </h2>

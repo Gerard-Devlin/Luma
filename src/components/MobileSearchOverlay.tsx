@@ -12,7 +12,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { addSearchHistory } from '@/lib/db.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import type { SearchResult } from '@/lib/types';
@@ -20,10 +19,9 @@ import type { SearchResult } from '@/lib/types';
 import SearchGlassInput from '@/components/SearchGlassInput';
 import SearchPreviewPanel from '@/components/SearchPreviewPanel';
 
+import { getCurrentTmdbLanguage } from '@/i18n/client';
+
 const SEARCH_DEBOUNCE_MS = 220;
-const CLOSE_SEARCH_LABEL = 'Close search';
-const SEARCH_PLACEHOLDER = 'Search ...';
-const NO_RESULTS_TEXT = 'No matches found';
 
 interface SearchPayload {
   results?: SearchResult[];
@@ -52,7 +50,7 @@ export default function MobileSearchOverlay({
   open,
   onClose,
 }: MobileSearchOverlayProps) {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -182,7 +180,7 @@ export default function MobileSearchOverlay({
           <motion.button
             key='mobile-search-backdrop'
             type='button'
-            aria-label={CLOSE_SEARCH_LABEL}
+            aria-label={t('common.close')}
             onClick={onClose}
             className='md:hidden fixed inset-0 z-[790] bg-[var(--ui-glass-overlay-bg)] backdrop-blur-md'
             initial={{ opacity: 0 }}
@@ -232,7 +230,7 @@ export default function MobileSearchOverlay({
               onSubmit={handleSubmit}
               active
               variant='mobile'
-              placeholder={SEARCH_PLACEHOLDER}
+              placeholder={t('common.searchPlaceholder')}
               onInputKeyDown={handleInputKeyDown}
               onClear={handleClearQuery}
               onShortcutClick={() => inputRef.current?.focus()}
@@ -246,7 +244,7 @@ export default function MobileSearchOverlay({
                 loading={isLoading}
                 keyword={trimmedQuery}
                 onItemClick={handleOpenDetail}
-                emptyText={NO_RESULTS_TEXT}
+                emptyText={t('common.noSearchResults')}
                 itemKeyPrefix='mobile-search'
               />
             ) : null}
