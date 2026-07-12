@@ -1,13 +1,6 @@
 ﻿'use client';
 
-import {
-  Bookmark,
-  Clock3,
-  Info,
-  Play,
-  Star,
-  Users,
-} from 'lucide-react';
+import { Bookmark, Clock3, Info, Play, Star, Users } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -237,8 +230,7 @@ interface SeasonPickerState {
   seasonCount: number;
 }
 
-const TMDB_CLIENT_API_KEY =
-  process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
+const TMDB_CLIENT_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const HERO_ITEM_LIMIT = 7;
@@ -253,7 +245,10 @@ const DESKTOP_HERO_GRID_CLASS =
 
 function getDesktopHeroGridStyle(itemCount: number) {
   return {
-    gridTemplateColumns: `repeat(${Math.max(itemCount, 1)}, minmax(0, clamp(3.75rem, 8.5dvh, 7.25rem)))`,
+    gridTemplateColumns: `repeat(${Math.max(
+      itemCount,
+      1
+    )}, minmax(0, clamp(3.75rem, 8.5dvh, 7.25rem)))`,
   };
 }
 const SWIPE_THRESHOLD_PX = 48;
@@ -289,7 +284,12 @@ function emptyHeroMeta(): TmdbHeroMeta {
 }
 
 function mapRawItemToHero(item: TmdbRawItem): TmdbHeroItem | null {
-  const mediaType = item.media_type === 'tv' ? 'tv' : item.media_type === 'movie' ? 'movie' : null;
+  const mediaType =
+    item.media_type === 'tv'
+      ? 'tv'
+      : item.media_type === 'movie'
+      ? 'movie'
+      : null;
   const title = (item.title || item.name || '').trim();
   const backdropPath = item.backdrop_path || '';
   const posterPath = item.poster_path || '';
@@ -336,7 +336,8 @@ function selectBestLogoPath(
   const sorted = logos
     .filter((logo) => logo.file_path)
     .sort((a, b) => {
-      const lp = getLanguagePriority(b.iso_639_1) - getLanguagePriority(a.iso_639_1);
+      const lp =
+        getLanguagePriority(b.iso_639_1) - getLanguagePriority(a.iso_639_1);
       if (lp !== 0) return lp;
       const vr = (b.vote_average || 0) - (a.vote_average || 0);
       if (vr !== 0) return vr;
@@ -421,9 +422,7 @@ function pickTvContentRatingFromRaw(raw: TmdbDetailRawResponse): string {
 function pickTrailerUrlFromRaw(raw: TmdbDetailRawResponse): string {
   const candidates = (raw.videos?.results || []).filter(
     (item) =>
-      item.site === 'YouTube' &&
-      item.type === 'Trailer' &&
-      Boolean(item.key)
+      item.site === 'YouTube' && item.type === 'Trailer' && Boolean(item.key)
   );
   if (!candidates.length) return '';
 
@@ -435,7 +434,8 @@ function pickTrailerUrlFromRaw(raw: TmdbDetailRawResponse): string {
   };
 
   const sorted = [...candidates].sort((a, b) => {
-    const officialDelta = Number(Boolean(b.official)) - Number(Boolean(a.official));
+    const officialDelta =
+      Number(Boolean(b.official)) - Number(Boolean(a.official));
     if (officialDelta !== 0) return officialDelta;
     return getLangPriority(b.iso_639_1) - getLangPriority(a.iso_639_1);
   });
@@ -467,14 +467,15 @@ function mapRawDetailToHeroDetail(
 
   const runtime =
     item.mediaType === 'movie'
-      ? (raw.runtime ?? null)
-      : (raw.episode_run_time?.[0] ?? null);
+      ? raw.runtime ?? null
+      : raw.episode_run_time?.[0] ?? null;
 
   return {
     id: raw.id || item.id,
     mediaType: item.mediaType,
     title: (raw.title || raw.name || item.title || '').trim(),
-    overview: (raw.overview || item.overview || '').trim() || 'No overview available.',
+    overview:
+      (raw.overview || item.overview || '').trim() || 'No overview available.',
     backdrop: raw.backdrop_path
       ? `${TMDB_IMAGE_BASE_URL}/original${raw.backdrop_path}`
       : item.backdrop,
@@ -563,14 +564,17 @@ export default function TmdbHeroBanner({
     setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
   }, [items.length]);
 
-  const handleHeroTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
-    const touch = event.touches[0];
-    if (!touch) return;
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    touchAxisRef.current = null;
-    setIsDragging(false);
-    setDragOffsetX(0);
-  }, []);
+  const handleHeroTouchStart = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      touchAxisRef.current = null;
+      setIsDragging(false);
+      setDragOffsetX(0);
+    },
+    []
+  );
 
   const clearTouchState = useCallback(() => {
     touchStartRef.current = null;
@@ -652,8 +656,8 @@ export default function TmdbHeroBanner({
         event.deltaMode === 1
           ? 16
           : event.deltaMode === 2
-            ? Math.max(heroWidth || 0, 320)
-            : 1;
+          ? Math.max(heroWidth || 0, 320)
+          : 1;
       const deltaX = event.deltaX * deltaModeMultiplier;
       const deltaY = event.deltaY * deltaModeMultiplier;
       const absX = Math.abs(deltaX);
@@ -692,14 +696,7 @@ export default function TmdbHeroBanner({
       wheelDeltaXRef.current = 0;
       wheelLastSlideAtRef.current = now;
     },
-    [
-      detailOpen,
-      goToNext,
-      goToPrev,
-      heroWidth,
-      items.length,
-      seasonPicker.open,
-    ]
+    [detailOpen, goToNext, goToPrev, heroWidth, items.length, seasonPicker.open]
   );
 
   const fetchLogoForItem = useCallback(
@@ -762,7 +759,9 @@ export default function TmdbHeroBanner({
           overview: (data.overview || '').trim(),
           year: toYear(data.release_date || data.first_air_date),
           score: toScore(data.vote_average),
-          releaseDate: normalizeReleaseDate(data.release_date || data.first_air_date),
+          releaseDate: normalizeReleaseDate(
+            data.release_date || data.first_air_date
+          ),
           backdrop: data.backdrop_path
             ? `${TMDB_IMAGE_BASE_URL}/original${data.backdrop_path}`
             : '',
@@ -786,96 +785,99 @@ export default function TmdbHeroBanner({
     [i18n.language]
   );
 
-  const fetchDirectFromTmdb = useCallback(async (signal?: AbortSignal) => {
-    if (!TMDB_CLIENT_API_KEY) return [];
-    const tmdbLanguage = getCurrentTmdbLanguage();
-    const generationLanguage = DEFAULT_TMDB_LANGUAGE;
+  const fetchDirectFromTmdb = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!TMDB_CLIENT_API_KEY) return [];
+      const tmdbLanguage = getCurrentTmdbLanguage();
+      const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
-    const normalizedGenres = (withGenres || '').trim();
-    const normalizedOriginCountry = (withOriginCountry || '')
-      .trim()
-      .replace(/\s+/g, '')
-      .toUpperCase();
-    const shouldUseDiscover = Boolean(
-      normalizedGenres || normalizedOriginCountry
-    );
-    const discoverMediaType: 'movie' | 'tv' =
-      mediaFilter === 'movie' ? 'movie' : 'tv';
-    const params = new URLSearchParams({
-      api_key: TMDB_CLIENT_API_KEY,
-      language: generationLanguage,
-      page: '1',
-    });
-    if (shouldUseDiscover) {
-      params.set('sort_by', 'popularity.desc');
-      params.set('include_adult', 'false');
-      if (normalizedGenres) {
-        params.set('with_genres', normalizedGenres);
+      const normalizedGenres = (withGenres || '').trim();
+      const normalizedOriginCountry = (withOriginCountry || '')
+        .trim()
+        .replace(/\s+/g, '')
+        .toUpperCase();
+      const shouldUseDiscover = Boolean(
+        normalizedGenres || normalizedOriginCountry
+      );
+      const discoverMediaType: 'movie' | 'tv' =
+        mediaFilter === 'movie' ? 'movie' : 'tv';
+      const params = new URLSearchParams({
+        api_key: TMDB_CLIENT_API_KEY,
+        language: generationLanguage,
+        page: '1',
+      });
+      if (shouldUseDiscover) {
+        params.set('sort_by', 'popularity.desc');
+        params.set('include_adult', 'false');
+        if (normalizedGenres) {
+          params.set('with_genres', normalizedGenres);
+        }
+        if (normalizedOriginCountry) {
+          params.set('with_origin_country', normalizedOriginCountry);
+        }
       }
-      if (normalizedOriginCountry) {
-        params.set('with_origin_country', normalizedOriginCountry);
+
+      const endpoint = shouldUseDiscover
+        ? `${TMDB_API_BASE_URL}/discover/${discoverMediaType}`
+        : `${TMDB_API_BASE_URL}/trending/all/day`;
+
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        signal,
+      });
+
+      if (!response.ok) {
+        return [];
       }
-    }
 
-    const endpoint = shouldUseDiscover
-      ? `${TMDB_API_BASE_URL}/discover/${discoverMediaType}`
-      : `${TMDB_API_BASE_URL}/trending/all/day`;
+      const data = (await response.json()) as TmdbRawResponse;
+      const baseItemLimit = requireLogo ? HERO_ITEM_LIMIT * 3 : HERO_ITEM_LIMIT;
+      const baseItems = (data.results || [])
+        .map((item) =>
+          shouldUseDiscover
+            ? mapRawItemToHero({ ...item, media_type: discoverMediaType })
+            : mapRawItemToHero(item)
+        )
+        .filter((item): item is TmdbHeroItem => item !== null)
+        .filter((item) => matchesMediaFilter(item.mediaType, mediaFilter))
+        .slice(0, baseItemLimit);
 
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
-      signal,
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = (await response.json()) as TmdbRawResponse;
-    const baseItemLimit = requireLogo ? HERO_ITEM_LIMIT * 3 : HERO_ITEM_LIMIT;
-    const baseItems = (data.results || [])
-      .map((item) =>
-        shouldUseDiscover
-          ? mapRawItemToHero({ ...item, media_type: discoverMediaType })
-          : mapRawItemToHero(item)
-      )
-      .filter((item): item is TmdbHeroItem => item !== null)
-      .filter((item) => matchesMediaFilter(item.mediaType, mediaFilter))
-      .slice(0, baseItemLimit);
-
-    const itemsWithLogo = await Promise.all(
-      baseItems.map(async (item) => {
-        const [logo, meta] = await Promise.all([
-          fetchLogoForItem(item.mediaType, item.id, signal),
-          fetchHeroMetaForItem(item.mediaType, item.id, signal),
-        ]);
-        return {
-          ...item,
-          title: meta.title || item.title,
-          overview: meta.overview || item.overview,
-          year: meta.year || item.year,
-          score: meta.score || item.score,
-          releaseDate: meta.releaseDate || item.releaseDate,
-          backdrop: meta.backdrop || item.backdrop,
-          poster: meta.poster || item.poster,
-          runtime: meta.runtime,
-          seasons: meta.seasons,
-          episodes: meta.episodes,
-          logo: logo || undefined,
-        };
-      })
-    );
-    const logoOnlyItems = itemsWithLogo.filter((item) => Boolean(item.logo));
-    if (requireLogo) {
-      return logoOnlyItems;
-    }
-    return logoOnlyItems.length > 0 ? logoOnlyItems : itemsWithLogo;
-  }, [
-    fetchHeroMetaForItem,
-    fetchLogoForItem,
-    mediaFilter,
-    requireLogo,
-    withGenres,
-    withOriginCountry,
-  ]);
+      const itemsWithLogo = await Promise.all(
+        baseItems.map(async (item) => {
+          const [logo, meta] = await Promise.all([
+            fetchLogoForItem(item.mediaType, item.id, signal),
+            fetchHeroMetaForItem(item.mediaType, item.id, signal),
+          ]);
+          return {
+            ...item,
+            title: meta.title || item.title,
+            overview: meta.overview || item.overview,
+            year: meta.year || item.year,
+            score: meta.score || item.score,
+            releaseDate: meta.releaseDate || item.releaseDate,
+            backdrop: meta.backdrop || item.backdrop,
+            poster: meta.poster || item.poster,
+            runtime: meta.runtime,
+            seasons: meta.seasons,
+            episodes: meta.episodes,
+            logo: logo || undefined,
+          };
+        })
+      );
+      const logoOnlyItems = itemsWithLogo.filter((item) => Boolean(item.logo));
+      if (requireLogo) {
+        return logoOnlyItems;
+      }
+      return logoOnlyItems.length > 0 ? logoOnlyItems : itemsWithLogo;
+    },
+    [
+      fetchHeroMetaForItem,
+      fetchLogoForItem,
+      mediaFilter,
+      requireLogo,
+      withGenres,
+      withOriginCountry,
+    ]
+  );
 
   const fetchPersonalizedFromHistory = useCallback(
     async (signal?: AbortSignal): Promise<TmdbHeroItem[]> => {
@@ -923,30 +925,35 @@ export default function TmdbHeroBanner({
     []
   );
 
-  const fetchDetailDirectFromTmdb = useCallback(async (item: TmdbHeroItem) => {
-    if (!TMDB_CLIENT_API_KEY) return null;
+  const fetchDetailDirectFromTmdb = useCallback(
+    async (item: TmdbHeroItem) => {
+      if (!TMDB_CLIENT_API_KEY) return null;
 
-    const appendToResponse =
-      item.mediaType === 'movie'
-        ? 'credits,videos,release_dates'
-        : 'credits,videos,content_ratings';
+      const appendToResponse =
+        item.mediaType === 'movie'
+          ? 'credits,videos,release_dates'
+          : 'credits,videos,content_ratings';
 
-    const params = new URLSearchParams({
-      api_key: TMDB_CLIENT_API_KEY,
-      language: getCurrentTmdbLanguage(),
-      append_to_response: appendToResponse,
-    });
+      const params = new URLSearchParams({
+        api_key: TMDB_CLIENT_API_KEY,
+        language: getCurrentTmdbLanguage(),
+        append_to_response: appendToResponse,
+      });
 
-    const response = await fetch(
-      `${TMDB_API_BASE_URL}/${item.mediaType}/${item.id}?${params.toString()}`,
-      { cache: 'no-store' }
-    );
+      const response = await fetch(
+        `${TMDB_API_BASE_URL}/${item.mediaType}/${
+          item.id
+        }?${params.toString()}`,
+        { cache: 'no-store' }
+      );
 
-    if (!response.ok) return null;
+      if (!response.ok) return null;
 
-    const raw = (await response.json()) as TmdbDetailRawResponse;
-    return mapRawDetailToHeroDetail(raw, item);
-  }, [i18n.language]);
+      const raw = (await response.json()) as TmdbDetailRawResponse;
+      return mapRawDetailToHeroDetail(raw, item);
+    },
+    [i18n.language]
+  );
 
   const handleCloseDetail = useCallback(() => {
     setDetailOpen(false);
@@ -965,66 +972,74 @@ export default function TmdbHeroBanner({
     });
   }, []);
 
-  const handleOpenDetail = useCallback((item: TmdbHeroItem) => {
-    router.push(
-      buildTmdbDetailPageUrl({
-        id: item.id,
-        title: item.title,
-        mediaType: item.mediaType,
-        year: item.year,
-        poster: item.poster,
-        score: item.score,
-      })
-    );
-  }, [router]);
+  const handleOpenDetail = useCallback(
+    (item: TmdbHeroItem) => {
+      router.push(
+        buildTmdbDetailPageUrl({
+          id: item.id,
+          title: item.title,
+          mediaType: item.mediaType,
+          year: item.year,
+          poster: item.poster,
+          score: item.score,
+        })
+      );
+    },
+    [router]
+  );
 
-  const loadDetailForModal = useCallback(async (item: TmdbHeroItem) => {
-    const cacheKey = `${getCurrentTmdbLanguage()}-${item.mediaType}-${item.id}`;
-    setDetailOpen(true);
-    setDetailItem(item);
-    setDetailError(null);
+  const loadDetailForModal = useCallback(
+    async (item: TmdbHeroItem) => {
+      const cacheKey = `${getCurrentTmdbLanguage()}-${item.mediaType}-${
+        item.id
+      }`;
+      setDetailOpen(true);
+      setDetailItem(item);
+      setDetailError(null);
 
-    const cached = detailCacheRef.current[cacheKey];
-    if (cached) {
-      setDetailData(cached);
-      setDetailLoading(false);
-      return;
-    }
-
-    setDetailData(null);
-    setDetailLoading(true);
-    const requestId = ++detailRequestIdRef.current;
-    let resolved: TmdbHeroDetail | null = null;
-    try {
-      const data = await fetchTmdbDetailWithClientCache<TmdbHeroDetail>({
-        id: item.id,
-        mediaType: item.mediaType,
-      });
-      if (!data?.id) {
-        throw new Error('TMDB detail returned empty payload');
-      }
-      resolved = data;
-    } catch (err) {
-      try {
-        resolved = await fetchDetailDirectFromTmdb(item);
-      } catch {
-        resolved = null;
-      }
-
-      if (!resolved && detailRequestIdRef.current === requestId) {
-        setDetailError((err as Error).message || t('detail.failedToLoad'));
-      }
-    } finally {
-      if (detailRequestIdRef.current === requestId) {
-        if (resolved) {
-          detailCacheRef.current[cacheKey] = resolved;
-          setDetailData(resolved);
-          setDetailError(null);
-        }
+      const cached = detailCacheRef.current[cacheKey];
+      if (cached) {
+        setDetailData(cached);
         setDetailLoading(false);
+        return;
       }
-    }
-  }, [fetchDetailDirectFromTmdb, t]);
+
+      setDetailData(null);
+      setDetailLoading(true);
+      const requestId = ++detailRequestIdRef.current;
+      let resolved: TmdbHeroDetail | null = null;
+      try {
+        const data = await fetchTmdbDetailWithClientCache<TmdbHeroDetail>({
+          id: item.id,
+          mediaType: item.mediaType,
+        });
+        if (!data?.id) {
+          throw new Error('TMDB detail returned empty payload');
+        }
+        resolved = data;
+      } catch (err) {
+        try {
+          resolved = await fetchDetailDirectFromTmdb(item);
+        } catch {
+          resolved = null;
+        }
+
+        if (!resolved && detailRequestIdRef.current === requestId) {
+          setDetailError((err as Error).message || t('detail.failedToLoad'));
+        }
+      } finally {
+        if (detailRequestIdRef.current === requestId) {
+          if (resolved) {
+            detailCacheRef.current[cacheKey] = resolved;
+            setDetailData(resolved);
+            setDetailError(null);
+          }
+          setDetailLoading(false);
+        }
+      }
+    },
+    [fetchDetailDirectFromTmdb, t]
+  );
 
   const resolveSeasonCountForItem = useCallback(
     async (item: TmdbHeroItem): Promise<number> => {
@@ -1051,7 +1066,11 @@ export default function TmdbHeroBanner({
           mediaType: 'tv',
         });
         const seasons = detail.seasons;
-        if (typeof seasons === 'number' && Number.isFinite(seasons) && seasons > 1) {
+        if (
+          typeof seasons === 'number' &&
+          Number.isFinite(seasons) &&
+          seasons > 1
+        ) {
           return Math.floor(seasons);
         }
       } catch {
@@ -1067,7 +1086,11 @@ export default function TmdbHeroBanner({
           year: item.year,
         });
         const seasons = detail.seasons;
-        if (typeof seasons !== 'number' || !Number.isFinite(seasons) || seasons <= 1) {
+        if (
+          typeof seasons !== 'number' ||
+          !Number.isFinite(seasons) ||
+          seasons <= 1
+        ) {
           return 0;
         }
         return Math.floor(seasons);
@@ -1125,8 +1148,7 @@ export default function TmdbHeroBanner({
           source_name: 'TMDB',
           year: item.year || '',
           cover: item.poster || item.backdrop || '',
-          total_episodes:
-            item.episodes || (item.mediaType === 'movie' ? 1 : 0),
+          total_episodes: item.episodes || (item.mediaType === 'movie' ? 1 : 0),
           save_time: Date.now(),
           search_title: item.title,
         });
@@ -1159,138 +1181,144 @@ export default function TmdbHeroBanner({
     [handleCloseSeasonPicker, router, seasonPicker]
   );
 
-  const fetchHeroData = useCallback(async (signal?: AbortSignal) => {
-    const requestId = ++heroRequestIdRef.current;
-    const isLatestRequest = () => heroRequestIdRef.current === requestId;
+  const fetchHeroData = useCallback(
+    async (signal?: AbortSignal) => {
+      const requestId = ++heroRequestIdRef.current;
+      const isLatestRequest = () => heroRequestIdRef.current === requestId;
 
-    if (personalizedSeeds === null) {
-      if (isLatestRequest()) {
-        setLoading(true);
-      }
-      return;
-    }
-
-    try {
-      if (isLatestRequest()) {
-        setLoading(true);
-        setError(null);
+      if (personalizedSeeds === null) {
+        if (isLatestRequest()) {
+          setLoading(true);
+        }
+        return;
       }
 
-      if (Array.isArray(personalizedSeeds) && personalizedSeeds.length > 0) {
-        const personalizedItems = await fetchPersonalizedFromHistory(signal);
+      try {
+        if (isLatestRequest()) {
+          setLoading(true);
+          setError(null);
+        }
+
+        if (Array.isArray(personalizedSeeds) && personalizedSeeds.length > 0) {
+          const personalizedItems = await fetchPersonalizedFromHistory(signal);
+          if (!isLatestRequest() || signal?.aborted) return;
+
+          const limitedPersonalizedItems = personalizedItems.slice(
+            0,
+            HERO_ITEM_LIMIT
+          );
+          if (limitedPersonalizedItems.length > 0) {
+            setActiveIndex(0);
+            setItems(limitedPersonalizedItems);
+            setError(null);
+            return;
+          }
+        }
+
+        const params = new URLSearchParams();
+        if (mediaFilter !== 'all') {
+          params.set('mediaType', mediaFilter);
+        }
+        const normalizedGenres = (withGenres || '').trim();
+        if (normalizedGenres) {
+          params.set('with_genres', normalizedGenres);
+        }
+        const normalizedOriginCountry = (withOriginCountry || '')
+          .trim()
+          .replace(/\s+/g, '')
+          .toUpperCase();
+        if (normalizedOriginCountry) {
+          params.set('with_origin_country', normalizedOriginCountry);
+        }
+        params.set('tmdbLanguage', getCurrentTmdbLanguage());
+        const response = await fetch(
+          `/api/tmdb/hero${params.toString() ? `?${params.toString()}` : ''}`,
+          {
+            signal,
+          }
+        );
         if (!isLatestRequest() || signal?.aborted) return;
 
-        const limitedPersonalizedItems = personalizedItems.slice(0, HERO_ITEM_LIMIT);
-        if (limitedPersonalizedItems.length > 0) {
-          setActiveIndex(0);
-          setItems(limitedPersonalizedItems);
-          setError(null);
+        if (!response.ok) {
+          const directItems = await fetchDirectFromTmdb(signal);
+          if (!isLatestRequest() || signal?.aborted) return;
+
+          const limitedItems = directItems.slice(0, HERO_ITEM_LIMIT);
+          if (limitedItems.length > 0) {
+            setActiveIndex(0);
+            setItems(limitedItems);
+          }
+          setError(
+            limitedItems.length > 0
+              ? null
+              : `TMDB request failed: ${response.status}`
+          );
           return;
         }
-      }
-
-      const params = new URLSearchParams();
-      if (mediaFilter !== 'all') {
-        params.set('mediaType', mediaFilter);
-      }
-      const normalizedGenres = (withGenres || '').trim();
-      if (normalizedGenres) {
-        params.set('with_genres', normalizedGenres);
-      }
-      const normalizedOriginCountry = (withOriginCountry || '')
-        .trim()
-        .replace(/\s+/g, '')
-        .toUpperCase();
-      if (normalizedOriginCountry) {
-        params.set('with_origin_country', normalizedOriginCountry);
-      }
-      params.set('tmdbLanguage', getCurrentTmdbLanguage());
-      const response = await fetch(
-        `/api/tmdb/hero${params.toString() ? `?${params.toString()}` : ''}`,
-        {
-          signal,
-        }
-      );
-      if (!isLatestRequest() || signal?.aborted) return;
-
-      if (!response.ok) {
-        const directItems = await fetchDirectFromTmdb(signal);
+        const data = (await response.json()) as TmdbHeroResponse;
         if (!isLatestRequest() || signal?.aborted) return;
 
-        const limitedItems = directItems.slice(0, HERO_ITEM_LIMIT);
-        if (limitedItems.length > 0) {
-          setActiveIndex(0);
-          setItems(limitedItems);
-        }
-        setError(
-          limitedItems.length > 0
-            ? null
-            : `TMDB request failed: ${response.status}`
+        let nextItems = (data.results || []).filter((item) =>
+          matchesMediaFilter(item.mediaType, mediaFilter)
         );
-        return;
-      }
-      const data = (await response.json()) as TmdbHeroResponse;
-      if (!isLatestRequest() || signal?.aborted) return;
-
-      let nextItems = (data.results || []).filter((item) =>
-        matchesMediaFilter(item.mediaType, mediaFilter)
-      );
-      if (nextItems.length === 0) {
-        nextItems = await fetchDirectFromTmdb(signal);
-        if (!isLatestRequest() || signal?.aborted) return;
-      }
-      const logoOnlyItems = nextItems.filter((item) => Boolean(item.logo));
-      const finalItems = requireLogo
-        ? logoOnlyItems
-        : logoOnlyItems.length > 0
+        if (nextItems.length === 0) {
+          nextItems = await fetchDirectFromTmdb(signal);
+          if (!isLatestRequest() || signal?.aborted) return;
+        }
+        const logoOnlyItems = nextItems.filter((item) => Boolean(item.logo));
+        const finalItems = requireLogo
+          ? logoOnlyItems
+          : logoOnlyItems.length > 0
           ? logoOnlyItems
           : nextItems;
-      const limitedItems = finalItems.slice(0, HERO_ITEM_LIMIT);
-      if (limitedItems.length > 0) {
-        setActiveIndex(0);
-        setItems(limitedItems);
-      }
-      if (limitedItems.length === 0) {
-        setError('TMDB returned empty results');
-      }
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        return;
-      }
-      try {
-        const directItems = await fetchDirectFromTmdb(signal);
-        if (!isLatestRequest() || signal?.aborted) return;
-
-        const limitedItems = directItems.slice(0, HERO_ITEM_LIMIT);
+        const limitedItems = finalItems.slice(0, HERO_ITEM_LIMIT);
         if (limitedItems.length > 0) {
           setActiveIndex(0);
           setItems(limitedItems);
         }
-        setError(
-          limitedItems.length > 0
-            ? null
-            : (err as Error).message || 'TMDB fetch failed'
-        );
-      } catch {
-        if (!isLatestRequest() || signal?.aborted) return;
+        if (limitedItems.length === 0) {
+          setError('TMDB returned empty results');
+        }
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') {
+          return;
+        }
+        try {
+          const directItems = await fetchDirectFromTmdb(signal);
+          if (!isLatestRequest() || signal?.aborted) return;
 
-        setError((err as Error).message || 'TMDB fetch failed');
+          const limitedItems = directItems.slice(0, HERO_ITEM_LIMIT);
+          if (limitedItems.length > 0) {
+            setActiveIndex(0);
+            setItems(limitedItems);
+          }
+          setError(
+            limitedItems.length > 0
+              ? null
+              : (err as Error).message || 'TMDB fetch failed'
+          );
+        } catch {
+          if (!isLatestRequest() || signal?.aborted) return;
+
+          setError((err as Error).message || 'TMDB fetch failed');
+        }
+      } finally {
+        if (isLatestRequest()) {
+          setLoading(false);
+        }
       }
-    } finally {
-      if (isLatestRequest()) {
-        setLoading(false);
-      }
-    }
-  }, [
-    fetchDirectFromTmdb,
-    fetchPersonalizedFromHistory,
-    i18n.language,
-    mediaFilter,
-    personalizedSeeds,
-    requireLogo,
-    withGenres,
-    withOriginCountry,
-  ]);
+    },
+    [
+      fetchDirectFromTmdb,
+      fetchPersonalizedFromHistory,
+      i18n.language,
+      mediaFilter,
+      personalizedSeeds,
+      requireLogo,
+      withGenres,
+      withOriginCountry,
+    ]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1388,8 +1416,7 @@ export default function TmdbHeroBanner({
   const activeCanPlay = activeItem
     ? !isFutureReleaseDate(activeItem.releaseDate)
     : false;
-  const dragOffsetPercent =
-    heroWidth > 0 ? (dragOffsetX / heroWidth) * 100 : 0;
+  const dragOffsetPercent = heroWidth > 0 ? (dragOffsetX / heroWidth) * 100 : 0;
 
   useEffect(() => {
     if (!activeItem || !activeFavoriteKey) return;
@@ -1459,7 +1486,9 @@ export default function TmdbHeroBanner({
 
           <div className={DESKTOP_HERO_PANEL_CLASS}>
             <div className={`${DESKTOP_HERO_STACK_CLASS} animate-pulse`}>
-              <div className={`${DESKTOP_HERO_LOGO_CLASS} w-full rounded-md bg-white/20`} />
+              <div
+                className={`${DESKTOP_HERO_LOGO_CLASS} w-full rounded-md bg-white/20`}
+              />
 
               <div className='flex flex-wrap items-center gap-3'>
                 <span className='h-5 w-16 rounded-full bg-white/25' />
@@ -1655,7 +1684,11 @@ export default function TmdbHeroBanner({
             <div className='flex flex-wrap items-center gap-3 text-sm text-white/90'>
               {activeItem.score && (
                 <span className='inline-flex items-center gap-1'>
-                  <Star size={16} className='text-yellow-400' fill='currentColor' />
+                  <Star
+                    size={16}
+                    className='text-yellow-400'
+                    fill='currentColor'
+                  />
                   <span className='font-semibold'>{activeItem.score}</span>
                 </span>
               )}
@@ -1689,7 +1722,7 @@ export default function TmdbHeroBanner({
               ) : null}
             </div>
 
-            <p className='max-w-xl text-[clamp(0.75rem,1.45dvh,1rem)] leading-[clamp(1.2rem,2.2dvh,1.5rem)] text-white/90 line-clamp-2 min-[768px]:line-clamp-3'>
+            <p className='max-w-2xl text-[13px] leading-5 text-white/80 line-clamp-2 sm:text-sm sm:leading-6 min-[768px]:line-clamp-3'>
               {activeItem.overview}
             </p>
 
@@ -1814,7 +1847,11 @@ export default function TmdbHeroBanner({
             <div className='mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[13px] font-medium text-white/85'>
               {activeItem.score && (
                 <span className='inline-flex items-center gap-1 text-white'>
-                  <Star size={14} className='text-yellow-400' fill='currentColor' />
+                  <Star
+                    size={14}
+                    className='text-yellow-400'
+                    fill='currentColor'
+                  />
                   <span>{activeItem.score}</span>
                 </span>
               )}
@@ -1843,7 +1880,7 @@ export default function TmdbHeroBanner({
               ) : null}
             </div>
 
-            <p className='mt-4 line-clamp-3 max-w-md text-[13px] leading-5 text-white/80'>
+            <p className='mt-4 line-clamp-3 max-w-md text-[13px] leading-5 text-white/80 sm:text-sm sm:leading-6'>
               {activeItem.overview}
             </p>
 
@@ -1988,9 +2025,7 @@ export default function TmdbHeroBanner({
           onClose={handleCloseSeasonPicker}
           onPickSeason={handleSeasonPick}
         />
-
       </div>
     </section>
   );
 }
-

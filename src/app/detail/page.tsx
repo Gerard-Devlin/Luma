@@ -897,7 +897,7 @@ function DetailPageClient() {
                         </div>
                       ) : null}
 
-                      <p className='max-w-2xl overflow-hidden text-sm leading-6 text-white/80 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] sm:text-base sm:leading-7 md:[-webkit-line-clamp:6]'>
+                      <p className='max-w-2xl overflow-hidden text-[13px] leading-5 text-white/80 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] sm:text-sm sm:leading-6 md:[-webkit-line-clamp:6]'>
                         {detail.overview}
                       </p>
 
