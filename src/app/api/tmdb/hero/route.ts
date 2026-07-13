@@ -29,6 +29,7 @@ interface TmdbTrendingItem {
 
 interface TmdbTrendingResponse {
   results?: TmdbTrendingItem[];
+  total_pages?: number;
 }
 
 interface TmdbHeroItem {
@@ -85,6 +86,9 @@ interface TmdbHeroMeta {
   seasons: number | null;
   episodes: number | null;
 }
+
+const HERO_ITEM_LIMIT = 7;
+const HERO_LOGO_SEARCH_PAGE_LIMIT = 5;
 
 function emptyHeroMeta(): TmdbHeroMeta {
   return {
@@ -295,6 +299,7 @@ export async function GET(request: Request) {
   const withOriginCountry = normalizeWithOriginCountry(
     searchParams.get('with_origin_country')
   );
+  const requireLogo = searchParams.get('requireLogo') === 'true';
   const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
   const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
@@ -344,47 +349,109 @@ export async function GET(request: Request) {
       ? `${TMDB_API_BASE_URL}/discover/${discoverMediaType}`
       : `${TMDB_API_BASE_URL}/trending/all/day`;
 
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
-      signal: controller.signal,
-    });
+    const fetchCandidatePage = async (page: number) => {
+      const pageParams = new URLSearchParams(params);
+      pageParams.set('page', String(page));
+      const response = await fetch(`${endpoint}?${pageParams.toString()}`, {
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
 
-    if (!response.ok) {
+      const data = (await response.json()) as TmdbTrendingResponse;
+      const results = (data.results || [])
+        .filter((item) =>
+          shouldUseDiscover
+            ? true
+            : item.media_type === 'movie' || item.media_type === 'tv'
+        )
+        .filter((item) =>
+          shouldUseDiscover
+            ? true
+            : mediaFilter === 'all' || item.media_type === mediaFilter
+        )
+        .map((item) =>
+          shouldUseDiscover
+            ? mapHeroItem(item, discoverMediaType)
+            : mapHeroItem(item)
+        )
+        .filter((item): item is TmdbHeroItem => Boolean(item));
+
+      return {
+        results,
+        totalPages: Math.max(1, data.total_pages || 1),
+      };
+    };
+
+    const firstPage = await fetchCandidatePage(1);
+    if (!firstPage) {
       return NextResponse.json(
         { results: [] },
         { status: 200, headers: buildNoStoreHeaders() }
       );
     }
 
-    const data = (await response.json()) as TmdbTrendingResponse;
-    const baseResults = (data.results || [])
-      .filter((item) =>
-        shouldUseDiscover
-          ? true
-          : item.media_type === 'movie' || item.media_type === 'tv'
-      )
-      .filter((item) =>
-        shouldUseDiscover
-          ? true
-          : mediaFilter === 'all' || item.media_type === mediaFilter
-      )
-      .map((item) =>
-        shouldUseDiscover
-          ? mapHeroItem(item, discoverMediaType)
-          : mapHeroItem(item)
-      )
-      .filter((item): item is TmdbHeroItem => Boolean(item))
-      .slice(0, 8);
+    let baseResults = firstPage.results.slice(0, 8);
+    const preloadedLogos = new Map<string, string>();
+
+    if (requireLogo) {
+      const logoResults: TmdbHeroItem[] = [];
+      const seenItems = new Set<string>();
+      const maxPages = Math.min(
+        firstPage.totalPages,
+        HERO_LOGO_SEARCH_PAGE_LIMIT
+      );
+
+      for (let page = 1; page <= maxPages; page += 1) {
+        const candidatePage =
+          page === 1 ? firstPage : await fetchCandidatePage(page);
+        if (!candidatePage) continue;
+
+        const candidates = candidatePage.results.filter((item) => {
+          const key = `${item.mediaType}:${item.id}`;
+          if (seenItems.has(key)) return false;
+          seenItems.add(key);
+          return true;
+        });
+        const candidatesWithLogos = await Promise.all(
+          candidates.map(async (item) => ({
+            item,
+            logo: await fetchLogoForItem(
+              item.mediaType,
+              item.id,
+              apiKey,
+              tmdbLanguage,
+              controller.signal
+            ),
+          }))
+        );
+
+        for (const { item, logo } of candidatesWithLogos) {
+          if (!logo) continue;
+          preloadedLogos.set(`${item.mediaType}:${item.id}`, logo);
+          logoResults.push(item);
+          if (logoResults.length === HERO_ITEM_LIMIT) break;
+        }
+        if (logoResults.length === HERO_ITEM_LIMIT) break;
+      }
+
+      baseResults = logoResults;
+    }
 
     const results = await Promise.all(
       baseResults.map(async (item) => {
+        const preloadedLogo = preloadedLogos.get(
+          `${item.mediaType}:${item.id}`
+        );
         const [logo, meta] = await Promise.all([
-          fetchLogoForItem(
-            item.mediaType,
-            item.id,
-            apiKey,
-            tmdbLanguage,
-            controller.signal
-          ),
+          preloadedLogo
+            ? Promise.resolve(preloadedLogo)
+            : fetchLogoForItem(
+                item.mediaType,
+                item.id,
+                apiKey,
+                tmdbLanguage,
+                controller.signal
+              ),
           fetchHeroMetaForItem(
             item.mediaType,
             item.id,

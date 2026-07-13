@@ -71,6 +71,7 @@ interface TmdbRawItem {
 
 interface TmdbRawResponse {
   results?: TmdbRawItem[];
+  total_pages?: number;
 }
 
 interface TmdbRuntimeResponse {
@@ -235,6 +236,7 @@ const TMDB_CLIENT_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const HERO_ITEM_LIMIT = 7;
+const HERO_LOGO_SEARCH_PAGE_LIMIT = 5;
 const DESKTOP_HERO_PANEL_CLASS =
   'absolute bottom-0 left-0 z-20 hidden w-full p-4 md:block md:w-3/4 md:px-[clamp(2rem,3vw,4rem)] md:pt-[clamp(1rem,3dvh,3rem)] md:pb-[clamp(1rem,2.2dvh,1.5rem)] lg:w-1/2';
 const DESKTOP_HERO_STACK_CLASS =
@@ -827,53 +829,99 @@ export default function TmdbHeroBanner({
         ? `${TMDB_API_BASE_URL}/discover/${discoverMediaType}`
         : `${TMDB_API_BASE_URL}/trending/all/day`;
 
-      const response = await fetch(`${endpoint}?${params.toString()}`, {
-        signal,
-      });
+      const fetchCandidatePage = async (page: number) => {
+        const pageParams = new URLSearchParams(params);
+        pageParams.set('page', String(page));
+        const response = await fetch(`${endpoint}?${pageParams.toString()}`, {
+          signal,
+        });
+        if (!response.ok) return null;
 
-      if (!response.ok) {
-        return [];
+        const data = (await response.json()) as TmdbRawResponse;
+        return {
+          items: (data.results || [])
+            .map((item) =>
+              shouldUseDiscover
+                ? mapRawItemToHero({ ...item, media_type: discoverMediaType })
+                : mapRawItemToHero(item)
+            )
+            .filter((item): item is TmdbHeroItem => item !== null)
+            .filter((item) =>
+              matchesMediaFilter(item.mediaType, mediaFilter)
+            ),
+          totalPages: Math.max(1, data.total_pages || 1),
+        };
+      };
+
+      const enrichItem = async (item: TmdbHeroItem, knownLogo?: string) => {
+        const [logo, meta] = await Promise.all([
+          knownLogo
+            ? Promise.resolve(knownLogo)
+            : fetchLogoForItem(item.mediaType, item.id, signal),
+          fetchHeroMetaForItem(item.mediaType, item.id, signal),
+        ]);
+        return {
+          ...item,
+          title: meta.title || item.title,
+          overview: meta.overview || item.overview,
+          year: meta.year || item.year,
+          score: meta.score || item.score,
+          releaseDate: meta.releaseDate || item.releaseDate,
+          backdrop: meta.backdrop || item.backdrop,
+          poster: meta.poster || item.poster,
+          runtime: meta.runtime,
+          seasons: meta.seasons,
+          episodes: meta.episodes,
+          logo: logo || undefined,
+        };
+      };
+
+      const firstPage = await fetchCandidatePage(1);
+      if (!firstPage) return [];
+
+      if (!requireLogo) {
+        return Promise.all(
+          firstPage.items
+            .slice(0, HERO_ITEM_LIMIT)
+            .map((item) => enrichItem(item))
+        );
       }
 
-      const data = (await response.json()) as TmdbRawResponse;
-      const baseItemLimit = requireLogo ? HERO_ITEM_LIMIT * 3 : HERO_ITEM_LIMIT;
-      const baseItems = (data.results || [])
-        .map((item) =>
-          shouldUseDiscover
-            ? mapRawItemToHero({ ...item, media_type: discoverMediaType })
-            : mapRawItemToHero(item)
-        )
-        .filter((item): item is TmdbHeroItem => item !== null)
-        .filter((item) => matchesMediaFilter(item.mediaType, mediaFilter))
-        .slice(0, baseItemLimit);
-
-      const itemsWithLogo = await Promise.all(
-        baseItems.map(async (item) => {
-          const [logo, meta] = await Promise.all([
-            fetchLogoForItem(item.mediaType, item.id, signal),
-            fetchHeroMetaForItem(item.mediaType, item.id, signal),
-          ]);
-          return {
-            ...item,
-            title: meta.title || item.title,
-            overview: meta.overview || item.overview,
-            year: meta.year || item.year,
-            score: meta.score || item.score,
-            releaseDate: meta.releaseDate || item.releaseDate,
-            backdrop: meta.backdrop || item.backdrop,
-            poster: meta.poster || item.poster,
-            runtime: meta.runtime,
-            seasons: meta.seasons,
-            episodes: meta.episodes,
-            logo: logo || undefined,
-          };
-        })
+      const logoItems: TmdbHeroItem[] = [];
+      const seenItems = new Set<string>();
+      const maxPages = Math.min(
+        firstPage.totalPages,
+        HERO_LOGO_SEARCH_PAGE_LIMIT
       );
-      const logoOnlyItems = itemsWithLogo.filter((item) => Boolean(item.logo));
-      if (requireLogo) {
-        return logoOnlyItems;
+
+      for (let page = 1; page <= maxPages; page += 1) {
+        const candidatePage =
+          page === 1 ? firstPage : await fetchCandidatePage(page);
+        if (!candidatePage) continue;
+
+        const candidates = candidatePage.items.filter((item) => {
+          const key = `${item.mediaType}:${item.id}`;
+          if (seenItems.has(key)) return false;
+          seenItems.add(key);
+          return true;
+        });
+        const candidatesWithLogos = await Promise.all(
+          candidates.map(async (item) => ({
+            item,
+            logo: await fetchLogoForItem(item.mediaType, item.id, signal),
+          }))
+        );
+        const remainingCandidates = candidatesWithLogos
+          .filter(({ logo }) => Boolean(logo))
+          .slice(0, HERO_ITEM_LIMIT - logoItems.length);
+        const enrichedItems = await Promise.all(
+          remainingCandidates.map(({ item, logo }) => enrichItem(item, logo))
+        );
+        logoItems.push(...enrichedItems);
+        if (logoItems.length === HERO_ITEM_LIMIT) break;
       }
-      return logoOnlyItems.length > 0 ? logoOnlyItems : itemsWithLogo;
+
+      return logoItems;
     },
     [
       fetchHeroMetaForItem,
@@ -1241,6 +1289,9 @@ export default function TmdbHeroBanner({
         if (normalizedOriginCountry) {
           params.set('with_origin_country', normalizedOriginCountry);
         }
+        if (requireLogo) {
+          params.set('requireLogo', 'true');
+        }
         params.set('tmdbLanguage', getCurrentTmdbLanguage());
         const response = await fetch(
           `/api/tmdb/hero${params.toString() ? `?${params.toString()}` : ''}`,
@@ -1277,11 +1328,7 @@ export default function TmdbHeroBanner({
           if (!isLatestRequest() || signal?.aborted) return;
         }
         const logoOnlyItems = nextItems.filter((item) => Boolean(item.logo));
-        const finalItems = requireLogo
-          ? logoOnlyItems
-          : logoOnlyItems.length > 0
-          ? logoOnlyItems
-          : nextItems;
+        const finalItems = requireLogo ? logoOnlyItems : nextItems;
         const limitedItems = finalItems.slice(0, HERO_ITEM_LIMIT);
         if (limitedItems.length > 0) {
           setActiveIndex(0);

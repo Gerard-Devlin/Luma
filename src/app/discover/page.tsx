@@ -614,6 +614,7 @@ function DiscoverPageClient() {
           <div className='px-2 sm:px-0'>
             <TmdbHeroBanner
               mediaFilter={media}
+              requireLogo={type === 'anime'}
               withGenres={
                 type === 'show' ? SHOW_GENRE_FILTER : ''
               }
