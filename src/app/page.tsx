@@ -2,12 +2,19 @@
 
 'use client';
 
-import { ShieldAlert } from 'lucide-react';
+import { Github, ShieldAlert, Star } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DEFAULT_ANNOUNCEMENT } from '@/lib/legal';
+import { GITHUB_REPOSITORY_URL } from '@/lib/project';
+
 import ContinueWatching from '@/components/ContinueWatching';
-import { glassDialogContentClass } from '@/components/dialogStyles';
+import {
+  glassDialogPrimaryActionClass,
+  glassDialogSecondaryActionClass,
+  glassDisclaimerDialogContentClass,
+} from '@/components/dialogStyles';
 import HomeCuratedRows from '@/components/HomeCuratedRows';
 import HomeRecommendedHero from '@/components/HomeRecommendedHero';
 import PageLayout from '@/components/PageLayout';
@@ -22,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { DEFAULT_ANNOUNCEMENT } from '@/lib/legal';
 
 function splitAnnouncementParagraphs(text: string) {
   const normalized = text.trim();
@@ -96,7 +102,7 @@ function HomeClient() {
             if (!open) handleCloseAnnouncement(announcement);
           }}
         >
-          <AlertDialogContent className={glassDialogContentClass}>
+          <AlertDialogContent className={glassDisclaimerDialogContentClass}>
             <AlertDialogHeader className='space-y-3'>
               <div className='flex items-center gap-3'>
                 <span className='inline-flex h-10 w-10 items-center justify-center rounded-[var(--ui-radius-row)] bg-red-500/15 text-red-400'>
@@ -114,10 +120,20 @@ function HomeClient() {
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className='mt-2'>
+            <AlertDialogFooter className='mt-2 flex-col gap-2 sm:flex-col sm:gap-2'>
+              <a
+                href={GITHUB_REPOSITORY_URL}
+                target='_blank'
+                rel='noreferrer'
+                className={`group inline-flex h-10 w-full items-center justify-center gap-2 text-sm transition-colors ${glassDialogSecondaryActionClass}`}
+              >
+                <Github className='h-[18px] w-[18px] shrink-0' />
+                <span>{t('common.githubStar')}</span>
+                <Star className='h-4 w-4 shrink-0 transition-colors group-hover:fill-yellow-300 group-hover:text-yellow-400' />
+              </a>
               <AlertDialogAction
                 onClick={() => handleCloseAnnouncement(announcement)}
-                className='w-full'
+                className={`w-full ${glassDialogPrimaryActionClass}`}
               >
                 {t('common.iUnderstand')}
               </AlertDialogAction>
