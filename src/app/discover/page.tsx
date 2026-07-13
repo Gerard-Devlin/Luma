@@ -79,6 +79,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RUNTIME_MINUTES = 360;
 const MIN_RATING = 0;
 const MAX_RATING = 10;
+const ANIME_KEYWORD_ID = 210024;
 
 const MOVIE_GENRE_OPTIONS: GenreOption[] = [
   { id: 12, labelKey: 'discover.adventure' },
@@ -121,6 +122,22 @@ const TV_GENRE_OPTIONS: GenreOption[] = [
   { id: 37, labelKey: 'discover.western' },
 ];
 
+const ANIME_KEYWORD_OPTIONS: GenreOption[] = [
+  { id: 207826, labelKey: 'discover.shounen' },
+  { id: 9840, labelKey: 'discover.romance' },
+  { id: 10873, labelKey: 'discover.school' },
+  { id: 9914, labelKey: 'discover.sliceOfLife' },
+  { id: 237451, labelKey: 'discover.isekai' },
+  { id: 10046, labelKey: 'discover.mecha' },
+  { id: 6075, labelKey: 'discover.sports' },
+  { id: 283297, labelKey: 'discover.music' },
+  { id: 6152, labelKey: 'discover.supernatural' },
+  { id: 779, labelKey: 'discover.martialArts' },
+  { id: 9194, labelKey: 'discover.harem' },
+  { id: 2343, labelKey: 'discover.magic' },
+  { id: 290799, labelKey: 'discover.idolAnime' },
+];
+
 const LANGUAGE_OPTIONS = [
   { value: '', labelKey: 'discover.anyLanguage' },
   { value: 'zh', labelKey: 'discover.chinese' },
@@ -145,8 +162,11 @@ const DEFAULT_FILTERS: FilterState = {
   runtimeMax: String(MAX_RUNTIME_MINUTES),
 };
 
-function normalizeType(value: string | null): 'movie' | 'tv' | 'show' {
+type DiscoverType = 'movie' | 'tv' | 'anime' | 'show';
+
+function normalizeType(value: string | null): DiscoverType {
   if (value === 'tv') return 'tv';
+  if (value === 'anime') return 'anime';
   if (value === 'show') return 'show';
   return 'movie';
 }
@@ -196,8 +216,8 @@ function DiscoverPageClient() {
   const searchParams = useSearchParams();
   const type = normalizeType(searchParams.get('type'));
   const media = type === 'movie' ? 'movie' : 'tv';
-  const hasTopHero = type === 'movie' || type === 'tv' || type === 'show';
-  const isTmdbType = type === 'movie' || type === 'tv' || type === 'show';
+  const hasTopHero = true;
+  const isTmdbType = true;
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -241,10 +261,11 @@ function DiscoverPageClient() {
     () => Array.from(new Set([...filters.excludedGenres])),
     [filters.excludedGenres]
   );
-  const genreOptions = useMemo(
-    () => (media === 'tv' ? TV_GENRE_OPTIONS : MOVIE_GENRE_OPTIONS),
-    [media]
-  );
+  const genreOptions = useMemo(() => {
+    if (type === 'anime') return ANIME_KEYWORD_OPTIONS;
+    const options = media === 'tv' ? TV_GENRE_OPTIONS : MOVIE_GENRE_OPTIONS;
+    return options;
+  }, [media, type]);
   const showCountryFilter = useMemo(() => {
     if (!showCountries.length) return '';
     const selected = new Set(
@@ -269,10 +290,21 @@ function DiscoverPageClient() {
     if (Number.isInteger(releaseYearMax) && releaseYearMax < CURRENT_YEAR) {
       params.set('release_to', `${releaseYearMax}-12-31`);
     }
-    if (mergedGenres.length > 0)
-      params.set('with_genres', mergedGenres.join(','));
-    if (mergedExcludedGenres.length > 0) {
-      params.set('without_genres', mergedExcludedGenres.join(','));
+    if (type === 'anime') {
+      params.set(
+        'with_keywords',
+        [ANIME_KEYWORD_ID, ...mergedGenres].join(',')
+      );
+      if (mergedExcludedGenres.length > 0) {
+        params.set('without_keywords', mergedExcludedGenres.join(','));
+      }
+    } else {
+      if (mergedGenres.length > 0) {
+        params.set('with_genres', mergedGenres.join(','));
+      }
+      if (mergedExcludedGenres.length > 0) {
+        params.set('without_genres', mergedExcludedGenres.join(','));
+      }
     }
     if (filters.language) params.set('language', filters.language);
     const ratingMin = Number(
@@ -302,7 +334,7 @@ function DiscoverPageClient() {
     }
 
     return params.toString();
-  }, [filters, media, mergedExcludedGenres, mergedGenres, sortMode]);
+  }, [filters, media, mergedExcludedGenres, mergedGenres, sortMode, type]);
 
   const fetchPage = useCallback(
     async (page: number, append: boolean) => {
@@ -582,7 +614,12 @@ function DiscoverPageClient() {
           <div className='px-2 sm:px-0'>
             <TmdbHeroBanner
               mediaFilter={media}
-              withGenres={type === 'show' ? SHOW_GENRE_FILTER : ''}
+              withGenres={
+                type === 'show' ? SHOW_GENRE_FILTER : ''
+              }
+              withKeywords={
+                type === 'anime' ? String(ANIME_KEYWORD_ID) : ''
+              }
               withOriginCountry={
                 type === 'show' ? SHOW_HERO_COUNTRY_FILTER : ''
               }
@@ -596,6 +633,8 @@ function DiscoverPageClient() {
               <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200 sm:text-3xl'>
                 {type === 'tv'
                   ? t('common.series')
+                  : type === 'anime'
+                  ? t('common.anime')
                   : type === 'show'
                   ? t('common.shows')
                   : t('common.movies')}

@@ -8,6 +8,7 @@ import {
   Film,
   HeartPulse,
   Home,
+  Origami,
   Tv,
   UserRound,
   X,
@@ -58,6 +59,7 @@ const MobileBottomNav = ({
   const categoryItems = [
     { icon: Film, label: t('common.movies'), href: '/discover?type=movie' },
     { icon: Tv, label: t('common.series'), href: '/discover?type=tv' },
+    { icon: Origami, label: t('common.anime'), href: '/discover?type=anime' },
     { icon: HeartPulse, label: t('common.shows'), href: '/discover?type=show' },
   ];
 

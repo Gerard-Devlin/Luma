@@ -291,6 +291,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mediaFilter = normalizeMediaFilter(searchParams.get('mediaType'));
   const withGenres = normalizeWithGenres(searchParams.get('with_genres'));
+  const withKeywords = normalizeWithGenres(searchParams.get('with_keywords'));
   const withOriginCountry = normalizeWithOriginCountry(
     searchParams.get('with_origin_country')
   );
@@ -315,7 +316,9 @@ export async function GET(request: Request) {
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const shouldUseDiscover = Boolean(withGenres || withOriginCountry);
+    const shouldUseDiscover = Boolean(
+      withGenres || withKeywords || withOriginCountry
+    );
     const discoverMediaType: TmdbMediaType =
       mediaFilter === 'movie' ? 'movie' : 'tv';
     const params = new URLSearchParams({
@@ -328,6 +331,9 @@ export async function GET(request: Request) {
       params.set('include_adult', 'false');
       if (withGenres) {
         params.set('with_genres', withGenres);
+      }
+      if (withKeywords) {
+        params.set('with_keywords', withKeywords);
       }
       if (withOriginCountry) {
         params.set('with_origin_country', withOriginCountry);

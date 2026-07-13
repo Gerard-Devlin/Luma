@@ -203,6 +203,7 @@ type HeroMediaFilter = 'all' | 'movie' | 'tv';
 interface TmdbHeroBannerProps {
   mediaFilter?: HeroMediaFilter;
   withGenres?: string;
+  withKeywords?: string;
   withOriginCountry?: string;
   personalizedSeeds?: TmdbHeroRecommendationSeed[] | null;
   requireLogo?: boolean;
@@ -513,6 +514,7 @@ function matchesMediaFilter(
 export default function TmdbHeroBanner({
   mediaFilter = 'all',
   withGenres = '',
+  withKeywords = '',
   withOriginCountry = '',
   personalizedSeeds,
   requireLogo = false,
@@ -792,12 +794,13 @@ export default function TmdbHeroBanner({
       const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
       const normalizedGenres = (withGenres || '').trim();
+      const normalizedKeywords = (withKeywords || '').trim();
       const normalizedOriginCountry = (withOriginCountry || '')
         .trim()
         .replace(/\s+/g, '')
         .toUpperCase();
       const shouldUseDiscover = Boolean(
-        normalizedGenres || normalizedOriginCountry
+        normalizedGenres || normalizedKeywords || normalizedOriginCountry
       );
       const discoverMediaType: 'movie' | 'tv' =
         mediaFilter === 'movie' ? 'movie' : 'tv';
@@ -811,6 +814,9 @@ export default function TmdbHeroBanner({
         params.set('include_adult', 'false');
         if (normalizedGenres) {
           params.set('with_genres', normalizedGenres);
+        }
+        if (normalizedKeywords) {
+          params.set('with_keywords', normalizedKeywords);
         }
         if (normalizedOriginCountry) {
           params.set('with_origin_country', normalizedOriginCountry);
@@ -875,6 +881,7 @@ export default function TmdbHeroBanner({
       mediaFilter,
       requireLogo,
       withGenres,
+      withKeywords,
       withOriginCountry,
     ]
   );
@@ -1223,6 +1230,10 @@ export default function TmdbHeroBanner({
         if (normalizedGenres) {
           params.set('with_genres', normalizedGenres);
         }
+        const normalizedKeywords = (withKeywords || '').trim();
+        if (normalizedKeywords) {
+          params.set('with_keywords', normalizedKeywords);
+        }
         const normalizedOriginCountry = (withOriginCountry || '')
           .trim()
           .replace(/\s+/g, '')
@@ -1316,6 +1327,7 @@ export default function TmdbHeroBanner({
       personalizedSeeds,
       requireLogo,
       withGenres,
+      withKeywords,
       withOriginCountry,
     ]
   );

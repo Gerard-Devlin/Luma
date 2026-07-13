@@ -326,12 +326,16 @@ export async function GET(request: Request) {
   const timeoutId = setTimeout(() => controller.abort(), TMDB_DISCOVER_TIMEOUT_MS);
 
   try {
-    const keywordIds = await resolveKeywordIds(
+    const resolvedKeywordIds = await resolveKeywordIds(
       apiKey,
       searchParams.get('keyword') || '',
       tmdbLanguage,
       controller.signal
     );
+    const explicitKeywordIds = parseIdList(searchParams.get('with_keywords'));
+    const keywordIds = [explicitKeywordIds, resolvedKeywordIds]
+      .filter(Boolean)
+      .join(',');
 
     const params = buildDiscoverParams(
       apiKey,

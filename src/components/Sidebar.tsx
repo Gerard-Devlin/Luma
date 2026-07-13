@@ -9,6 +9,7 @@ import {
   HeartPulse,
   Home,
   Menu,
+  Origami,
   Search,
   Tv,
   UserRound,
@@ -132,6 +133,11 @@ const Sidebar = ({
       icon: Tv,
       label: t('common.series'),
       href: '/discover?type=tv',
+    },
+    {
+      icon: Origami,
+      label: t('common.anime'),
+      href: '/discover?type=anime',
     },
     {
       icon: HeartPulse,
