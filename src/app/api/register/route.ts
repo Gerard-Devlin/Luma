@@ -37,6 +37,7 @@ async function verifyTurnstileToken(
   }
 
   const remoteIp =
+    req.ip ??
     req.headers.get('CF-Connecting-IP') ??
     req.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ??
     undefined;

@@ -177,12 +177,11 @@ function mergeAndSortCredits(raw: TmdbPersonRaw): PersonCredit[] {
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   const { searchParams } = new URL(request.url);
   const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
-  const { id: personId } = await context.params;
-  const rawId = Number(personId);
+  const rawId = Number(context.params.id);
   const id = Number.isInteger(rawId) && rawId > 0 ? rawId : 0;
 
   if (!id) {
