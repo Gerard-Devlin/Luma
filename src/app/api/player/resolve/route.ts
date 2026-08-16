@@ -55,15 +55,16 @@ async function fetchTmdbSeason(
   const apiKey =
     process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
   if (!apiKey) return null;
+  if (!Number.isInteger(tmdbId) || tmdbId <= 0 || tmdbId > 999999999) return null;
+  if (!Number.isInteger(season) || season <= 0 || season > 100) return null;
 
-  const params = new URLSearchParams({
-    api_key: apiKey,
-    language: tmdbLanguage,
-  });
+  const url = new URL(`${TMDB_API_BASE_URL}/tv/${tmdbId}/season/${season}`);
+  url.searchParams.set('api_key', apiKey);
+  url.searchParams.set('language', tmdbLanguage);
 
   try {
     const response = await fetch(
-      `${TMDB_API_BASE_URL}/tv/${tmdbId}/season/${season}?${params.toString()}`,
+      url.toString(),
       {
         signal,
         headers: {
