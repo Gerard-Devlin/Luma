@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
+import { isAllowedRegistrationEmail } from '@/lib/email-policy';
 import { sha256Hex } from '@/lib/email-registration';
 
 function redirectToLogin(req: NextRequest, params: Record<string, string>) {
@@ -31,6 +32,14 @@ export async function GET(req: NextRequest) {
       return redirectToLogin(req, {
         verified: '0',
         reason: 'expired',
+      });
+    }
+
+    if (!isAllowedRegistrationEmail(pending.email)) {
+      await db.deleteEmailRegistration(pending.email);
+      return redirectToLogin(req, {
+        verified: '0',
+        reason: 'email-provider',
       });
     }
 

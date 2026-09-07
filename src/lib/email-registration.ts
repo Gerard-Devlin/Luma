@@ -1,9 +1,9 @@
-import * as React from 'react';
 import { render } from '@react-email/render';
+import * as React from 'react';
 
 import { ConfirmEmail } from '@/emails/confirm-email';
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export { isValidEmail, normalizeEmail } from '@/lib/email-policy';
 
 type RegistrationEmailInput = {
   email: string;
@@ -25,14 +25,6 @@ function bytesToBase64Url(bytes: Uint8Array): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/g, '');
-}
-
-export function normalizeEmail(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-export function isValidEmail(value: string): boolean {
-  return value.length <= 254 && EMAIL_PATTERN.test(value);
 }
 
 export function getPublicSiteUrl(req: Request): string {
@@ -59,7 +51,10 @@ export function getPublicSiteUrl(req: Request): string {
   return new URL(req.url).origin;
 }
 
-export function createRegistrationVerifyUrl(req: Request, token: string): string {
+export function createRegistrationVerifyUrl(
+  req: Request,
+  token: string
+): string {
   const url = new URL('/api/register/confirm', getPublicSiteUrl(req));
   url.searchParams.set('token', token);
   return url.toString();
@@ -139,7 +134,9 @@ export async function sendRegistrationEmail({
   const resendKey = process.env.AUTH_RESEND_KEY || process.env.RESEND_API_KEY;
 
   if (!resendKey) {
-    console.error('Registration email is missing AUTH_RESEND_KEY/RESEND_API_KEY');
+    console.error(
+      'Registration email is missing AUTH_RESEND_KEY/RESEND_API_KEY'
+    );
     throw new Error('Email service is not configured');
   }
 

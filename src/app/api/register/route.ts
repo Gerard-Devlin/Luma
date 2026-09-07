@@ -4,10 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 import {
-  createRegistrationVerifyUrl,
-  generateRegistrationToken,
+  isAllowedRegistrationEmail,
   isValidEmail,
   normalizeEmail,
+} from '@/lib/email-policy';
+import {
+  createRegistrationVerifyUrl,
+  generateRegistrationToken,
   sendRegistrationEmail,
   sha256Hex,
 } from '@/lib/email-registration';
@@ -101,8 +104,7 @@ export async function POST(req: NextRequest) {
     const rawEmail = body?.email;
     const rawPassword = body?.password;
     const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
-    const email =
-      typeof rawEmail === 'string' ? normalizeEmail(rawEmail) : '';
+    const email = typeof rawEmail === 'string' ? normalizeEmail(rawEmail) : '';
     const password = typeof rawPassword === 'string' ? rawPassword : '';
 
     const turnstilePassed = await verifyTurnstileToken(
@@ -111,7 +113,9 @@ export async function POST(req: NextRequest) {
     );
     if (!turnstilePassed) {
       return NextResponse.json(
-        { error: 'Turnstile verification failed. Please refresh and try again.' },
+        {
+          error: 'Turnstile verification failed. Please refresh and try again.',
+        },
         { status: 400 }
       );
     }
@@ -133,6 +137,17 @@ export async function POST(req: NextRequest) {
     if (!isValidEmail(email)) {
       return NextResponse.json(
         { error: 'Please enter a valid email address.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isAllowedRegistrationEmail(email)) {
+      return NextResponse.json(
+        {
+          error:
+            'Please use a mainstream email provider or an education email address.',
+          code: 'EMAIL_PROVIDER_NOT_ALLOWED',
+        },
         { status: 400 }
       );
     }

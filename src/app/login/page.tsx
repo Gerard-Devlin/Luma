@@ -4,12 +4,14 @@ import { AlertCircle, CheckCircle, Github } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import Turnstile from 'react-turnstile';
 import { useTranslation } from 'react-i18next';
+import Turnstile from 'react-turnstile';
+
+import { isAllowedRegistrationEmail } from '@/lib/email-policy';
+import { checkForUpdates, CURRENT_VERSION, UpdateStatus } from '@/lib/version';
 
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useSite } from '@/components/SiteProvider';
-import { checkForUpdates, CURRENT_VERSION, UpdateStatus } from '@/lib/version';
 
 type RuntimeConfig = {
   STORAGE_TYPE?: string;
@@ -174,6 +176,8 @@ function LoginPageClient() {
     setError(
       reason === 'exists'
         ? t('auth.usernameOrEmailExists')
+        : reason === 'email-provider'
+        ? t('auth.emailProviderNotAllowed')
         : reason === 'server'
         ? t('auth.confirmationFailed')
         : t('auth.confirmationInvalid')
@@ -254,6 +258,10 @@ function LoginPageClient() {
     }
 
     if (!password || !username || !email) return;
+    if (!isAllowedRegistrationEmail(email)) {
+      setError(t('auth.emailProviderNotAllowed'));
+      return;
+    }
     if (isTurnstileEnabled && !turnstileToken) {
       setError(t('auth.verifyChallenge'));
       return;
@@ -283,13 +291,18 @@ function LoginPageClient() {
         setPassword('');
         setEmail('');
         setAuthMode('login');
-        setSuccess(
-          t('auth.confirmationSent', { email: data.email || email })
-        );
+        setSuccess(t('auth.confirmationSent', { email: data.email || email }));
         resetTurnstile();
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? t('auth.serverError'));
+        const data = (await res.json().catch(() => ({}))) as {
+          code?: string;
+          error?: string;
+        };
+        setError(
+          data.code === 'EMAIL_PROVIDER_NOT_ALLOWED'
+            ? t('auth.emailProviderNotAllowed')
+            : data.error ?? t('auth.serverError')
+        );
         resetTurnstile();
       }
     } catch (error) {
@@ -375,7 +388,9 @@ function LoginPageClient() {
             <input
               id='password'
               type='password'
-              autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
+              autoComplete={
+                authMode === 'register' ? 'new-password' : 'current-password'
+              }
               className='block w-full rounded-lg border-0 bg-white/60 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800/60 dark:text-gray-100 dark:placeholder:text-gray-400 dark:ring-white/20'
               placeholder={
                 authMode === 'register'

@@ -89,6 +89,8 @@ export const resources = {
         dontHaveAccount: "Don't have an account?",
         email: 'Email',
         emailConfirmed: 'Email confirmed. You can sign in now.',
+        emailProviderNotAllowed:
+          'Please use a mainstream email provider or an education email address.',
         enterAccessPassword: 'Enter access password',
         enterEmail: 'Enter email address',
         enterUsername: 'Enter username',
@@ -445,6 +447,7 @@ export const resources = {
         dontHaveAccount: '还没有账号？',
         email: '邮箱',
         emailConfirmed: '邮箱已确认，现在可以登录。',
+        emailProviderNotAllowed: '仅支持主流邮箱或教育邮箱注册。',
         enterAccessPassword: '输入访问密码',
         enterEmail: '输入邮箱地址',
         enterUsername: '输入用户名',
