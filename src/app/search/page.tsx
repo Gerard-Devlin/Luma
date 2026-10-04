@@ -234,7 +234,7 @@ function SearchPageClient() {
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [hasSuggestionSearched, setHasSuggestionSearched] = useState(false);
-  const [activeResult, setActiveResult] = useState<SearchResult | null>(null);
+  const [activeResult] = useState<SearchResult | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -621,17 +621,6 @@ function SearchPageClient() {
     setDetailError(null);
     detailRequestIdRef.current += 1;
   }, []);
-
-  const pushPlayByTitle = useCallback(
-    (title: string, mediaType: TmdbDetailMediaType, year: string) => {
-      router.push(
-        `/play?title=${encodeURIComponent(title)}${
-          year ? `&year=${year}` : ''
-        }&stype=${mediaType}`
-      );
-    },
-    [router]
-  );
 
   const fetchTmdbSeasonCountByTitle = useCallback(
     async (title: string, year: string): Promise<number> => {

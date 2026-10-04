@@ -4,6 +4,14 @@
 .env.docker.*
 node_modules
 .next
+.open-next
+.pnpm-store
+.dev.vars
+.codex
+.agents
+.aws
+tmp
+temp
 .git
 .github
 *.log

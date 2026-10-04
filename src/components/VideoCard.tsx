@@ -12,7 +12,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -22,26 +21,21 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import {
-  glassDialogCancelClass,
-  glassDialogContentClass,
-  glassDialogDangerActionClass,
-  glassDialogDescriptionClass,
-} from '@/components/dialogStyles';
-import {
   buildTmdbDetailClientCacheKey as buildGlobalTmdbDetailCacheKey,
   fetchTmdbDetailWithClientCache as fetchGlobalTmdbDetailWithCache,
   prefetchTmdbDetail,
 } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { parseTmdbStorageId } from '@/lib/tmdb-history';
-import {
-  getTmdbImageLanguage,
-  normalizeTmdbLanguage,
-} from '@/lib/tmdb-language';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
-import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 import { SearchResult } from '@/lib/types';
 
+import {
+  glassDialogCancelClass,
+  glassDialogContentClass,
+  glassDialogDangerActionClass,
+  glassDialogDescriptionClass,
+} from '@/components/dialogStyles';
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import PosterInfoCard from '@/components/PosterInfoCard';
 import SeasonPickerModal from '@/components/SeasonPickerModal';
@@ -56,6 +50,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface VideoCardProps {
   id?: string;
@@ -116,157 +112,9 @@ interface TmdbDetailLookupInput {
   score?: string;
 }
 
-interface TmdbDetailRawGenre {
-  name?: string;
-}
-
-interface TmdbDetailRawCast {
-  id?: number;
-  name?: string;
-  character?: string;
-}
-
-interface TmdbDetailRawVideo {
-  site?: string;
-  type?: string;
-  key?: string;
-  official?: boolean;
-  iso_639_1?: string | null;
-}
-
-interface TmdbDetailRawResponse {
-  id?: number;
-  title?: string;
-  name?: string;
-  overview?: string;
-  backdrop_path?: string | null;
-  poster_path?: string | null;
-  vote_average?: number;
-  vote_count?: number;
-  release_date?: string;
-  first_air_date?: string;
-  runtime?: number;
-  episode_run_time?: number[];
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  original_language?: string;
-  popularity?: number;
-  genres?: TmdbDetailRawGenre[];
-  credits?: {
-    cast?: TmdbDetailRawCast[];
-  };
-  videos?: {
-    results?: TmdbDetailRawVideo[];
-  };
-  release_dates?: {
-    results?: Array<{
-      iso_3166_1?: string;
-      release_dates?: Array<{ certification?: string }>;
-    }>;
-  };
-  content_ratings?: {
-    results?: Array<{
-      iso_3166_1?: string;
-      rating?: string;
-    }>;
-  };
-}
-
-interface TmdbSearchResultItem {
-  id?: number;
-  media_type?: string;
-  title?: string;
-  name?: string;
-  original_title?: string;
-  original_name?: string;
-  release_date?: string;
-  first_air_date?: string;
-}
-
-interface TmdbLogoItem {
-  file_path?: string | null;
-  iso_639_1?: string | null;
-  vote_average?: number;
-  width?: number;
-}
-
-interface TmdbImagesResponse {
-  logos?: TmdbLogoItem[];
-}
-
-const TMDB_CLIENT_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
-const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-const TMDB_DETAIL_CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
-const TMDB_DETAIL_CLIENT_CACHE_MAX_ENTRIES = 240;
-const TMDB_DETAIL_PREFETCH_CONCURRENCY = 2;
-const TMDB_DETAIL_PREFETCH_MAX_TOTAL = 48;
-
-interface TmdbDetailClientCacheEntry {
-  expiresAt: number;
-  payload: TmdbCardDetail;
-}
-
-const tmdbDetailClientCache = new Map<string, TmdbDetailClientCacheEntry>();
-const tmdbDetailClientPending = new Map<string, Promise<TmdbCardDetail>>();
-const tmdbDetailPrefetchQueue: Array<() => void> = [];
-const tmdbDetailPrefetchScheduledKeys = new Set<string>();
-let tmdbDetailPrefetchActiveCount = 0;
-const tmdbDetailPrefetchTotalCount = 0;
-
 function normalizeYear(value?: string): string {
   const year = (value || '').trim();
   return /^\d{4}$/.test(year) ? year : '';
-}
-
-function toYear(value?: string): string {
-  if (!value) return '';
-  const year = value.slice(0, 4);
-  return /^\d{4}$/.test(year) ? year : '';
-}
-
-function toScore(value?: number): string {
-  if (typeof value !== 'number') return '';
-  if (!Number.isFinite(value) || value <= 0) return '';
-  return value.toFixed(1);
-}
-
-function toImageUrl(path?: string | null, size = 'w500'): string {
-  if (!path) return '';
-  return `${TMDB_IMAGE_BASE_URL}/${size}${path}`;
-}
-
-function selectBestLogoPath(
-  logos: TmdbLogoItem[],
-  tmdbLanguage = getCurrentTmdbLanguage()
-): string {
-  if (!logos.length) return '';
-
-  const getLanguagePriority = (lang?: string | null): number => {
-    if (normalizeTmdbLanguage(tmdbLanguage) === 'zh-CN') {
-      if (lang === 'zh') return 4;
-      if (lang === 'en') return 3;
-      if (lang === null || lang === undefined) return 2;
-      return 1;
-    }
-    if (lang === 'en') return 4;
-    if (lang === 'zh') return 3;
-    if (lang === null || lang === undefined) return 2;
-    return 1;
-  };
-
-  const sorted = logos
-    .filter((logo) => logo.file_path)
-    .sort((a, b) => {
-      const lp =
-        getLanguagePriority(b.iso_639_1) - getLanguagePriority(a.iso_639_1);
-      if (lp !== 0) return lp;
-      const vr = (b.vote_average || 0) - (a.vote_average || 0);
-      if (vr !== 0) return vr;
-      return (b.width || 0) - (a.width || 0);
-    });
-
-  return sorted[0]?.file_path || '';
 }
 
 function normalizeMediaType(value?: string, episodes?: number): TmdbMediaType {
@@ -299,16 +147,12 @@ function getTmdbDetailId(
   return '';
 }
 
-function normalizeDetailCacheTitle(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function buildTmdbDetailCacheKey(input: TmdbDetailLookupInput): string {
+function buildTmdbDetailCacheKey(input: TmdbDetailLookupInput, language?: string): string {
   return buildGlobalTmdbDetailCacheKey({
     title: input.title,
     mediaType: input.mediaType,
     year: input.year,
-    tmdbLanguage: getCurrentTmdbLanguage(),
+    tmdbLanguage: getCurrentTmdbLanguage(language),
   });
 }
 
@@ -335,65 +179,6 @@ function canUseTmdbDetailPrefetch(): boolean {
   return true;
 }
 
-function pruneTmdbDetailClientCache(): void {
-  while (tmdbDetailClientCache.size > TMDB_DETAIL_CLIENT_CACHE_MAX_ENTRIES) {
-    const oldestKey = tmdbDetailClientCache.keys().next().value;
-    if (!oldestKey) break;
-    tmdbDetailClientCache.delete(oldestKey);
-  }
-}
-
-function readTmdbDetailClientCache(key: string): TmdbCardDetail | null {
-  const hit = tmdbDetailClientCache.get(key);
-  if (!hit) return null;
-  if (hit.expiresAt <= Date.now()) {
-    tmdbDetailClientCache.delete(key);
-    return null;
-  }
-  return hit.payload;
-}
-
-function writeTmdbDetailClientCache(
-  key: string,
-  payload: TmdbCardDetail
-): void {
-  tmdbDetailClientCache.set(key, {
-    payload,
-    expiresAt: Date.now() + TMDB_DETAIL_CLIENT_CACHE_TTL_MS,
-  });
-  pruneTmdbDetailClientCache();
-}
-
-function pumpTmdbDetailPrefetchQueue(): void {
-  while (
-    tmdbDetailPrefetchActiveCount < TMDB_DETAIL_PREFETCH_CONCURRENCY &&
-    tmdbDetailPrefetchQueue.length > 0
-  ) {
-    const runner = tmdbDetailPrefetchQueue.shift();
-    if (!runner) return;
-    tmdbDetailPrefetchActiveCount += 1;
-    runner();
-  }
-}
-
-function enqueueTmdbDetailPrefetch(task: () => Promise<void>): void {
-  tmdbDetailPrefetchQueue.push(() => {
-    task()
-      .catch(() => {
-        // ignore prefetch errors to keep interaction path clean
-      })
-      .finally(() => {
-        tmdbDetailPrefetchActiveCount = Math.max(
-          0,
-          tmdbDetailPrefetchActiveCount - 1
-        );
-        pumpTmdbDetailPrefetchQueue();
-      });
-  });
-
-  pumpTmdbDetailPrefetchQueue();
-}
-
 function hasSeasonHint(value: string): boolean {
   const text = (value || '').toLowerCase();
   if (!text.trim()) return false;
@@ -415,468 +200,9 @@ function stripSeasonHint(value: string): string {
     .trim();
 }
 
-const LOOKUP_TITLE_PUNCTUATION_PATTERN =
-  /[\u2018\u2019\u201c\u201d'"`.,;:!?()[\]{}<>/\-|\\\u3001\u3002\uFF0C\uFF01\uFF1F\u300a\u300b\u300c\u300d\u300e\u300f\u3010\u3011]+/g;
-const LOOKUP_ENGLISH_SEASON_DETECT_PATTERN =
-  /\b(?:season|series|s)\s*0*\d{1,2}\b/i;
-const LOOKUP_CHINESE_SEASON_DETECT_PATTERN =
-  /\u7b2c\s*[\u96f6\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u4e24\d]+\s*(?:\u5b63|\u90e8|\u8f91)/i;
-const LOOKUP_SPECIAL_FEATURE_KEYWORD_PATTERN =
-  /(?:\u5e55\u540e|\u7279\u8f91|\u91cd\u9022|\u82b1\u7d6e|\u5236\u4f5c|\u7eaa\u5f55|\u756a\u5916|\u885d\u751f|making of|behind the scenes|behind the curtain|reunion|special|featurette|documentary)/i;
-
-function normalizeLookupTitle(value: string): string {
-  return stripSeasonHint(value || '')
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(LOOKUP_TITLE_PUNCTUATION_PATTERN, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function hasSeasonIntentForLookup(value: string): boolean {
-  const normalized = (value || '').normalize('NFKC');
-  return (
-    LOOKUP_ENGLISH_SEASON_DETECT_PATTERN.test(normalized) ||
-    LOOKUP_CHINESE_SEASON_DETECT_PATTERN.test(normalized)
-  );
-}
-
-function buildLookupSearchQueries(value: string): string[] {
-  const variants = new Set<string>();
-  const push = (input: string) => {
-    const normalized = (input || '').trim().replace(/\s+/g, ' ');
-    if (!normalized) return;
-    variants.add(normalized);
-  };
-
-  const raw = (value || '').trim();
-  push(raw);
-  push(stripSeasonHint(raw));
-  return Array.from(variants);
-}
-
-function buildLookupQueryVariants(value: string): string[] {
-  return buildLookupSearchQueries(value)
-    .map((item) => normalizeLookupTitle(item))
-    .filter(Boolean);
-}
-
-function buildLookupResultTitleVariants(
-  candidate: TmdbSearchResultItem
-): string[] {
-  const variants = new Set<string>();
-  const push = (input?: string) => {
-    const normalized = normalizeLookupTitle(input || '');
-    if (!normalized) return;
-    variants.add(normalized);
-  };
-
-  push(candidate.title);
-  push(candidate.name);
-  push(candidate.original_title);
-  push(candidate.original_name);
-  return Array.from(variants);
-}
-
-function scoreLookupTitleSimilarity(
-  queryVariants: string[],
-  candidateVariants: string[]
-): number {
-  let best = 0;
-
-  for (const queryVariant of queryVariants) {
-    for (const candidateVariant of candidateVariants) {
-      if (!queryVariant || !candidateVariant) continue;
-      if (queryVariant === candidateVariant) {
-        best = Math.max(best, 1);
-        continue;
-      }
-
-      const longer =
-        queryVariant.length >= candidateVariant.length
-          ? queryVariant
-          : candidateVariant;
-      const shorter =
-        queryVariant.length >= candidateVariant.length
-          ? candidateVariant
-          : queryVariant;
-
-      if (!longer.includes(shorter)) continue;
-      const coverage = shorter.length / longer.length;
-      const score =
-        coverage >= 0.92
-          ? 0.98
-          : coverage >= 0.75
-          ? 0.9
-          : coverage >= 0.6
-          ? 0.8
-          : coverage >= 0.45
-          ? 0.68
-          : coverage * 0.4;
-      if (score > best) best = score;
-    }
-  }
-
-  return best;
-}
-
-function scoreLookupYearMatch(
-  inputYear: string,
-  candidateYear: string
-): number {
-  if (!inputYear || !candidateYear) return 0;
-  const delta = Math.abs(Number(inputYear) - Number(candidateYear));
-  if (!Number.isFinite(delta)) return 0;
-  if (delta === 0) return 0.08;
-  if (delta === 1) return 0.03;
-  if (delta >= 2) return -0.08;
-  return 0;
-}
-
-function scoreLookupSpecialFeaturePenalty(
-  hasSeasonIntent: boolean,
-  candidateVariants: string[]
-): number {
-  if (!hasSeasonIntent) return 0;
-  const hasSpecialKeyword = candidateVariants.some((titleVariant) =>
-    LOOKUP_SPECIAL_FEATURE_KEYWORD_PATTERN.test(titleVariant)
-  );
-  return hasSpecialKeyword ? -0.26 : 0;
-}
-
-function pickPreferredCertification(byCountry: Map<string, string>): string {
-  const preferredCountries = ['US', 'CN', 'GB', 'HK', 'JP'];
-  for (const country of preferredCountries) {
-    const certification = byCountry.get(country);
-    if (certification) return certification;
-  }
-  const first = byCountry.values().next();
-  return first.done ? '' : first.value;
-}
-
-function pickMovieContentRatingFromRaw(raw: TmdbDetailRawResponse): string {
-  const byCountry = new Map<string, string>();
-  for (const item of raw.release_dates?.results || []) {
-    const country = (item.iso_3166_1 || '').toUpperCase();
-    if (!country) continue;
-    const certification =
-      item.release_dates?.find((entry) => (entry.certification || '').trim())
-        ?.certification || '';
-    if (!certification) continue;
-    byCountry.set(country, certification);
-  }
-  return pickPreferredCertification(byCountry);
-}
-
-function pickTvContentRatingFromRaw(raw: TmdbDetailRawResponse): string {
-  const byCountry = new Map<string, string>();
-  for (const item of raw.content_ratings?.results || []) {
-    const country = (item.iso_3166_1 || '').toUpperCase();
-    const rating = (item.rating || '').trim();
-    if (!country || !rating) continue;
-    byCountry.set(country, rating);
-  }
-  return pickPreferredCertification(byCountry);
-}
-
-function pickTrailerUrlFromRaw(raw: TmdbDetailRawResponse): string {
-  const candidates = (raw.videos?.results || []).filter(
-    (item) =>
-      item.site === 'YouTube' && item.type === 'Trailer' && Boolean(item.key)
-  );
-  if (!candidates.length) return '';
-
-  const getLangPriority = (lang?: string | null): number => {
-    if (lang === 'zh') return 3;
-    if (lang === 'en') return 2;
-    if (lang === null || lang === undefined) return 1;
-    return 0;
-  };
-
-  const sorted = [...candidates].sort((a, b) => {
-    const officialDelta =
-      Number(Boolean(b.official)) - Number(Boolean(a.official));
-    if (officialDelta !== 0) return officialDelta;
-    return getLangPriority(b.iso_639_1) - getLangPriority(a.iso_639_1);
-  });
-
-  const key = sorted[0]?.key;
-  return key ? `https://www.youtube.com/watch?v=${key}` : '';
-}
-
-async function resolveTmdbTargetFromTitle(
-  title: string,
-  year: string,
-  mediaType: TmdbMediaType
-): Promise<{ id: number; mediaType: TmdbMediaType } | null> {
-  if (!TMDB_CLIENT_API_KEY) return null;
-  const tmdbLanguage = getCurrentTmdbLanguage();
-
-  const queryHasSeasonIntent = hasSeasonIntentForLookup(title);
-  const primaryMediaType: TmdbMediaType = queryHasSeasonIntent
-    ? 'tv'
-    : mediaType;
-  const otherType: TmdbMediaType =
-    primaryMediaType === 'movie' ? 'tv' : 'movie';
-  const searchQueryVariants = buildLookupSearchQueries(title);
-  const queryTitleVariants = buildLookupQueryVariants(title);
-  const minSimilarityThreshold = 0.34;
-  const attempts: Array<{
-    endpoint: 'movie' | 'tv' | 'multi';
-    year?: string;
-  }> = queryHasSeasonIntent
-    ? [
-        // Season queries should not rely on first-air year in the first pass.
-        { endpoint: 'tv' },
-        { endpoint: 'tv', year },
-        { endpoint: otherType },
-        { endpoint: otherType, year },
-        { endpoint: 'multi' },
-      ]
-    : [
-        { endpoint: primaryMediaType, year },
-        { endpoint: primaryMediaType },
-        { endpoint: otherType, year },
-        { endpoint: otherType },
-        { endpoint: 'multi' },
-      ];
-
-  for (const attempt of attempts) {
-    for (const searchQuery of searchQueryVariants) {
-      const params = new URLSearchParams({
-        api_key: TMDB_CLIENT_API_KEY,
-        language: tmdbLanguage,
-        include_adult: 'false',
-        query: searchQuery,
-        page: '1',
-      });
-
-      if (attempt.year && attempt.endpoint !== 'multi') {
-        params.set(
-          attempt.endpoint === 'movie' ? 'year' : 'first_air_date_year',
-          attempt.year
-        );
-      }
-
-      try {
-        const response = await fetch(
-          `${TMDB_API_BASE_URL}/search/${
-            attempt.endpoint
-          }?${params.toString()}`,
-          { cache: 'no-store' }
-        );
-        if (!response.ok) continue;
-
-        const payload = (await response.json()) as {
-          results?: TmdbSearchResultItem[];
-        };
-        const candidates = (payload.results || []).slice(0, 8);
-        let bestCandidate: {
-          id: number;
-          mediaType: TmdbMediaType;
-          score: number;
-        } | null = null;
-
-        for (const candidate of candidates) {
-          const candidateId = Number(candidate.id);
-          if (!Number.isInteger(candidateId) || candidateId <= 0) continue;
-
-          const candidateMediaType: TmdbMediaType | null =
-            attempt.endpoint === 'multi'
-              ? candidate.media_type === 'movie' ||
-                candidate.media_type === 'tv'
-                ? candidate.media_type
-                : null
-              : attempt.endpoint;
-          if (!candidateMediaType) continue;
-
-          const candidateTitleVariants =
-            buildLookupResultTitleVariants(candidate);
-          if (candidateTitleVariants.length === 0) continue;
-
-          const titleScore = scoreLookupTitleSimilarity(
-            queryTitleVariants,
-            candidateTitleVariants
-          );
-          if (titleScore <= 0) continue;
-
-          const candidateYear = toYear(
-            candidate.release_date || candidate.first_air_date
-          );
-          const mediaBoost =
-            queryHasSeasonIntent && candidateMediaType === 'tv' ? 0.05 : 0;
-          const finalScore =
-            titleScore +
-            scoreLookupYearMatch(year, candidateYear) +
-            scoreLookupSpecialFeaturePenalty(
-              queryHasSeasonIntent,
-              candidateTitleVariants
-            ) +
-            mediaBoost;
-
-          if (!bestCandidate || finalScore > bestCandidate.score) {
-            bestCandidate = {
-              id: candidateId,
-              mediaType: candidateMediaType,
-              score: finalScore,
-            };
-          }
-        }
-
-        if (bestCandidate && bestCandidate.score >= minSimilarityThreshold) {
-          return {
-            id: bestCandidate.id,
-            mediaType: bestCandidate.mediaType,
-          };
-        }
-      } catch {
-        continue;
-      }
-    }
-  }
-
-  return null;
-}
-
-async function fetchTmdbLogo(
-  mediaType: TmdbMediaType,
-  id: number
-): Promise<string> {
-  if (!TMDB_CLIENT_API_KEY) return '';
-  const tmdbLanguage = getCurrentTmdbLanguage();
-
-  try {
-    const params = new URLSearchParams({
-      api_key: TMDB_CLIENT_API_KEY,
-      include_image_language: getTmdbImageLanguage(tmdbLanguage),
-    });
-    const response = await fetch(
-      `${TMDB_API_BASE_URL}/${mediaType}/${id}/images?${params.toString()}`,
-      { cache: 'no-store' }
-    );
-    if (!response.ok) return '';
-
-    const data = (await response.json()) as TmdbImagesResponse;
-    const logoPath = selectBestLogoPath(data.logos || [], tmdbLanguage);
-    return logoPath ? `${TMDB_IMAGE_BASE_URL}/w500${logoPath}` : '';
-  } catch {
-    return '';
-  }
-}
-
-async function fetchTmdbDetailByTitle(
-  input: TmdbDetailLookupInput
-): Promise<TmdbCardDetail> {
-  const routeParams = new URLSearchParams({
-    title: input.title,
-    type: input.mediaType,
-  });
-  if (input.year) {
-    routeParams.set('year', input.year);
-  }
-  if (input.poster) {
-    routeParams.set('poster', input.poster);
-  }
-  if (input.score) {
-    routeParams.set('score', input.score);
-  }
-  routeParams.set('tmdbLanguage', getCurrentTmdbLanguage());
-
-  try {
-    const routeResponse = await fetch(
-      `/api/tmdb/detail?${routeParams.toString()}`
-    );
-    if (routeResponse.ok) {
-      return (await routeResponse.json()) as TmdbCardDetail;
-    }
-  } catch {
-    // Fallback to direct TMDB calls below.
-  }
-
-  const resolved = await resolveTmdbTargetFromTitle(
-    input.title,
-    input.year,
-    input.mediaType
-  );
-  if (!resolved) {
-    throw new Error('TMDB detail request failed: 404');
-  }
-
-  const appendToResponse =
-    resolved.mediaType === 'movie'
-      ? 'credits,videos,release_dates'
-      : 'credits,videos,content_ratings';
-
-  const params = new URLSearchParams({
-    api_key: TMDB_CLIENT_API_KEY,
-    language: getCurrentTmdbLanguage(),
-    append_to_response: appendToResponse,
-  });
-
-  const [response, logo] = await Promise.all([
-    fetch(
-      `${TMDB_API_BASE_URL}/${resolved.mediaType}/${
-        resolved.id
-      }?${params.toString()}`,
-      { cache: 'no-store' }
-    ),
-    fetchTmdbLogo(resolved.mediaType, resolved.id),
-  ]);
-
-  if (!response.ok) {
-    throw new Error(`TMDB detail request failed: ${response.status}`);
-  }
-
-  const raw = (await response.json()) as TmdbDetailRawResponse;
-
-  const cast = (raw.credits?.cast || [])
-    .slice(0, 8)
-    .map((member) => ({
-      id: member.id ?? 0,
-      name: member.name || '',
-      character: member.character || '',
-    }))
-    .filter((member) => member.id > 0 && member.name);
-
-  const contentRating =
-    resolved.mediaType === 'movie'
-      ? pickMovieContentRatingFromRaw(raw)
-      : pickTvContentRatingFromRaw(raw);
-
-  const runtime =
-    resolved.mediaType === 'movie'
-      ? raw.runtime ?? null
-      : raw.episode_run_time?.[0] ?? null;
-
-  return {
-    id: raw.id || resolved.id,
-    mediaType: resolved.mediaType,
-    title: (raw.title || raw.name || input.title || '').trim(),
-    logo: logo || undefined,
-    overview: (raw.overview || '').trim() || 'No overview available.',
-    backdrop: toImageUrl(raw.backdrop_path, 'original'),
-    poster: toImageUrl(raw.poster_path, 'w500') || input.poster || '',
-    score: toScore(raw.vote_average) || input.score || '',
-    voteCount: raw.vote_count || 0,
-    year: toYear(raw.release_date || raw.first_air_date) || input.year,
-    releaseDate: normalizeReleaseDate(raw.release_date || raw.first_air_date),
-    runtime,
-    seasons: raw.number_of_seasons ?? null,
-    episodes: raw.number_of_episodes ?? null,
-    contentRating,
-    genres: (raw.genres || [])
-      .map((genre) => (genre.name || '').trim())
-      .filter(Boolean),
-    language: (raw.original_language || '').toUpperCase(),
-    popularity:
-      typeof raw.popularity === 'number' ? Math.round(raw.popularity) : null,
-    cast,
-    trailerUrl: pickTrailerUrlFromRaw(raw),
-  };
-}
-
 async function fetchTmdbDetailWithClientCache(
-  input: TmdbDetailLookupInput
+  input: TmdbDetailLookupInput,
+  language?: string
 ): Promise<TmdbCardDetail> {
   return fetchGlobalTmdbDetailWithCache<TmdbCardDetail>({
     title: input.title,
@@ -884,18 +210,18 @@ async function fetchTmdbDetailWithClientCache(
     year: input.year,
     poster: input.poster,
     score: input.score,
-    tmdbLanguage: getCurrentTmdbLanguage(),
+    tmdbLanguage: getCurrentTmdbLanguage(language),
   });
 }
 
-function scheduleTmdbDetailPrefetch(input: TmdbDetailLookupInput): void {
+function scheduleTmdbDetailPrefetch(input: TmdbDetailLookupInput, language?: string): void {
   prefetchTmdbDetail({
     title: input.title,
     mediaType: input.mediaType,
     year: input.year,
     poster: input.poster,
     score: input.score,
-    tmdbLanguage: getCurrentTmdbLanguage(),
+    tmdbLanguage: getCurrentTmdbLanguage(language),
   });
 }
 
@@ -1041,7 +367,7 @@ export default function VideoCard({
     ]
   );
   const tmdbDetailCacheKey = useMemo(
-    () => buildTmdbDetailCacheKey(tmdbTrigger),
+    () => buildTmdbDetailCacheKey(tmdbTrigger, i18n.language),
     [i18n.language, tmdbTrigger]
   );
 
@@ -1180,7 +506,7 @@ export default function VideoCard({
           title: trimmedTitle,
           mediaType: 'tv',
           year: yearValue.trim(),
-          tmdbLanguage: getCurrentTmdbLanguage(),
+          tmdbLanguage: getCurrentTmdbLanguage(i18n.language),
         });
         if (payload.mediaType !== 'tv') return 0;
         const seasons = payload.seasons;
@@ -1386,7 +712,7 @@ export default function VideoCard({
     if (!tmdbTrigger.title) return;
 
     hasScheduledPrefetchRef.current = true;
-    scheduleTmdbDetailPrefetch(tmdbTrigger);
+    scheduleTmdbDetailPrefetch(tmdbTrigger, i18n.language);
   }, [from, i18n.language, tmdbTrigger]);
 
   useEffect(() => {
@@ -1488,7 +814,7 @@ export default function VideoCard({
     const requestId = ++detailRequestIdRef.current;
 
     try {
-      const detail = await fetchTmdbDetailWithClientCache(tmdbTrigger);
+      const detail = await fetchTmdbDetailWithClientCache(tmdbTrigger, i18n.language);
       if (detailRequestIdRef.current !== requestId) return;
       detailCacheRef.current[tmdbDetailCacheKey] = detail;
       setDetailData(detail);

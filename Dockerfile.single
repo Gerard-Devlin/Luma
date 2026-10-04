@@ -1,12 +1,13 @@
 # Single-container mode: run Luma + Redis in one container.
 # Note: this is less resilient than the two-container compose setup.
 
-ARG NODE_IMAGE=node:20-alpine
+ARG NODE_IMAGE=node:22-alpine
 
 FROM ${NODE_IMAGE} AS deps
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 
 FROM ${NODE_IMAGE} AS builder

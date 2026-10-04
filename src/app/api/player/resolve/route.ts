@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
 import {
-  TMDB_PLAYER_PROVIDERS,
   buildTmdbProviderStorageId,
   buildTmdbProviderUrl,
   getTmdbPlayerProvider,
   normalizePositiveInteger,
   normalizeTmdbId,
   normalizeTmdbPlayerMediaType,
+  TMDB_PLAYER_PROVIDERS,
 } from '@/lib/tmdb-player-sources';
-import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
-
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
@@ -50,7 +49,7 @@ async function fetchTmdbSeason(
   tmdbId: number,
   season: number,
   tmdbLanguage: string,
-  signal: AbortSignal
+  signal: AbortSignal,
 ) {
   const apiKey =
     process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
@@ -58,19 +57,28 @@ async function fetchTmdbSeason(
 
   const params = new URLSearchParams({
     api_key: apiKey,
-    language: tmdbLanguage,
+    language: tmdbLanguage === 'zh-CN' ? 'zh-CN' : 'en-US',
   });
 
   try {
-    const response = await fetch(
-      `${TMDB_API_BASE_URL}/tv/${tmdbId}/season/${season}?${params.toString()}`,
-      {
-        signal,
-        headers: {
-          Accept: 'application/json',
-        },
-      }
-    );
+    if (
+      !Number.isSafeInteger(tmdbId) ||
+      tmdbId <= 0 ||
+      !Number.isSafeInteger(season) ||
+      season <= 0
+    )
+      return null;
+    const url = new URL(TMDB_API_BASE_URL);
+    url.pathname = `/3/tv/${Number(tmdbId)}/season/${Number(season)}`;
+    url.search = params.toString();
+    const response = await fetch(url, {
+      signal,
+      // TMDB redirects must never turn this into a request to another service.
+      redirect: 'error',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
     if (!response.ok) return null;
     const raw = (await response.json()) as TmdbSeasonRawResponse;
     const episodes = (raw.episodes || [])
@@ -113,42 +121,39 @@ export async function GET(request: Request) {
   const tmdbId = normalizeTmdbId(
     searchParams.get('tmdbId') ||
       searchParams.get('tmdb_id') ||
-      searchParams.get('id')
+      searchParams.get('id'),
   );
   if (!tmdbId) {
     return NextResponse.json(
       { error: 'missing tmdbId parameter' },
-      { status: 400, headers: buildNoStoreHeaders() }
+      { status: 400, headers: buildNoStoreHeaders() },
     );
   }
 
   const mediaType = normalizeTmdbPlayerMediaType(
-    searchParams.get('type') || searchParams.get('mediaType')
+    searchParams.get('type') || searchParams.get('mediaType'),
   );
   const provider = getTmdbPlayerProvider(searchParams.get('provider'));
   const tmdbLanguage = normalizeTmdbLanguage(searchParams.get('tmdbLanguage'));
-  const season = mediaType === 'tv'
-    ? normalizePositiveInteger(searchParams.get('season'), 1)
-    : 1;
-  const episode = mediaType === 'tv'
-    ? normalizePositiveInteger(searchParams.get('episode'), 1)
-    : 1;
+  const season =
+    mediaType === 'tv'
+      ? normalizePositiveInteger(searchParams.get('season'), 1)
+      : 1;
+  const episode =
+    mediaType === 'tv'
+      ? normalizePositiveInteger(searchParams.get('episode'), 1)
+      : 1;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(),
-    PLAYER_RESOLVE_TIMEOUT_MS
+    PLAYER_RESOLVE_TIMEOUT_MS,
   );
 
   try {
     const seasonDetail =
       mediaType === 'tv'
-        ? await fetchTmdbSeason(
-            tmdbId,
-            season,
-            tmdbLanguage,
-            controller.signal
-          )
+        ? await fetchTmdbSeason(tmdbId, season, tmdbLanguage, controller.signal)
         : null;
     const embedUrl = buildTmdbProviderUrl({
       tmdbId,
@@ -180,12 +185,12 @@ export async function GET(request: Request) {
           mediaType === 'movie' ? 1 : seasonDetail?.episodeCount || episode,
         seasonDetail,
       },
-      { headers: buildNoStoreHeaders() }
+      { headers: buildNoStoreHeaders() },
     );
   } catch {
     return NextResponse.json(
       { error: 'failed to resolve player source' },
-      { status: 502, headers: buildNoStoreHeaders() }
+      { status: 502, headers: buildNoStoreHeaders() },
     );
   } finally {
     clearTimeout(timeoutId);

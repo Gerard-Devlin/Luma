@@ -1,6 +1,7 @@
 'use client';
 
 import { Star } from 'lucide-react';
+import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 import type { SearchResult } from '@/lib/types';
@@ -99,9 +100,11 @@ export default function SearchPreviewPanel({
                 onClick={() => onItemClick(item)}
                 className='ui-glass-row group flex w-full items-center gap-2.5 px-2 py-2 text-left'
               >
-                <img
+                <Image
                   src={item.poster}
                   alt={item.title}
+                  width={44}
+                  height={64}
                   className='h-16 w-11 shrink-0 rounded-md object-cover ring-1 ring-[var(--ui-glass-border)]'
                   loading='lazy'
                   decoding='async'

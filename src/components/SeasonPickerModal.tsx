@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -70,9 +71,11 @@ export default function SeasonPickerModal({
       >
         <div className='absolute inset-0'>
           {normalizedBackdrop ? (
-            <img
+            <Image
               src={normalizedBackdrop}
               alt={normalizedTitle}
+              fill
+              sizes='(max-width: 512px) 100vw, 512px'
               className='h-full w-full object-cover brightness-[0.36]'
             />
           ) : null}
@@ -100,9 +103,11 @@ export default function SeasonPickerModal({
             </h3>
             {normalizedLogo ? (
               <div className='relative mx-auto mt-2 h-14 w-full max-w-[360px] sm:mx-0 sm:h-16'>
-                <img
+                <Image
                   src={normalizedLogo}
                   alt={`${normalizedTitle} logo`}
+                  fill
+                  sizes='360px'
                   className='h-full w-full object-contain object-center drop-shadow-[0_8px_20px_rgba(0,0,0,0.55)] sm:object-left'
                 />
               </div>

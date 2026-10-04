@@ -48,17 +48,17 @@ export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
 ];
 
 const PROVIDER_BY_ID = new Map<TmdbPlayerProviderId, TmdbPlayerProvider>(
-  TMDB_PLAYER_PROVIDERS.map((provider) => [provider.id, provider])
+  TMDB_PLAYER_PROVIDERS.map((provider) => [provider.id, provider]),
 );
 
 export function normalizeTmdbPlayerMediaType(
-  value?: string | null
+  value?: string | null,
 ): TmdbPlayerMediaType {
   return value === 'tv' || value === 'show' ? 'tv' : 'movie';
 }
 
 export function normalizeTmdbPlayerProvider(
-  value?: string | null
+  value?: string | null,
 ): TmdbPlayerProviderId {
   const normalized = (value || '').trim().toLowerCase();
   return TMDB_PLAYER_PROVIDERS.some((provider) => provider.id === normalized)
@@ -68,13 +68,15 @@ export function normalizeTmdbPlayerProvider(
 
 export function normalizePositiveInteger(
   value?: number | string | null,
-  fallback = 1
+  fallback = 1,
 ): number {
   const parsed =
     typeof value === 'number'
       ? value
-      : Number.parseInt((value || '').toString(), 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+      : /^\d+$/.test((value || '').toString().trim())
+        ? Number(value)
+        : NaN;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return fallback;
   return parsed;
 }
 
@@ -82,8 +84,10 @@ export function normalizeTmdbId(value?: number | string | null): number | null {
   const parsed =
     typeof value === 'number'
       ? value
-      : Number.parseInt((value || '').toString().trim(), 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+      : /^\d+$/.test((value || '').toString().trim())
+        ? Number(value)
+        : NaN;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return null;
   return parsed;
 }
 
@@ -92,7 +96,7 @@ function getProviderBaseUrl(
   mediaType: TmdbPlayerMediaType,
   tmdbId: number,
   season: number,
-  episode: number
+  episode: number,
 ): string {
   if (provider === 'vidking') {
     return mediaType === 'movie'
@@ -106,7 +110,7 @@ function getProviderBaseUrl(
 }
 
 export function getTmdbPlayerProvider(
-  value?: string | null
+  value?: string | null,
 ): TmdbPlayerProvider {
   const providerId = normalizeTmdbPlayerProvider(value);
   const provider =
@@ -129,7 +133,7 @@ export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {
   const season = normalizePositiveInteger(input.season, 1);
   const episode = normalizePositiveInteger(input.episode, 1);
   const url = new URL(
-    getProviderBaseUrl(provider.id, mediaType, tmdbId, season, episode)
+    getProviderBaseUrl(provider.id, mediaType, tmdbId, season, episode),
   );
 
   Object.entries(provider.defaultParams || {}).forEach(([key, value]) => {

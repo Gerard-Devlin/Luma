@@ -225,8 +225,8 @@ function DiscoverPageClient() {
   const [loading, setLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
+  const [, setTotalPages] = useState(1);
+  const [, setTotalResults] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -347,7 +347,7 @@ function DiscoverPageClient() {
 
         const params = new URLSearchParams(queryString);
         params.set('page', String(page));
-        params.set('tmdbLanguage', getCurrentTmdbLanguage());
+        params.set('tmdbLanguage', getCurrentTmdbLanguage(i18n.language));
 
         const response = await fetch(`/api/tmdb/discover?${params.toString()}`);
         const data = (await response.json()) as DiscoverApiResponse;
@@ -391,7 +391,7 @@ function DiscoverPageClient() {
           page: String(page + 1),
           with_genres: SHOW_GENRE_FILTER,
           sort_by: resolveDiscoverSortBy(sortMode, 'tv'),
-          tmdbLanguage: getCurrentTmdbLanguage(),
+          tmdbLanguage: getCurrentTmdbLanguage(i18n.language),
         });
 
         if (showCountryFilter) {

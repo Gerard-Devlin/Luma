@@ -5,6 +5,7 @@ import {
   getTmdbVideoLanguage,
   normalizeTmdbLanguage,
 } from '@/lib/tmdb-language';
+import { hasSourceCodeInTitle } from '@/lib/tmdb-title-query';
 import { normalizeReleaseDate } from '@/lib/tmdbRelease';
 
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
@@ -464,9 +465,7 @@ function scoreYearMatch(inputYear: string, candidateYear: string): number {
 
 function isLikelyNoisyQueryTitle(title: string): boolean {
   const raw = title || '';
-  const hasSourceCode =
-    /\b[a-z]{2,6}\s*[-_ ]\s*\d{2,6}\b/i.test(raw) ||
-    /\b[a-z]{2,6}\d{2,6}\b/i.test(raw);
+  const hasSourceCode = hasSourceCodeInTitle(raw);
   const normalizedLength = toCompactTitleForMatch(raw).length;
   const punctuationCount = (raw.match(TITLE_PUNCTUATION_COUNTER_PATTERN) || [])
     .length;
@@ -791,8 +790,7 @@ async function fetchTmdbDetailRaw(
   id: number,
   apiKey: string,
   tmdbLanguage: string,
-  signal: AbortSignal,
-  logoLanguagePreference: LogoLanguagePreference
+  signal: AbortSignal
 ): Promise<TmdbDetailRawResponse | null> {
   const appendToResponse =
     mediaType === 'movie'
@@ -1172,8 +1170,7 @@ export async function GET(request: Request) {
       resolvedId,
       apiKey,
       tmdbLanguage,
-      controller.signal,
-      logoLanguagePreference
+      controller.signal
     );
 
     if (!rawDetail) {

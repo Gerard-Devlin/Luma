@@ -121,6 +121,7 @@ async function createRegistrationEmailHtml({
       })
     );
   } catch (error) {
+    // eslint-disable-next-line no-console -- Server-side delivery diagnostics.
     console.error('React Email render failed:', error);
     throw new Error('Failed to render confirmation email');
   }
@@ -134,6 +135,7 @@ export async function sendRegistrationEmail({
   const resendKey = process.env.AUTH_RESEND_KEY || process.env.RESEND_API_KEY;
 
   if (!resendKey) {
+    // eslint-disable-next-line no-console -- Identify missing service configuration.
     console.error(
       'Registration email is missing AUTH_RESEND_KEY/RESEND_API_KEY'
     );
@@ -166,8 +168,9 @@ export async function sendRegistrationEmail({
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    console.error('Resend email failed:', response.status, errorText);
+    // Log the status without copying recipient data from the provider response.
+    // eslint-disable-next-line no-console -- Server-side delivery diagnostics.
+    console.error('Resend email failed:', response.status);
     throw new Error('Failed to send confirmation email');
   }
 }
