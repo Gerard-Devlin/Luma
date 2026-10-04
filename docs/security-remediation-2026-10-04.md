@@ -4,7 +4,7 @@
 
 ## GitHub 告警清单
 
-- Dependabot：131 条 open 告警，涉及 28 个包；其中 critical 4、high 66、medium 49、low 12。部分漏洞同时出现在 package.json 和 pnpm-lock.yaml，按告警编号保留完整清单，按包统一修复。
+- Dependabot：初次读取为 131 条 open 告警；修复期间新增 #159、#160 两条 brace-expansion 告警，最终复核为 133 条，涉及 28 个包；其中 critical 4、high 68、medium 49、low 12。部分漏洞同时出现在 package.json 和 pnpm-lock.yaml，按告警编号保留完整清单，按包统一修复。
 - Code scanning：8 条记录，6 条 fixed，2 条 open。
 - Secret scanning：API 返回空清单，未发现密钥泄露告警。
 - 独立 Code Quality findings API 返回 HTTP 404，无法据此确认该功能是否启用或是否存在其他发现。本次另行执行仓库 ESLint，并清理全部本地告警。
@@ -41,7 +41,7 @@
 - TypeScript：通过。
 - Jest：5 个测试套件、50 个测试通过。
 - 原始依赖审计：143 条降至 1 条，仅剩已本地缓解的 braces 版本告警。
-- 使用所有 GitHub open 告警的 vulnerable_version_range 核对新锁文件：131 条均无版本命中，或对应依赖已移除。
+- 使用所有 GitHub open 告警的 vulnerable_version_range 核对新锁文件：133 条均无版本命中，或对应依赖已移除。
 - 安全审计门禁：没有未缓解的依赖告警；验证它拒绝未识别的新告警和不完整的审计结果。
 - Next.js 生产编译和 34 个静态页面生成通过。Windows 的 standalone 文件复制受系统符号链接权限限制，最终打包需由 Linux CI 验证。
 
@@ -60,7 +60,7 @@
 | @tootallnate/once                        |      1 | 依赖链已移除                         | #77                                                                                                                                                                                                                                                    |
 | ajv                                      |      2 | 6.15.0, 8.20.0                       | #33, #34                                                                                                                                                                                                                                               |
 | baseline-browser-mapping                 |      1 | 2.11.27                              | #136                                                                                                                                                                                                                                                   |
-| brace-expansion                          |      8 | 1.1.21, 2.1.7, 5.0.12                | #60, #85, #93, #110, #112, #113, #114, #116                                                                                                                                                                                                            |
+| brace-expansion                          |     10 | 1.1.21, 2.1.7, 5.0.12                | #60, #85, #93, #110, #112, #113, #114, #116, #159, #160                                                                                                                                                                                                |
 | browserslist                             |      2 | 4.29.3                               | #134, #135                                                                                                                                                                                                                                             |
 | engine.io                                |      1 | 依赖链已移除                         | #157                                                                                                                                                                                                                                                   |
 | fast-uri                                 |      8 | 3.1.8                                | #87, #88, #119, #127, #128, #132, #133, #158                                                                                                                                                                                                           |
