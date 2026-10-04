@@ -2,10 +2,10 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
+  Bookmark,
   CalendarDays,
   Clock3,
   Globe2,
-  Bookmark,
   Info,
   Play,
   Star,

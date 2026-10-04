@@ -3,13 +3,14 @@
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+import { type TmdbLanguage, normalizeTmdbLanguage } from '@/lib/tmdb-language';
+
 import {
   type AppLanguage,
   fallbackLanguage,
   resources,
   supportedLanguages,
 } from './resources';
-import { normalizeTmdbLanguage, type TmdbLanguage } from '@/lib/tmdb-language';
 
 export const LANGUAGE_STORAGE_KEY = 'luma-language';
 
@@ -39,8 +40,10 @@ export function persistLanguage(language: AppLanguage) {
   document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 }
 
-export function getCurrentTmdbLanguage(): TmdbLanguage {
-  return normalizeTmdbLanguage(i18next.language || getInitialLanguage());
+export function getCurrentTmdbLanguage(language?: string): TmdbLanguage {
+  return normalizeTmdbLanguage(
+    language || i18next.language || getInitialLanguage(),
+  );
 }
 
 if (!i18next.isInitialized) {

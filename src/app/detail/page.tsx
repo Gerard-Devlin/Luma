@@ -30,8 +30,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useImdbTrailerStream } from '@/hooks/use-imdb-trailer-stream';
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   deleteFavorite,
   generateStorageKey,
@@ -40,17 +38,21 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import {
-  fetchTmdbDetailWithClientCache,
   type TmdbLogoLanguagePreference,
+  fetchTmdbDetailWithClientCache,
 } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { isFutureReleaseDate } from '@/lib/tmdbRelease';
+import { useImdbTrailerStream } from '@/hooks/use-imdb-trailer-stream';
+
 import PageLayout from '@/components/PageLayout';
 import PosterInfoCard from '@/components/PosterInfoCard';
 import ReleaseYearBadge from '@/components/ReleaseYearBadge';
 import SeasonPickerModal from '@/components/SeasonPickerModal';
 import TrailerStreamVideo from '@/components/TrailerStreamVideo';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 type TmdbMediaType = 'movie' | 'tv';
 
@@ -339,7 +341,7 @@ function DetailPageClient() {
       poster: searchParams.get('poster'),
       score: searchParams.get('score'),
       logoLanguagePreference,
-      tmdbLanguage: getCurrentTmdbLanguage(),
+      tmdbLanguage: getCurrentTmdbLanguage(i18n.language),
     };
   }, [i18n.language, searchParams]);
   const {

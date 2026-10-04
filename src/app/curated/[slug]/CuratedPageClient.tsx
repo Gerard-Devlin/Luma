@@ -4,7 +4,6 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import {
   buildCuratedCategoryQuery,
   CuratedCategoryConfig,
@@ -14,6 +13,8 @@ import { mergeUniqueById, uniqueById } from '@/lib/unique-list';
 
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface CuratedDiscoverItem {
   id: string;
@@ -61,7 +62,7 @@ export default function CuratedPageClient() {
         setError(null);
 
         const primaryParams = buildCuratedCategoryQuery(config, page, false);
-        primaryParams.set('tmdbLanguage', getCurrentTmdbLanguage());
+        primaryParams.set('tmdbLanguage', getCurrentTmdbLanguage(i18n.language));
         let response = await fetch(
           `/api/tmdb/discover?${primaryParams.toString()}`
         );
@@ -75,7 +76,7 @@ export default function CuratedPageClient() {
           payload.list.length === 0
         ) {
           const fallbackParams = buildCuratedCategoryQuery(config, page, true);
-          fallbackParams.set('tmdbLanguage', getCurrentTmdbLanguage());
+          fallbackParams.set('tmdbLanguage', getCurrentTmdbLanguage(i18n.language));
           response = await fetch(
             `/api/tmdb/discover?${fallbackParams.toString()}`
           );

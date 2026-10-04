@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle, Github } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -335,9 +336,11 @@ function LoginPageClient() {
       </div>
 
       <div className='relative z-10 w-full max-w-sm rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 p-8 shadow-2xl backdrop-blur-xl dark:border dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-900/40'>
-        <img
+        <Image
           src='/logo.png'
           alt={siteName}
+          width={224}
+          height={56}
           className='mx-auto mb-6 h-14 w-auto drop-shadow-sm'
         />
 

@@ -491,9 +491,6 @@ function PlayPageClient() {
     playerEmbedUrl,
   ]);
 
-  // 总集数
-  const totalEpisodes = detail?.episodes?.length || 0;
-
   // 用于记录是否需要在播放器 ready 后跳转到指定进度
   const resumeTimeRef = useRef<number | null>(null);
 
@@ -519,56 +516,9 @@ function PlayPageClient() {
         ''
       );
 
-  const toChineseNumeral = (value: number): string => {
-    if (!Number.isInteger(value) || value <= 0 || value >= 100) {
-      return String(value);
-    }
-    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-    if (value < 10) return digits[value];
-    if (value === 10) return '十';
-    if (value < 20) return `十${digits[value - 10]}`;
-    const tens = Math.floor(value / 10);
-    const ones = value % 10;
-    return `${digits[tens]}十${ones > 0 ? digits[ones] : ''}`;
-  };
-
   const normalizeYear = (value?: string): string => {
     const year = (value || '').trim();
     return /^\d{4}$/.test(year) ? year : '';
-  };
-
-  const parseChineseNumeral = (value: string): number => {
-    const text = (value || '').trim().replace(/两/g, '二');
-    if (!text) return 0;
-    const map: Record<string, number> = {
-      一: 1,
-      二: 2,
-      三: 3,
-      四: 4,
-      五: 5,
-      六: 6,
-      七: 7,
-      八: 8,
-      九: 9,
-    };
-    if (text === '十') return 10;
-    if (text.includes('十')) {
-      const [left, right] = text.split('十');
-      const tens = left ? map[left] || 0 : 1;
-      const ones = right ? map[right] || 0 : 0;
-      return tens * 10 + ones;
-    }
-    return map[text] || 0;
-  };
-
-  const stripSeasonTokens = (value: string): string => {
-    const normalized = normalizeCompareText(value);
-    return normalized
-      .replace(/第[一二三四五六七八九十百千万两\d]+季/g, '')
-      .replace(/第\d+部/g, '')
-      .replace(/(?:season|series|s)\s*0*\d{1,2}/g, '')
-      .replace(/s0*\d{1,2}/g, '')
-      .replace(/第[一二三四五六七八九十百千万两\d]+辑/g, '');
   };
 
   const stripSeasonTokensForQuery = (value: string): string =>
@@ -654,79 +604,6 @@ function PlayPageClient() {
     );
 
     return Array.from(variants);
-  };
-
-  const extractSeasonHints = (value: string): string[] => {
-    const text = value || '';
-    const hints = new Set<string>();
-    const addSeasonHints = (seasonNumber: number) => {
-      if (!Number.isFinite(seasonNumber) || seasonNumber <= 0) return;
-      hints.add(`第${seasonNumber}季`);
-      hints.add(`第${toChineseNumeral(seasonNumber)}季`);
-      hints.add(`S${String(seasonNumber).padStart(2, '0')}`);
-      hints.add(`Season ${seasonNumber}`);
-    };
-
-    const arabicMatches = text.match(/第\s*(\d{1,2})\s*季/gi) || [];
-    arabicMatches.forEach((raw) => {
-      const m = raw.match(/(\d{1,2})/);
-      if (!m) return;
-      const n = Number(m[1]);
-      addSeasonHints(n);
-    });
-
-    const seasonMatches =
-      text.match(/(?:season|series|s)\s*0*(\d{1,2})/gi) || [];
-    seasonMatches.forEach((raw) => {
-      const m = raw.match(/(\d{1,2})/);
-      if (!m) return;
-      const n = Number(m[1]);
-      addSeasonHints(n);
-    });
-
-    const chineseMatches =
-      text.match(/第\s*([一二三四五六七八九十两]{1,3})\s*季/g) || [];
-    chineseMatches.forEach((raw) => {
-      const m = raw.match(/([一二三四五六七八九十两]{1,3})/);
-      if (!m) return;
-      addSeasonHints(parseChineseNumeral(m[1]));
-    });
-
-    return Array.from(hints);
-  };
-
-  const extractSeasonNumbers = (value: string): number[] => {
-    const text = value || '';
-    const numbers = new Set<number>();
-    const pushNumber = (input: number) => {
-      if (!Number.isFinite(input) || input <= 0) return;
-      numbers.add(Math.floor(input));
-    };
-
-    const arabicMatches = text.match(/第\s*(\d{1,2})\s*季/gi) || [];
-    arabicMatches.forEach((raw) => {
-      const m = raw.match(/(\d{1,2})/);
-      if (!m) return;
-      pushNumber(Number(m[1]));
-    });
-
-    const seasonMatches =
-      text.match(/(?:season|series|s)\s*0*(\d{1,2})/gi) || [];
-    seasonMatches.forEach((raw) => {
-      const m = raw.match(/(\d{1,2})/);
-      if (!m) return;
-      pushNumber(Number(m[1]));
-    });
-
-    const chineseMatches =
-      text.match(/第\s*([一二三四五六七八九十两]{1,3})\s*季/g) || [];
-    chineseMatches.forEach((raw) => {
-      const m = raw.match(/([一二三四五六七八九十两]{1,3})/);
-      if (!m) return;
-      pushNumber(parseChineseNumeral(m[1]));
-    });
-
-    return Array.from(numbers);
   };
 
   const inferTmdbMediaType = (
@@ -1486,23 +1363,6 @@ function PlayPageClient() {
     if (currentEpisodeIndexRef.current + 1 === nextEpisode) return;
     saveTmdbEmbedPlayProgress(true);
     void switchTmdbPlayback({ episode: nextEpisode });
-  };
-
-  const handlePreviousEpisode = () => {
-    const idx = currentEpisodeIndexRef.current;
-    if (idx > 0) {
-      saveTmdbEmbedPlayProgress(true);
-      void switchTmdbPlayback({ episode: idx });
-    }
-  };
-
-  const handleNextEpisode = () => {
-    const idx = currentEpisodeIndexRef.current;
-    const total = tmdbEpisodes.length || totalEpisodes || 1;
-    if (idx < total - 1) {
-      saveTmdbEmbedPlayProgress(true);
-      void switchTmdbPlayback({ episode: idx + 2 });
-    }
   };
 
   useEffect(() => {

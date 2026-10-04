@@ -14,12 +14,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
-import {
-  DEFAULT_TMDB_LANGUAGE,
-  getStableTmdbImageLanguage,
-  normalizeTmdbLanguage,
-} from '@/lib/tmdb-language';
 import {
   deleteFavorite,
   generateStorageKey,
@@ -29,12 +23,19 @@ import {
 } from '@/lib/db.client';
 import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
+import {
+  DEFAULT_TMDB_LANGUAGE,
+  getStableTmdbImageLanguage,
+  normalizeTmdbLanguage,
+} from '@/lib/tmdb-language';
 import { buildTmdbPlayerPageUrl } from '@/lib/tmdb-player-sources';
 import { isFutureReleaseDate, normalizeReleaseDate } from '@/lib/tmdbRelease';
 
 import ReleaseYearBadge from '@/components/ReleaseYearBadge';
 import SeasonPickerModal from '@/components/SeasonPickerModal';
 import TmdbDetailModal from '@/components/TmdbDetailModal';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 interface TmdbHeroItem {
   id: number;
@@ -711,7 +712,7 @@ export default function TmdbHeroBanner({
     ): Promise<string> => {
       try {
         if (!TMDB_CLIENT_API_KEY) return '';
-        const tmdbLanguage = getCurrentTmdbLanguage();
+        const tmdbLanguage = getCurrentTmdbLanguage(i18n.language);
         const params = new URLSearchParams({
           api_key: TMDB_CLIENT_API_KEY,
           include_image_language: getStableTmdbImageLanguage(),
@@ -741,7 +742,7 @@ export default function TmdbHeroBanner({
         if (!TMDB_CLIENT_API_KEY) {
           return emptyHeroMeta();
         }
-        const tmdbLanguage = getCurrentTmdbLanguage();
+        const tmdbLanguage = getCurrentTmdbLanguage(i18n.language);
         const params = new URLSearchParams({
           api_key: TMDB_CLIENT_API_KEY,
           language: tmdbLanguage,
@@ -792,7 +793,6 @@ export default function TmdbHeroBanner({
   const fetchDirectFromTmdb = useCallback(
     async (signal?: AbortSignal) => {
       if (!TMDB_CLIENT_API_KEY) return [];
-      const tmdbLanguage = getCurrentTmdbLanguage();
       const generationLanguage = DEFAULT_TMDB_LANGUAGE;
 
       const normalizedGenres = (withGenres || '').trim();
@@ -949,7 +949,7 @@ export default function TmdbHeroBanner({
         body: JSON.stringify({
           records: personalizedSeeds,
           mediaType: mediaFilter,
-          tmdbLanguage: getCurrentTmdbLanguage(),
+          tmdbLanguage: getCurrentTmdbLanguage(i18n.language),
         }),
         signal,
       });
@@ -991,7 +991,7 @@ export default function TmdbHeroBanner({
 
       const params = new URLSearchParams({
         api_key: TMDB_CLIENT_API_KEY,
-        language: getCurrentTmdbLanguage(),
+        language: getCurrentTmdbLanguage(i18n.language),
         append_to_response: appendToResponse,
       });
 
@@ -1045,7 +1045,7 @@ export default function TmdbHeroBanner({
 
   const loadDetailForModal = useCallback(
     async (item: TmdbHeroItem) => {
-      const cacheKey = `${getCurrentTmdbLanguage()}-${item.mediaType}-${
+      const cacheKey = `${getCurrentTmdbLanguage(i18n.language)}-${item.mediaType}-${
         item.id
       }`;
       setDetailOpen(true);
@@ -1093,7 +1093,7 @@ export default function TmdbHeroBanner({
         }
       }
     },
-    [fetchDetailDirectFromTmdb, t]
+    [fetchDetailDirectFromTmdb, i18n.language, t]
   );
 
   const resolveSeasonCountForItem = useCallback(
@@ -1292,7 +1292,7 @@ export default function TmdbHeroBanner({
         if (requireLogo) {
           params.set('requireLogo', 'true');
         }
-        params.set('tmdbLanguage', getCurrentTmdbLanguage());
+        params.set('tmdbLanguage', getCurrentTmdbLanguage(i18n.language));
         const response = await fetch(
           `/api/tmdb/hero${params.toString() ? `?${params.toString()}` : ''}`,
           {

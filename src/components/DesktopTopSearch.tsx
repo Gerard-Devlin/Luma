@@ -11,13 +11,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { addSearchHistory } from '@/lib/db.client';
 import { buildTmdbDetailPageUrl } from '@/lib/tmdb-detail-url';
 import type { SearchResult } from '@/lib/types';
 
 import SearchGlassInput from '@/components/SearchGlassInput';
 import SearchPreviewPanel from '@/components/SearchPreviewPanel';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 const SEARCH_DEBOUNCE_MS = 220;
 

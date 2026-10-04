@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import { normalizeTmdbLanguage } from '@/lib/tmdb-language';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 export type TmdbDetailMediaType = 'movie' | 'tv';
 export type TmdbLogoLanguagePreference = 'zh' | 'en';

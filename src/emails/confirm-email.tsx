@@ -1,3 +1,5 @@
+// Email HTML requires native head and img elements, independent of Next pages.
+/* eslint-disable @next/next/no-head-element, @next/next/no-img-element */
 import * as React from 'react';
 
 type ConfirmEmailProps = {

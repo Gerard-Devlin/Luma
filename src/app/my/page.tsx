@@ -21,7 +21,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentTmdbLanguage } from '@/i18n/client';
 import type { Favorite, PlayRecord } from '@/lib/db.client';
 import {
   deleteFavorite,
@@ -30,21 +29,21 @@ import {
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
 import {
   buildTmdbHistoryPlayUrl,
   filterTmdbHistoryRecords,
-  parseTmdbStorageId,
   parseStorageKey,
+  parseTmdbStorageId,
 } from '@/lib/tmdb-history';
-import { fetchTmdbDetailWithClientCache } from '@/lib/tmdb-detail.client';
+
+import CapsuleSwitch from '@/components/CapsuleSwitch';
 import {
   glassDialogCancelClass,
   glassDialogContentClass,
   glassDialogDangerActionClass,
   glassDialogDescriptionClass,
 } from '@/components/dialogStyles';
-
-import CapsuleSwitch from '@/components/CapsuleSwitch';
 import PageLayout from '@/components/PageLayout';
 import {
   AlertDialog,
@@ -57,6 +56,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import VideoCard from '@/components/VideoCard';
+
+import { getCurrentTmdbLanguage } from '@/i18n/client';
 
 type PlayRecordItem = PlayRecord & { key: string };
 
@@ -373,7 +374,7 @@ function JumpingDots({ label }: { label: string }) {
 }
 
 function MyPageClient() {
-  const { i18n, t } = useTranslation();
+  const { t } = useTranslation();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('play');
   const [playRecords, setPlayRecords] = useState<PlayRecordItem[]>([]);
