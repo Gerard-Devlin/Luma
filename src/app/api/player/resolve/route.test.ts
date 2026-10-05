@@ -35,7 +35,7 @@ describe('player resolver outbound requests', () => {
     expect(url.pathname).toBe('/3/tv/123/season/2');
     expect(url.searchParams.get('language')).toBe('zh-CN');
     expect(url.searchParams.has('url')).toBe(false);
-    expect(options.redirect).toBe('error');
+    expect(options.redirect).toBe('manual');
   });
 
   it('rejects invalid ids before making any outbound request', async () => {
@@ -66,7 +66,55 @@ describe('player resolver outbound requests', () => {
     },
   );
 
-  it('handles a refused redirect without exposing the destination', async () => {
+  it('rejects redirects without following or exposing the destination', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 302,
+      headers: new Headers({ Location: 'http://127.0.0.1/private' }),
+    });
+    const response = await GET(
+      new Request('https://luma.example/api/player/resolve?tmdbId=123&type=tv'),
+    );
+    const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.seasonDetail).toBeNull();
+    expect(JSON.stringify(result)).not.toContain('127.0.0.1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].redirect).toBe('manual');
+  });
+
+  it('loads selectable episodes with Worker-compatible redirect handling', async () => {
+    fetchMock.mockImplementation(async (_url, options) => {
+      if (options.redirect === 'error') {
+        throw new TypeError('Invalid redirect value');
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          season_number: 2,
+          episodes: [
+            { id: 101, episode_number: 1, name: 'Journey into Night' },
+            { id: 102, episode_number: 2, name: 'Reunion' },
+          ],
+        }),
+      };
+    });
+    const response = await GET(
+      new Request(
+        'https://luma.example/api/player/resolve?tmdbId=63247&type=tv&season=2',
+      ),
+    );
+    const result = await response.json();
+    expect(result.episodeCount).toBe(2);
+    expect(
+      result.seasonDetail.episodes.map(
+        (episode: { episodeNumber: number }) => episode.episodeNumber,
+      ),
+    ).toEqual([1, 2]);
+    expect(result.seasonDetail.episodes[1].title).toBe('Reunion');
+  });
+
+  it('keeps playback available when the metadata request fails', async () => {
     fetchMock.mockRejectedValue(new TypeError('redirect rejected'));
     const response = await GET(
       new Request('https://luma.example/api/player/resolve?tmdbId=123&type=tv'),

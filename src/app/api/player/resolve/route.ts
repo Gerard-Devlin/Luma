@@ -73,8 +73,9 @@ async function fetchTmdbSeason(
     url.search = params.toString();
     const response = await fetch(url, {
       signal,
-      // TMDB redirects must never turn this into a request to another service.
-      redirect: 'error',
+      // Workers rejects redirect: 'error'. Return redirects without following
+      // them; the non-OK response is rejected below instead.
+      redirect: 'manual',
       headers: {
         Accept: 'application/json',
       },
