@@ -1,5 +1,5 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
-export type TmdbPlayerProviderId = 'videasy' | 'vidking';
+export type TmdbPlayerProviderId = 'vidlink';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
@@ -26,23 +26,17 @@ export interface TmdbPlayerPageUrlInput extends TmdbProviderUrlInput {
   score?: string | null;
 }
 
-export const DEFAULT_TMDB_PLAYER_PROVIDER: TmdbPlayerProviderId = 'videasy';
+export const DEFAULT_TMDB_PLAYER_PROVIDER: TmdbPlayerProviderId = 'vidlink';
 
 export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
   {
-    id: 'videasy',
-    label: 'Videasy',
-    colorParam: 'color',
+    id: 'vidlink',
+    label: 'VidLink',
+    colorParam: 'primaryColor',
     defaultParams: {
-      overlay: 'true',
-    },
-  },
-  {
-    id: 'vidking',
-    label: 'Vidking',
-    colorParam: 'color',
-    defaultParams: {
-      autoPlay: 'true',
+      autoplay: 'true',
+      poster: 'true',
+      title: 'false',
     },
   },
 ];
@@ -92,21 +86,14 @@ export function normalizeTmdbId(value?: number | string | null): number | null {
 }
 
 function getProviderBaseUrl(
-  provider: TmdbPlayerProviderId,
   mediaType: TmdbPlayerMediaType,
   tmdbId: number,
   season: number,
   episode: number,
 ): string {
-  if (provider === 'vidking') {
-    return mediaType === 'movie'
-      ? `https://www.vidking.net/embed/movie/${tmdbId}`
-      : `https://www.vidking.net/embed/tv/${tmdbId}/${season}/${episode}`;
-  }
-
   return mediaType === 'movie'
-    ? `https://player.videasy.to/movie/${tmdbId}`
-    : `https://player.videasy.to/tv/${tmdbId}/${season}/${episode}`;
+    ? `https://vidlink.pro/movie/${tmdbId}`
+    : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
 }
 
 export function getTmdbPlayerProvider(
@@ -132,9 +119,7 @@ export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {
   const provider = getTmdbPlayerProvider(input.provider);
   const season = normalizePositiveInteger(input.season, 1);
   const episode = normalizePositiveInteger(input.episode, 1);
-  const url = new URL(
-    getProviderBaseUrl(provider.id, mediaType, tmdbId, season, episode),
-  );
+  const url = new URL(getProviderBaseUrl(mediaType, tmdbId, season, episode));
 
   Object.entries(provider.defaultParams || {}).forEach(([key, value]) => {
     url.searchParams.set(key, value);

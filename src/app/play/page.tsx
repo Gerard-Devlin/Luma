@@ -272,7 +272,15 @@ function findNestedString(input: unknown, depth = 0): string {
 function extractTmdbEmbedProgressMessage(
   rawData: unknown
 ): TmdbEmbedProgressMessage | null {
-  const data = parseMessagePayload(rawData);
+  const payload = parseMessagePayload(rawData);
+  const data =
+    payload &&
+    typeof payload === 'object' &&
+    'type' in payload &&
+    payload.type === 'PLAYER_EVENT' &&
+    'data' in payload
+      ? payload.data
+      : payload;
   const eventName = findNestedString(data).toLowerCase();
   const currentTime = findNestedNumber(data, TMDB_EMBED_TIME_KEYS);
   const duration = findNestedNumber(data, TMDB_EMBED_DURATION_KEYS);
@@ -335,7 +343,9 @@ function PlayPageClient() {
       searchParams.get('mediaType') ||
       searchParams.get('stype')
   );
-  const initialTmdbProvider = normalizeTmdbPlayerProvider('videasy');
+  const initialTmdbProvider = normalizeTmdbPlayerProvider(
+    searchParams.get('provider')
+  );
   const initialTmdbSeason = normalizePositiveInteger(
     searchParams.get('season'),
     1
@@ -981,8 +991,7 @@ function PlayPageClient() {
 
     const key = generateStorageKey('tmdb', storageId);
     let existingRecord:
-      | Awaited<ReturnType<typeof getAllPlayRecords>>[string]
-      | undefined;
+      Awaited<ReturnType<typeof getAllPlayRecords>>[string] | undefined;
     try {
       const records = await getAllPlayRecords();
       existingRecord = records[key];
@@ -1410,8 +1419,8 @@ function PlayPageClient() {
           process.env.NEXT_PUBLIC_STORAGE_TYPE === 'upstash'
             ? 20000
             : process.env.NEXT_PUBLIC_STORAGE_TYPE === 'd1'
-            ? 10000
-            : 5000;
+              ? 10000
+              : 5000;
         if (now - lastSaveTimeRef.current > interval) {
           saveTmdbEmbedPlayProgress(false);
         }
@@ -1436,6 +1445,15 @@ function PlayPageClient() {
       window.clearInterval(interval);
     };
   }, [playerEmbedUrl, tmdbDetail]);
+
+  useEffect(() => {
+    if (!playerEmbedUrl || !isVideoLoading) return;
+    const timeoutId = window.setTimeout(() => {
+      setIsVideoLoading(false);
+      setError(t('play.playerLoadFailed'));
+    }, 30000);
+    return () => window.clearTimeout(timeoutId);
+  }, [playerEmbedUrl, isVideoLoading, t]);
 
   useEffect(() => {
     // 页面即将卸载时保存播放进度
@@ -1671,8 +1689,8 @@ function PlayPageClient() {
       rowRect && rowRect.width > 0
         ? rowRect
         : listRect && listRect.width > 0
-        ? listRect
-        : buttonRect;
+          ? listRect
+          : buttonRect;
     setSeasonMenuRect({
       left: rect.left,
       top: buttonRect.bottom,
@@ -1707,10 +1725,10 @@ function PlayPageClient() {
     loadingStage === 'preferring'
       ? Zap
       : loadingStage === 'fetching'
-      ? Film
-      : loadingStage === 'ready'
-      ? Sparkles
-      : Film;
+        ? Film
+        : loadingStage === 'ready'
+          ? Sparkles
+          : Film;
   const VideoLoadingIcon = RefreshCw;
 
   if (loading) {
@@ -1760,6 +1778,14 @@ function PlayPageClient() {
             </p>
             <button
               type='button'
+              onClick={() => window.location.reload()}
+              className='ui-glass-control inline-flex items-center gap-2 px-4 py-2 text-sm font-medium'
+            >
+              <RefreshCw className='h-4 w-4' />
+              {t('play.retry')}
+            </button>
+            <button
+              type='button'
               onClick={() => router.back()}
               className='ui-glass-control inline-flex items-center gap-2 px-4 py-2 text-sm font-medium'
             >
@@ -1782,8 +1808,8 @@ function PlayPageClient() {
     tmdbDetail?.mediaType === 'tv'
       ? t('common.series')
       : tmdbDetail?.mediaType === 'movie'
-      ? t('common.movie')
-      : detail?.type_name || '';
+        ? t('common.movie')
+        : detail?.type_name || '';
   const displayGenres = tmdbDetail?.genres || [];
   const displayDirectors = tmdbDetail?.directors || [];
   const displayCast = tmdbDetail?.cast || [];
@@ -2098,6 +2124,10 @@ function PlayPageClient() {
                       allowFullScreen
                       ref={tmdbEmbedIframeRef}
                       referrerPolicy='origin'
+                      onError={() => {
+                        setIsVideoLoading(false);
+                        setError(t('play.playerLoadFailed'));
+                      }}
                       onLoad={() => {
                         setIsVideoLoading(false);
                         postTmdbEmbedResume();

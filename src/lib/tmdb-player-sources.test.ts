@@ -1,7 +1,9 @@
 import {
+  buildTmdbPlayerPageUrl,
   buildTmdbProviderUrl,
   normalizePositiveInteger,
   normalizeTmdbId,
+  normalizeTmdbPlayerProvider,
 } from './tmdb-player-sources';
 
 describe('TMDB player path parameters', () => {
@@ -40,8 +42,37 @@ describe('TMDB player path parameters', () => {
         accentColor: 'red&url=https://127.0.0.1',
       }),
     );
-    expect(url.origin).toBe('https://player.videasy.to');
+    expect(url.origin).toBe('https://vidlink.pro');
     expect(url.pathname).toBe('/tv/123/1/2');
     expect(url.searchParams.has('url')).toBe(false);
+  });
+
+  test.each(['videasy', 'vidking', null])(
+    'migrates retired or default provider %s to VidLink',
+    (provider) => {
+      expect(normalizeTmdbPlayerProvider(provider)).toBe('vidlink');
+      const url = new URL(buildTmdbProviderUrl({ tmdbId: 550, provider }));
+      expect(url.origin).toBe('https://vidlink.pro');
+      expect(url.pathname).toBe('/movie/550');
+      expect(buildTmdbPlayerPageUrl({ tmdbId: 550, provider })).toContain(
+        'provider=vidlink',
+      );
+    },
+  );
+
+  it('uses the documented VidLink episode path and color parameter', () => {
+    const url = new URL(
+      buildTmdbProviderUrl({
+        tmdbId: 1399,
+        mediaType: 'tv',
+        season: 2,
+        episode: 3,
+        accentColor: '#557efc',
+      }),
+    );
+    expect(url.pathname).toBe('/tv/1399/2/3');
+    expect(url.searchParams.get('primaryColor')).toBe('557efc');
+    expect(url.searchParams.get('autoplay')).toBe('true');
+    expect(url.searchParams.has('overlay')).toBe(false);
   });
 });

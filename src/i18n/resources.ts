@@ -311,6 +311,9 @@ export const resources = {
         failedToSwitchPlaybackSource: 'Failed to switch playback source',
         missingTmdbPlaybackId: 'Missing TMDB playback id',
         noPlayableSourceFound: 'No playable source found',
+        playerLoadFailed:
+          'The video player could not load. Please check your connection and try again.',
+        retry: 'Retry',
         readyStartingPlayback: 'Ready. Starting playback...',
         resolvingPlaybackSource: 'Resolving playback source...',
         runtimeMinutes: '{{count}} min',
@@ -664,6 +667,8 @@ export const resources = {
         failedToSwitchPlaybackSource: '切换播放源失败',
         missingTmdbPlaybackId: '缺少 TMDB 播放 ID',
         noPlayableSourceFound: '未找到可播放源',
+        playerLoadFailed: '视频播放器加载失败，请检查网络后重试。',
+        retry: '重试',
         readyStartingPlayback: '准备完成，正在开始播放...',
         resolvingPlaybackSource: '正在解析播放源...',
         runtimeMinutes: '{{count}} 分钟',

@@ -48,6 +48,24 @@ describe('player resolver outbound requests', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  test.each(['videasy', 'vidking'])(
+    'resolves retired %s links using VidLink',
+    async (provider) => {
+      const response = await GET(
+        new Request(
+          `https://luma.example/api/player/resolve?tmdbId=550&provider=${provider}`,
+        ),
+      );
+      const result = await response.json();
+      expect(response.status).toBe(200);
+      expect(result.provider.id).toBe('vidlink');
+      expect(new URL(result.embedUrl).origin).toBe('https://vidlink.pro');
+      expect(new URL(result.embedUrl).pathname).toBe('/movie/550');
+      expect(result.storageId).toBe('550');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
   it('handles a refused redirect without exposing the destination', async () => {
     fetchMock.mockRejectedValue(new TypeError('redirect rejected'));
     const response = await GET(
