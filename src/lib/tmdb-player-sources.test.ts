@@ -42,25 +42,27 @@ describe('TMDB player path parameters', () => {
         accentColor: 'red&url=https://127.0.0.1',
       }),
     );
-    expect(url.origin).toBe('https://vidlink.pro');
-    expect(url.pathname).toBe('/tv/123/1/2');
+    expect(url.origin).toBe('https://cinesrc.st');
+    expect(url.pathname).toBe('/embed/tv/123');
+    expect(url.searchParams.get('s')).toBe('1');
+    expect(url.searchParams.get('e')).toBe('2');
     expect(url.searchParams.has('url')).toBe(false);
   });
 
-  test.each(['videasy', 'vidking', null])(
-    'migrates retired or default provider %s to VidLink',
+  test.each(['videasy', 'vidking', 'vidlink', null])(
+    'migrates retired or default provider %s to CineSrc',
     (provider) => {
-      expect(normalizeTmdbPlayerProvider(provider)).toBe('vidlink');
+      expect(normalizeTmdbPlayerProvider(provider)).toBe('cinesrc');
       const url = new URL(buildTmdbProviderUrl({ tmdbId: 550, provider }));
-      expect(url.origin).toBe('https://vidlink.pro');
-      expect(url.pathname).toBe('/movie/550');
+      expect(url.origin).toBe('https://cinesrc.st');
+      expect(url.pathname).toBe('/embed/movie/550');
       expect(buildTmdbPlayerPageUrl({ tmdbId: 550, provider })).toContain(
-        'provider=vidlink',
+        'provider=cinesrc',
       );
     },
   );
 
-  it('uses the documented VidLink episode path and color parameter', () => {
+  it('uses the documented CineSrc episode path and color parameter', () => {
     const url = new URL(
       buildTmdbProviderUrl({
         tmdbId: 1399,
@@ -70,9 +72,12 @@ describe('TMDB player path parameters', () => {
         accentColor: '#557efc',
       }),
     );
-    expect(url.pathname).toBe('/tv/1399/2/3');
-    expect(url.searchParams.get('primaryColor')).toBe('557efc');
+    expect(url.pathname).toBe('/embed/tv/1399');
+    expect(url.searchParams.get('s')).toBe('2');
+    expect(url.searchParams.get('e')).toBe('3');
+    expect(url.searchParams.get('color')).toBe('#557efc');
     expect(url.searchParams.get('autoplay')).toBe('true');
+    expect(url.searchParams.get('autonext')).toBe('false');
     expect(url.searchParams.has('overlay')).toBe(false);
   });
 });

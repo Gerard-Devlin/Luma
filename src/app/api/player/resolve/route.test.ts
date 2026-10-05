@@ -48,8 +48,8 @@ describe('player resolver outbound requests', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  test.each(['videasy', 'vidking'])(
-    'resolves retired %s links using VidLink',
+  test.each(['videasy', 'vidking', 'vidlink'])(
+    'resolves retired %s links using CineSrc',
     async (provider) => {
       const response = await GET(
         new Request(
@@ -58,9 +58,9 @@ describe('player resolver outbound requests', () => {
       );
       const result = await response.json();
       expect(response.status).toBe(200);
-      expect(result.provider.id).toBe('vidlink');
-      expect(new URL(result.embedUrl).origin).toBe('https://vidlink.pro');
-      expect(new URL(result.embedUrl).pathname).toBe('/movie/550');
+      expect(result.provider.id).toBe('cinesrc');
+      expect(new URL(result.embedUrl).origin).toBe('https://cinesrc.st');
+      expect(new URL(result.embedUrl).pathname).toBe('/embed/movie/550');
       expect(result.storageId).toBe('550');
       expect(fetchMock).not.toHaveBeenCalled();
     },

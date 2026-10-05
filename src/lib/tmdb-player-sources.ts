@@ -1,5 +1,5 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
-export type TmdbPlayerProviderId = 'vidlink';
+export type TmdbPlayerProviderId = 'cinesrc';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
@@ -26,17 +26,17 @@ export interface TmdbPlayerPageUrlInput extends TmdbProviderUrlInput {
   score?: string | null;
 }
 
-export const DEFAULT_TMDB_PLAYER_PROVIDER: TmdbPlayerProviderId = 'vidlink';
+export const DEFAULT_TMDB_PLAYER_PROVIDER: TmdbPlayerProviderId = 'cinesrc';
 
 export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
   {
-    id: 'vidlink',
-    label: 'VidLink',
-    colorParam: 'primaryColor',
+    id: 'cinesrc',
+    label: 'CineSrc',
+    colorParam: 'color',
     defaultParams: {
       autoplay: 'true',
-      poster: 'true',
-      title: 'false',
+      autonext: 'false',
+      continueprompt: 'false',
     },
   },
 ];
@@ -92,8 +92,8 @@ function getProviderBaseUrl(
   episode: number,
 ): string {
   return mediaType === 'movie'
-    ? `https://vidlink.pro/movie/${tmdbId}`
-    : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+    ? `https://cinesrc.st/embed/movie/${tmdbId}`
+    : `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`;
 }
 
 export function getTmdbPlayerProvider(
@@ -127,7 +127,7 @@ export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {
 
   const accentColor = (input.accentColor || '').trim().replace(/^#/, '');
   if (accentColor && provider.colorParam) {
-    url.searchParams.set(provider.colorParam, accentColor);
+    url.searchParams.set(provider.colorParam, `#${accentColor}`);
   }
 
   const subtitleLang = (input.subtitleLang || '').trim();

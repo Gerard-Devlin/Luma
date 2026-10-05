@@ -281,7 +281,9 @@ function extractTmdbEmbedProgressMessage(
     'data' in payload
       ? payload.data
       : payload;
-  const eventName = findNestedString(data).toLowerCase();
+  const eventName = findNestedString(data)
+    .toLowerCase()
+    .replace(/^cinesrc:/, '');
   const currentTime = findNestedNumber(data, TMDB_EMBED_TIME_KEYS);
   const duration = findNestedNumber(data, TMDB_EMBED_DURATION_KEYS);
 
@@ -943,6 +945,7 @@ function PlayPageClient() {
     const targetOrigin = state.origin || '*';
     const seconds = Math.floor(state.playTime);
     [
+      { type: 'cinesrc:command', command: 'seek', args: [seconds] },
       { type: 'seek', time: seconds },
       { type: 'seekTo', time: seconds },
       { event: 'seek', currentTime: seconds },
@@ -1383,11 +1386,13 @@ function PlayPageClient() {
         return;
       }
 
+      if (event.origin !== getUrlOrigin(playerEmbedUrlRef.current)) return;
       const parsed = extractTmdbEmbedProgressMessage(event.data);
       if (!parsed) return;
 
       const state = tmdbEmbedProgressRef.current;
       if (!state) return;
+      if (event.origin !== state.origin) return;
 
       if (parsed.duration !== null && parsed.duration > 0) {
         state.totalTime = Math.floor(parsed.duration);
@@ -2122,6 +2127,7 @@ function PlayPageClient() {
                       title={`${displayTitle} player`}
                       allow='autoplay; encrypted-media; picture-in-picture; fullscreen'
                       allowFullScreen
+                      sandbox='allow-scripts allow-same-origin allow-presentation'
                       ref={tmdbEmbedIframeRef}
                       referrerPolicy='origin'
                       onError={() => {
