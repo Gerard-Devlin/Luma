@@ -383,6 +383,9 @@ function PlayPageClient() {
   const [playerProvider, setPlayerProvider] = useState(initialTmdbProvider);
   const [playerEmbedUrl, setPlayerEmbedUrl] = useState('');
   const [tmdbEpisodes, setTmdbEpisodes] = useState<TmdbEpisodeItem[]>([]);
+  const [tmdbEpisodesFailed, setTmdbEpisodesFailed] = useState(false);
+  const [tmdbEpisodesLoading, setTmdbEpisodesLoading] = useState(false);
+  const tmdbEpisodesRequestIdRef = useRef(0);
   const [seasonMenuOpen, setSeasonMenuOpen] = useState(false);
   const [seasonMenuRect, setSeasonMenuRect] = useState<{
     left: number;
@@ -1059,6 +1062,11 @@ function PlayPageClient() {
     setTmdbEpisodes(
       resolved.mediaType === 'tv' ? resolved.seasonDetail?.episodes || [] : []
     );
+    tmdbEpisodesRequestIdRef.current += 1;
+    setTmdbEpisodesLoading(false);
+    setTmdbEpisodesFailed(
+      resolved.mediaType === 'tv' && !resolved.seasonDetail
+    );
     setCurrentSource('tmdb');
     setCurrentId(resolved.storageId);
     setVideoTitle(syntheticDetail.title);
@@ -1076,6 +1084,36 @@ function PlayPageClient() {
     syncTmdbPlayerUrl(resolved, detailData);
     void saveTmdbPlaybackSnapshot(resolved, detailData, options);
     setIsVideoLoading(true);
+  };
+
+  const retryTmdbEpisodes = async () => {
+    const tmdbId = tmdbPlayerIdRef.current;
+    if (!tmdbId || tmdbEpisodesLoading) return;
+    const requestId = ++tmdbEpisodesRequestIdRef.current;
+    setTmdbEpisodesLoading(true);
+    try {
+      const resolved = await fetchTmdbPlayerResolve({
+        tmdbId,
+        mediaType: 'tv',
+        season: currentSeasonRef.current,
+        episode: currentEpisodeIndexRef.current + 1,
+        provider: playerProviderRef.current,
+      });
+      if (requestId !== tmdbEpisodesRequestIdRef.current) return;
+      setTmdbEpisodes(resolved.seasonDetail?.episodes || []);
+      setTmdbEpisodesFailed(!resolved.seasonDetail);
+      if (resolved.seasonDetail) {
+        setDetail(createSyntheticTmdbDetail(resolved, tmdbDetail));
+      }
+    } catch {
+      if (requestId === tmdbEpisodesRequestIdRef.current) {
+        setTmdbEpisodesFailed(true);
+      }
+    } finally {
+      if (requestId === tmdbEpisodesRequestIdRef.current) {
+        setTmdbEpisodesLoading(false);
+      }
+    }
   };
 
   const switchTmdbPlayback = async (input: {
@@ -2055,7 +2093,23 @@ function PlayPageClient() {
                   className='ui-glass-panel ui-token-text-muted p-5 text-center text-sm'
                   style={{ borderRadius: 'var(--ui-radius-row)' }}
                 >
-                  {t('common.noRelatedContentFound')}
+                  <p role={tmdbEpisodesFailed ? 'status' : undefined}>
+                    {t(
+                      tmdbEpisodesFailed
+                        ? 'play.episodesLoadFailed'
+                        : 'play.noEpisodes'
+                    )}
+                  </p>
+                  {tmdbEpisodesFailed ? (
+                    <button
+                      type='button'
+                      onClick={() => void retryTmdbEpisodes()}
+                      disabled={tmdbEpisodesLoading}
+                      className='ui-glass-control mt-3 px-4 py-2 disabled:opacity-50'
+                    >
+                      {t(tmdbEpisodesLoading ? 'common.loading' : 'play.retry')}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>

@@ -313,6 +313,8 @@ export const resources = {
         noPlayableSourceFound: 'No playable source found',
         playerLoadFailed:
           'The video player could not load. Please check your connection and try again.',
+        episodesLoadFailed: 'Episodes could not be loaded. Please retry.',
+        noEpisodes: 'No episodes are available for this season.',
         retry: 'Retry',
         readyStartingPlayback: 'Ready. Starting playback...',
         resolvingPlaybackSource: 'Resolving playback source...',
@@ -668,6 +670,8 @@ export const resources = {
         missingTmdbPlaybackId: '缺少 TMDB 播放 ID',
         noPlayableSourceFound: '未找到可播放源',
         playerLoadFailed: '视频播放器加载失败，请检查网络后重试。',
+        episodesLoadFailed: '剧集列表加载失败，请重试。',
+        noEpisodes: '这一季暂无剧集。',
         retry: '重试',
         readyStartingPlayback: '准备完成，正在开始播放...',
         resolvingPlaybackSource: '正在解析播放源...',
