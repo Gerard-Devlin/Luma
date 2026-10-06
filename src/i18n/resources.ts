@@ -314,6 +314,7 @@ export const resources = {
         playerLoadFailed:
           'The video player could not load. Please check your connection and try again.',
         episodesLoadFailed: 'Episodes could not be loaded. Please retry.',
+        selectSource: 'Source',
         noEpisodes: 'No episodes are available for this season.',
         retry: 'Retry',
         readyStartingPlayback: 'Ready. Starting playback...',
@@ -671,6 +672,7 @@ export const resources = {
         noPlayableSourceFound: '未找到可播放源',
         playerLoadFailed: '视频播放器加载失败，请检查网络后重试。',
         episodesLoadFailed: '剧集列表加载失败，请重试。',
+        selectSource: '播放源',
         noEpisodes: '这一季暂无剧集。',
         retry: '重试',
         readyStartingPlayback: '准备完成，正在开始播放...',

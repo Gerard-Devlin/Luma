@@ -7,6 +7,19 @@ import {
 } from './tmdb-player-sources';
 
 describe('TMDB player path parameters', () => {
+  it('uses an authenticated local player for Bingr without exposing arbitrary iframe hosts', () => {
+    const url = buildTmdbProviderUrl({
+      tmdbId: 63247,
+      mediaType: 'tv',
+      provider: 'bingr',
+      season: 2,
+      episode: 1,
+    });
+    expect(url).toBe('/player/direct?tmdbId=63247&type=tv&season=2&episode=1');
+    expect(
+      buildTmdbPlayerPageUrl({ tmdbId: 63247, provider: 'bingr' }),
+    ).toContain('provider=bingr');
+  });
   test.each([
     '1/../../admin',
     '123abc',
