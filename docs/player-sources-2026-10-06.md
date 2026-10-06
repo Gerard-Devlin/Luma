@@ -12,6 +12,13 @@ toggle them, and Escape closes them.
 - **Bingr** resolves HLS through the public API and plays it in Luma's Vidstack
   player. It never loads the provider's advertising page. Switching sources keeps
   the current playback position; switching episodes starts the new episode.
+- **VidSrc.buzz**, **VidFast**, and **VidSrc.wtf** are optional iframe sources.
+  Their menus say they may open advertisements or redirect. The owner explicitly
+  approved unrestricted embedding for these three providers after their sandbox
+  incompatibility was demonstrated. Only these fixed registry entries omit the
+  iframe sandbox; unknown providers fall back to restricted CineSrc.
+- The VidSrc.wtf `/1/` entry is the default player observed after selecting
+  Westworld S2 E1 on NyumatFlix (the purple Leon/Jill/Ada screen).
 
 The Bingr resolver was informed by NyumatFlix's public implementation:
 https://github.com/Nyumat/NyumatFlix/blob/main/apps/web/lib/scrape/providers/bingr.ts
@@ -41,5 +48,16 @@ same popup/navigation restrictions throughout.
 VidRock, VidFast, VidNest, the tested VidSrc mirror, and SuperEmbed refused a
 sandbox without popup privileges. The tested original/new VidSrc endpoints did
 not connect in this network. VidLux rendered controls but failed to produce a
-playable stream for these samples. These providers are not offered as working
-sources. Availability varies by title, network, and provider.
+playable stream for these samples. VidFast and VidSrc.wtf were subsequently
+approved as optional sources with advertising navigation enabled. The other
+incompatible candidates remain excluded. Availability varies by title, network,
+and provider.
+
+## Worker compatibility follow-up
+
+The Bingr API and media requests now include the browser User-Agent and language
+headers used by the reference resolver. Resolver failures return a coarse stage
+code so a deployment-specific failure can be diagnosed without exposing upstream
+response bodies, credentials, or signed media URLs.
+
+Endpoint references: https://vidsrc.buzz/ and https://vidfast.vc/ .

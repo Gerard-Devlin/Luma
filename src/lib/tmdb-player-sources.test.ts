@@ -1,12 +1,51 @@
 import {
   buildTmdbPlayerPageUrl,
   buildTmdbProviderUrl,
+  getTmdbPlayerSandbox,
   normalizePositiveInteger,
   normalizeTmdbId,
   normalizeTmdbPlayerProvider,
 } from './tmdb-player-sources';
 
 describe('TMDB player path parameters', () => {
+  test.each([
+    [
+      'vidsrc-buzz',
+      'https://vidsrc.buzz',
+      '/embed/movie/550',
+      '/embed/tv/63247/2/1',
+    ],
+    ['vidfast', 'https://vidfast.vc', '/movie/550', '/tv/63247/2/1'],
+    ['vidsrc-wtf', 'https://vidsrc.wtf', '/1/movie/550', '/1/tv/63247/2/1'],
+  ])(
+    'builds fixed movie and episode endpoints for %s',
+    (provider, origin, movie, tv) => {
+      const movieUrl = new URL(buildTmdbProviderUrl({ tmdbId: 550, provider }));
+      const tvUrl = new URL(
+        buildTmdbProviderUrl({
+          tmdbId: 63247,
+          mediaType: 'tv',
+          season: 2,
+          episode: 1,
+          provider,
+        }),
+      );
+      expect(movieUrl.origin).toBe(origin);
+      expect(movieUrl.pathname).toBe(movie);
+      expect(tvUrl.origin).toBe(origin);
+      expect(tvUrl.pathname).toBe(tv);
+      expect(getTmdbPlayerSandbox(provider)).toBeUndefined();
+    },
+  );
+
+  test.each(['cinesrc', 'bingr', 'https://evil.example', null])(
+    'keeps popup and top navigation restrictions for %s',
+    (provider) => {
+      expect(getTmdbPlayerSandbox(provider)).toBe(
+        'allow-scripts allow-same-origin allow-presentation',
+      );
+    },
+  );
   it('uses an authenticated local player for Bingr without exposing arbitrary iframe hosts', () => {
     const url = buildTmdbProviderUrl({
       tmdbId: 63247,
