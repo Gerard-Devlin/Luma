@@ -13,6 +13,7 @@ import {
   Clock3,
   Film,
   Info,
+  Layers,
   RefreshCw,
   Sparkles,
   Star,
@@ -43,6 +44,7 @@ import {
   normalizeTmdbId,
   normalizeTmdbPlayerMediaType,
   normalizeTmdbPlayerProvider,
+  TMDB_PLAYER_PROVIDERS,
 } from '@/lib/tmdb-player-sources';
 import { SearchResult } from '@/lib/types';
 
@@ -309,7 +311,7 @@ function extractTmdbEmbedProgressMessage(
 
 function getUrlOrigin(url: string): string {
   try {
-    return new URL(url).origin;
+    return new URL(url, window.location.href).origin;
   } catch {
     return '';
   }
@@ -318,7 +320,7 @@ function getUrlOrigin(url: string): string {
 function addResumeParamsToEmbedUrl(url: string, resumeTime: number): string {
   if (!url || !Number.isFinite(resumeTime) || resumeTime < 2) return url;
   try {
-    const nextUrl = new URL(url);
+    const nextUrl = new URL(url, window.location.href);
     const seconds = String(Math.floor(resumeTime));
     // Different embed providers use different names; unknown params are ignored.
     ['start', 'startAt', 't', 'time', 'resume', 'resumeTime'].forEach((key) => {
@@ -396,6 +398,71 @@ function PlayPageClient() {
   const seasonMenuRef = useRef<HTMLDivElement | null>(null);
   const episodeListRef = useRef<HTMLDivElement | null>(null);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
+  const episodePanelRegionRef = useRef<HTMLDivElement | null>(null);
+  const episodeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const episodeCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
+  const sourceMenuRegionRef = useRef<HTMLDivElement | null>(null);
+  const sourceTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const sourceCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const tmdbPlaybackRequestIdRef = useRef(0);
+
+  const openEpisodePanel = () => {
+    if (episodeCloseTimerRef.current)
+      clearTimeout(episodeCloseTimerRef.current);
+    setEpisodePanelOpen(true);
+  };
+  const scheduleEpisodePanelClose = () => {
+    if (episodeCloseTimerRef.current)
+      clearTimeout(episodeCloseTimerRef.current);
+    episodeCloseTimerRef.current = setTimeout(() => {
+      if (
+        episodePanelRegionRef.current?.matches(':hover') ||
+        seasonMenuRef.current?.matches(':hover')
+      )
+        return;
+      setEpisodePanelOpen(false);
+      closeSeasonMenu();
+    }, 160);
+  };
+  const openSourceMenu = () => {
+    if (sourceCloseTimerRef.current) clearTimeout(sourceCloseTimerRef.current);
+    setSourceMenuOpen(true);
+  };
+  const scheduleSourceMenuClose = () => {
+    if (sourceCloseTimerRef.current) clearTimeout(sourceCloseTimerRef.current);
+    sourceCloseTimerRef.current = setTimeout(() => {
+      if (!sourceMenuRegionRef.current?.matches(':hover'))
+        setSourceMenuOpen(false);
+    }, 160);
+  };
+
+  useEffect(
+    () => () => {
+      if (episodeCloseTimerRef.current)
+        clearTimeout(episodeCloseTimerRef.current);
+      if (sourceCloseTimerRef.current)
+        clearTimeout(sourceCloseTimerRef.current);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!sourceMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !sourceMenuRegionRef.current?.contains(event.target)
+      )
+        setSourceMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [sourceMenuOpen]);
   const castRailRef = useRef<HTMLDivElement | null>(null);
   const [canScrollCastLeft, setCanScrollCastLeft] = useState(false);
   const [canScrollCastRight, setCanScrollCastRight] = useState(false);
@@ -1123,6 +1190,7 @@ function PlayPageClient() {
   }) => {
     const tmdbId = tmdbPlayerIdRef.current;
     if (!tmdbId) return;
+    const requestId = ++tmdbPlaybackRequestIdRef.current;
 
     const nextMediaType = tmdbMediaTypeRef.current;
     const nextSeason = normalizePositiveInteger(
@@ -1139,7 +1207,17 @@ function PlayPageClient() {
     const nextProvider = normalizeTmdbPlayerProvider(
       input.provider ?? playerProviderRef.current
     );
+    if (nextProvider !== playerProviderRef.current) {
+      await saveTmdbEmbedPlayProgress(true);
+      resumeTimeRef.current = tmdbEmbedProgressRef.current?.playTime || 0;
+    } else if (
+      nextSeason !== currentSeasonRef.current ||
+      nextEpisode !== currentEpisodeIndexRef.current + 1
+    ) {
+      resumeTimeRef.current = 0;
+    }
 
+    if (requestId !== tmdbPlaybackRequestIdRef.current) return;
     setVideoLoadingStage('sourceChanging');
     setIsVideoLoading(true);
     setError(null);
@@ -1152,8 +1230,10 @@ function PlayPageClient() {
         episode: nextEpisode,
         provider: nextProvider,
       });
+      if (requestId !== tmdbPlaybackRequestIdRef.current) return;
       applyTmdbPlayback(resolved, tmdbDetail || null);
     } catch (err) {
+      if (requestId !== tmdbPlaybackRequestIdRef.current) return;
       setIsVideoLoading(false);
       setError(
         err instanceof Error
@@ -1987,9 +2067,35 @@ function PlayPageClient() {
   };
   const episodePanel =
     tmdbMode && tmdbMediaType === 'tv' ? (
-      <div className='pointer-events-none absolute bottom-0 left-0 right-0 z-[720] flex flex-col items-end gap-2 md:left-auto'>
+      <div
+        ref={episodePanelRegionRef}
+        className='pointer-events-none absolute bottom-0 left-0 right-0 z-[720] flex flex-col items-end gap-2 md:left-auto'
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') openEpisodePanel();
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === 'mouse') scheduleEpisodePanelClose();
+        }}
+        onBlur={(event) => {
+          if (
+            event.relatedTarget instanceof Node &&
+            (event.currentTarget.contains(event.relatedTarget) ||
+              seasonMenuRef.current?.contains(event.relatedTarget))
+          )
+            return;
+          if (!event.currentTarget.matches(':hover'))
+            setEpisodePanelOpen(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setEpisodePanelOpen(false);
+            closeSeasonMenu();
+            episodeTriggerRef.current?.focus();
+          }
+        }}
+      >
         <div
-          className={`pointer-events-auto absolute right-0 top-[calc(100%+0.5rem)] w-full origin-top-right transition-all duration-200 ease-out md:static md:w-[430px] md:origin-bottom-right ${
+          className={`pointer-events-auto absolute right-0 top-[calc(100%+0.5rem)] w-full origin-top-right transition-all duration-200 ease-out md:w-[430px] ${
             episodePanelOpen
               ? 'translate-y-0 scale-100 opacity-100'
               : 'pointer-events-none -translate-y-2 scale-[0.98] opacity-0 md:translate-y-3'
@@ -2117,8 +2223,16 @@ function PlayPageClient() {
         </div>
 
         <button
+          ref={episodeTriggerRef}
           type='button'
-          onClick={() => setEpisodePanelOpen((open) => !open)}
+          onClick={(event) => {
+            if (
+              event.detail > 0 &&
+              window.matchMedia('(hover: hover) and (pointer: fine)').matches
+            )
+              openEpisodePanel();
+            else setEpisodePanelOpen((open) => !open);
+          }}
           className={`pointer-events-auto ui-glass-control ui-episode-trigger group inline-flex items-center transition-transform hover:scale-[1.02] ${
             episodePanelOpen ? 'ui-glass-control-active' : ''
           }`}
@@ -2168,8 +2282,8 @@ function PlayPageClient() {
           <div className='h-12' aria-hidden='true' />
           <div>
             <div
-              className={`relative min-w-0 ${
-                tmdbMode && tmdbMediaType === 'tv' ? 'pb-16' : ''
+              className={`ui-player-surface relative min-w-0 ${
+                tmdbMode ? 'pb-16' : ''
               }`}
             >
               <div className='h-[300px] overflow-hidden rounded-[var(--ui-radius-card)] border border-white/0 shadow-lg dark:border-white/30 lg:h-[520px] xl:h-[650px] 2xl:h-[750px]'>
@@ -2241,6 +2355,97 @@ function PlayPageClient() {
               </div>
 
               {episodePanel}
+              {tmdbMode ? (
+                <div
+                  ref={sourceMenuRegionRef}
+                  className='absolute bottom-0 left-0 z-[730]'
+                  onPointerEnter={(event) => {
+                    if (event.pointerType === 'mouse') openSourceMenu();
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === 'mouse')
+                      scheduleSourceMenuClose();
+                  }}
+                  onBlur={(event) => {
+                    if (
+                      event.relatedTarget instanceof Node &&
+                      event.currentTarget.contains(event.relatedTarget)
+                    )
+                      return;
+                    if (!event.currentTarget.matches(':hover'))
+                      setSourceMenuOpen(false);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      setSourceMenuOpen(false);
+                      sourceTriggerRef.current?.focus();
+                    }
+                  }}
+                >
+                  <button
+                    ref={sourceTriggerRef}
+                    type='button'
+                    aria-label={t('play.selectSource')}
+                    aria-expanded={sourceMenuOpen}
+                    aria-haspopup='menu'
+                    aria-busy={isVideoLoading}
+                    onClick={(event) => {
+                      if (
+                        event.detail > 0 &&
+                        window.matchMedia('(hover: hover) and (pointer: fine)')
+                          .matches
+                      )
+                        openSourceMenu();
+                      else setSourceMenuOpen((open) => !open);
+                    }}
+                    className={`ui-glass-control ui-episode-trigger inline-flex items-center text-sm transition-transform hover:scale-[1.02] disabled:opacity-50 ${sourceMenuOpen ? 'ui-glass-control-active' : ''}`}
+                  >
+                    <Layers className='ui-token-text-secondary ui-episode-trigger-icon' />
+                    <span className='ui-token-text-primary font-semibold'>
+                      {
+                        TMDB_PLAYER_PROVIDERS.find(
+                          (provider) => provider.id === playerProvider
+                        )?.label
+                      }
+                    </span>
+                    <ChevronRight
+                      className={`ui-token-text-muted ui-episode-trigger-chevron transition-transform duration-200 ${sourceMenuOpen ? '-rotate-90' : 'rotate-90'}`}
+                    />
+                  </button>
+                  {sourceMenuOpen ? (
+                    <div
+                      role='menu'
+                      aria-label={t('play.selectSource')}
+                      className='ui-glass-panel absolute top-[calc(100%+0.5rem)] left-0 w-52 origin-top-left space-y-1 p-2'
+                    >
+                      <p className='ui-token-text-subtle px-3 py-1 text-xs'>
+                        {t('play.selectSource')}
+                      </p>
+                      {TMDB_PLAYER_PROVIDERS.map((provider) => (
+                        <button
+                          key={provider.id}
+                          type='button'
+                          role='menuitemradio'
+                          aria-checked={provider.id === playerProvider}
+                          onClick={() => {
+                            setSourceMenuOpen(false);
+                            if (provider.id !== playerProvider)
+                              void switchTmdbPlayback({
+                                provider: provider.id,
+                              });
+                          }}
+                          className={`ui-glass-row flex h-10 w-full items-center justify-between px-3 text-left text-sm ${provider.id === playerProvider ? 'ui-glass-control-active ui-token-text-strong' : 'ui-token-text-secondary'}`}
+                        >
+                          <span>{provider.label}</span>
+                          {provider.id === playerProvider ? (
+                            <Check className='h-4 w-4' />
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -2812,6 +3017,16 @@ function PlayPageClient() {
         ? createPortal(
             <div
               ref={seasonMenuRef}
+              onPointerEnter={(event) => {
+                if (
+                  event.pointerType === 'mouse' &&
+                  episodeCloseTimerRef.current
+                )
+                  clearTimeout(episodeCloseTimerRef.current);
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType === 'mouse') scheduleEpisodePanelClose();
+              }}
               role='listbox'
               className='ui-season-menu fixed z-[3000] max-h-72 overflow-hidden p-2'
               style={{

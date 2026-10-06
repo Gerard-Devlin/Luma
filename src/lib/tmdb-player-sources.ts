@@ -1,5 +1,5 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
-export type TmdbPlayerProviderId = 'cinesrc';
+export type TmdbPlayerProviderId = 'cinesrc' | 'bingr';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
@@ -29,6 +29,7 @@ export interface TmdbPlayerPageUrlInput extends TmdbProviderUrlInput {
 export const DEFAULT_TMDB_PLAYER_PROVIDER: TmdbPlayerProviderId = 'cinesrc';
 
 export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
+  { id: 'bingr', label: 'Bingr' },
   {
     id: 'cinesrc',
     label: 'CineSrc',
@@ -86,11 +87,21 @@ export function normalizeTmdbId(value?: number | string | null): number | null {
 }
 
 function getProviderBaseUrl(
+  provider: TmdbPlayerProviderId,
   mediaType: TmdbPlayerMediaType,
   tmdbId: number,
   season: number,
   episode: number,
 ): string {
+  if (provider === 'bingr') {
+    const params = new URLSearchParams({
+      tmdbId: String(tmdbId),
+      type: mediaType,
+      season: String(season),
+      episode: String(episode),
+    });
+    return `/player/direct?${params}`;
+  }
   return mediaType === 'movie'
     ? `https://cinesrc.st/embed/movie/${tmdbId}`
     : `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`;
@@ -119,7 +130,10 @@ export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {
   const provider = getTmdbPlayerProvider(input.provider);
   const season = normalizePositiveInteger(input.season, 1);
   const episode = normalizePositiveInteger(input.episode, 1);
-  const url = new URL(getProviderBaseUrl(mediaType, tmdbId, season, episode));
+  const url = new URL(
+    getProviderBaseUrl(provider.id, mediaType, tmdbId, season, episode),
+    'https://luma.invalid',
+  );
 
   Object.entries(provider.defaultParams || {}).forEach(([key, value]) => {
     url.searchParams.set(key, value);
@@ -135,7 +149,9 @@ export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {
     url.searchParams.set(provider.subtitleLangParam, subtitleLang);
   }
 
-  return url.toString();
+  return provider.id === 'bingr'
+    ? `${url.pathname}${url.search}`
+    : url.toString();
 }
 
 export function buildTmdbPlayerPageUrl(input: TmdbPlayerPageUrlInput): string {
