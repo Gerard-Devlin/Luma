@@ -12,6 +12,19 @@ export async function GET(request: Request) {
   } catch {
     return new Response('Unsupported media URL', { status: 400 });
   }
+  // Construct the outbound origin from constants rather than forwarding a
+  // user-supplied URL, even after validation. Only path/query can vary.
+  const target =
+    url.hostname === 'futurefocusedentrepreneurs.site'
+      ? new URL('https://futurefocusedentrepreneurs.site')
+      : url.hostname === 'remoteconsultinggroup.site'
+        ? new URL('https://remoteconsultinggroup.site')
+        : url.hostname === 'digitalassetlaunchpad.site'
+          ? new URL('https://digitalassetlaunchpad.site')
+          : null;
+  if (!target) return new Response('Unsupported media URL', { status: 400 });
+  target.pathname = url.pathname;
+  target.search = url.search;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
@@ -21,7 +34,7 @@ export async function GET(request: Request) {
     };
     const range = request.headers.get('range');
     if (range && /^bytes=\d*-\d*$/.test(range)) headers.Range = range;
-    const response = await fetch(url, {
+    const response = await fetch(target, {
       headers,
       signal: controller.signal,
       redirect: 'manual',

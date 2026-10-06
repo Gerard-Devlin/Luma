@@ -47,7 +47,7 @@ describe('Bingr resolver', () => {
     expect((await response.json()).streamUrl).toContain(
       '/api/player/media?url=',
     );
-    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
       'https://api.bingr.one/api/details/tv/63247',
       'https://api.bingr.one/api/stream',
     ]);

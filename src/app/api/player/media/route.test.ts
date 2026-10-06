@@ -48,5 +48,8 @@ describe('media relay outbound requests', () => {
     );
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(response.headers.has('set-cookie')).toBe(false);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      'https://futurefocusedentrepreneurs.site/segment',
+    );
   });
 });

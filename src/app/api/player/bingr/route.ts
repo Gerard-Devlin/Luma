@@ -28,10 +28,9 @@ export async function GET(request: Request) {
     headers: HEADERS,
   };
   try {
-    const detailsResponse = await fetch(
-      `${API}/details/${mediaType}/${tmdbId}`,
-      options,
-    );
+    const detailsUrl = new URL('https://api.bingr.one');
+    detailsUrl.pathname = `/api/details/${mediaType}/${Number(tmdbId)}`;
+    const detailsResponse = await fetch(detailsUrl, options);
     if (!detailsResponse.ok) throw new Error('Metadata unavailable');
     const details = (await detailsResponse.json()) as {
       title?: string;
