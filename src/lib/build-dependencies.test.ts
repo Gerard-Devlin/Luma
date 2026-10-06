@@ -4,7 +4,9 @@ import { createRequire } from 'module';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-const transformRequire = createRequire(require.resolve('@jest/transform'));
+const jestRequire = createRequire(require.resolve('jest'));
+const coreRequire = createRequire(jestRequire.resolve('@jest/core'));
+const transformRequire = createRequire(coreRequire.resolve('@jest/transform'));
 const istanbulRequire = createRequire(
   transformRequire.resolve('babel-plugin-istanbul'),
 );
