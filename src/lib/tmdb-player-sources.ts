@@ -1,5 +1,6 @@
 export type TmdbPlayerMediaType = 'movie' | 'tv';
-export type TmdbPlayerProviderId = 'cinesrc' | 'bingr';
+export type TmdbPlayerProviderId =
+  'cinesrc' | 'bingr' | 'vidsrc-buzz' | 'vidfast' | 'vidsrc-wtf';
 
 export interface TmdbPlayerProvider {
   id: TmdbPlayerProviderId;
@@ -7,6 +8,7 @@ export interface TmdbPlayerProvider {
   colorParam?: string;
   subtitleLangParam?: string;
   defaultParams?: Record<string, string>;
+  allowsAdvertisingNavigation?: boolean;
 }
 
 export interface TmdbProviderUrlInput {
@@ -39,6 +41,24 @@ export const TMDB_PLAYER_PROVIDERS: TmdbPlayerProvider[] = [
       autonext: 'false',
       continueprompt: 'false',
     },
+  },
+  {
+    id: 'vidsrc-buzz',
+    label: 'VidSrc.buzz',
+    defaultParams: { autoplay: 'true' },
+    allowsAdvertisingNavigation: true,
+  },
+  {
+    id: 'vidfast',
+    label: 'VidFast',
+    subtitleLangParam: 'sub',
+    defaultParams: { autoPlay: 'true', autoNext: 'false' },
+    allowsAdvertisingNavigation: true,
+  },
+  {
+    id: 'vidsrc-wtf',
+    label: 'VidSrc.wtf',
+    allowsAdvertisingNavigation: true,
   },
 ];
 
@@ -102,6 +122,21 @@ function getProviderBaseUrl(
     });
     return `/player/direct?${params}`;
   }
+  if (provider === 'vidsrc-buzz') {
+    return mediaType === 'movie'
+      ? `https://vidsrc.buzz/embed/movie/${tmdbId}`
+      : `https://vidsrc.buzz/embed/tv/${tmdbId}/${season}/${episode}`;
+  }
+  if (provider === 'vidfast') {
+    return mediaType === 'movie'
+      ? `https://vidfast.vc/movie/${tmdbId}`
+      : `https://vidfast.vc/tv/${tmdbId}/${season}/${episode}`;
+  }
+  if (provider === 'vidsrc-wtf') {
+    return mediaType === 'movie'
+      ? `https://vidsrc.wtf/1/movie/${tmdbId}`
+      : `https://vidsrc.wtf/1/tv/${tmdbId}/${season}/${episode}`;
+  }
   return mediaType === 'movie'
     ? `https://cinesrc.st/embed/movie/${tmdbId}`
     : `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`;
@@ -118,6 +153,14 @@ export function getTmdbPlayerProvider(
     throw new Error('TMDB player provider is not configured');
   }
   return provider;
+}
+
+export function getTmdbPlayerSandbox(
+  value?: string | null,
+): string | undefined {
+  return getTmdbPlayerProvider(value).allowsAdvertisingNavigation
+    ? undefined
+    : 'allow-scripts allow-same-origin allow-presentation';
 }
 
 export function buildTmdbProviderUrl(input: TmdbProviderUrlInput): string {

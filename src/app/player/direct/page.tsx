@@ -37,18 +37,33 @@ function DirectPlayer() {
     setStreamUrl('');
     void fetch(`/api/player/bingr?${query}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Unavailable source');
         const data = (await response.json()) as {
           streamUrl: string;
           title?: string;
+          code?: string;
         };
+        if (!response.ok) {
+          // eslint-disable-next-line no-console
+          console.error(
+            '[Bingr] Source unavailable:',
+            data.code || response.status,
+          );
+          throw new Error('Unavailable source');
+        }
         if (!controller.signal.aborted) {
           setTitle(data.title || '');
           setStreamUrl(data.streamUrl);
         }
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true);
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          // eslint-disable-next-line no-console
+          console.error(
+            '[Bingr] Playback request failed:',
+            error instanceof Error ? error.message : 'Unknown error',
+          );
+          setFailed(true);
+        }
       });
     return () => controller.abort();
   }, [query, attempt]);

@@ -56,6 +56,20 @@ describe('Bingr resolver', () => {
     ).toBe(true);
     const requestBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(requestBody.query).toMatchObject({ season: 2, episode: 1 });
+    expect(fetchMock.mock.calls[0][1].headers['User-Agent']).toContain(
+      'Mozilla/5.0',
+    );
+  });
+  it('reports the failing stage without exposing the provider response', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('private upstream body', { status: 403 }),
+    );
+    const response = await GET(
+      new Request('https://luma.example/api/player/bingr?tmdbId=550'),
+    );
+    const data = await response.json();
+    expect(data.code).toBe('metadata-http-403');
+    expect(JSON.stringify(data)).not.toContain('private upstream body');
   });
   it('rejects provider results that point to private or unknown hosts', async () => {
     fetchMock

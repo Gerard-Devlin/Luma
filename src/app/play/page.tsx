@@ -40,6 +40,7 @@ import {
   type TmdbPlayerMediaType,
   type TmdbPlayerProvider,
   buildTmdbPlayerPageUrl,
+  getTmdbPlayerSandbox,
   normalizePositiveInteger,
   normalizeTmdbId,
   normalizeTmdbPlayerMediaType,
@@ -2295,7 +2296,7 @@ function PlayPageClient() {
                       title={`${displayTitle} player`}
                       allow='autoplay; encrypted-media; picture-in-picture; fullscreen'
                       allowFullScreen
-                      sandbox='allow-scripts allow-same-origin allow-presentation'
+                      sandbox={getTmdbPlayerSandbox(playerProvider)}
                       ref={tmdbEmbedIframeRef}
                       referrerPolicy='origin'
                       onError={() => {
@@ -2434,9 +2435,16 @@ function PlayPageClient() {
                                 provider: provider.id,
                               });
                           }}
-                          className={`ui-glass-row flex h-10 w-full items-center justify-between px-3 text-left text-sm ${provider.id === playerProvider ? 'ui-glass-control-active ui-token-text-strong' : 'ui-token-text-secondary'}`}
+                          className={`ui-glass-row flex min-h-10 w-full items-center justify-between px-3 py-2 text-left text-sm ${provider.id === playerProvider ? 'ui-glass-control-active ui-token-text-strong' : 'ui-token-text-secondary'}`}
                         >
-                          <span>{provider.label}</span>
+                          <span>
+                            <span className='block'>{provider.label}</span>
+                            {provider.allowsAdvertisingNavigation ? (
+                              <span className='ui-token-text-subtle block text-xs'>
+                                {t('play.sourceMayShowAds')}
+                              </span>
+                            ) : null}
+                          </span>
                           {provider.id === playerProvider ? (
                             <Check className='h-4 w-4' />
                           ) : null}
