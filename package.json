@@ -40,6 +40,7 @@
     "@vidstack/react": "^1.15.6",
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",
+    "hls.js": "1.7.4",
     "i18next": "^22.5.1",
     "lucide-react": "^0.438.0",
     "media-icons": "^1.1.5",

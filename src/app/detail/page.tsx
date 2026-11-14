@@ -179,7 +179,7 @@ function buildDetailPlayUrl(
     poster?: string;
     score?: string;
   },
-  season = 1
+  season = 1,
 ): string {
   return buildTmdbPlayerPageUrl({
     tmdbId: detail.id,
@@ -350,13 +350,13 @@ function DetailPageClient() {
     status: streamTrailerStatus,
   } = useImdbTrailerStream(detail?.imdbId, Boolean(detail?.imdbId));
   const hasStreamTrailerSource = Boolean(
-    streamTrailerMp4Url || streamTrailerHlsUrl
+    streamTrailerMp4Url || streamTrailerHlsUrl,
   );
   const shouldRenderStreamTrailer = Boolean(
     hasStreamTrailerSource &&
-      streamTrailerStatus === 'ready' &&
-      !streamTrailerCompleted &&
-      !streamTrailerUnavailable
+    streamTrailerStatus === 'ready' &&
+    !streamTrailerCompleted &&
+    !streamTrailerUnavailable,
   );
   const favoriteSource = 'tmdb';
   const favoriteId = detail?.id ? String(detail.id) : '';
@@ -368,7 +368,7 @@ function DetailPageClient() {
     (
       ref: RefObject<HTMLDivElement>,
       setCanLeft: (value: boolean) => void,
-      setCanRight: (value: boolean) => void
+      setCanRight: (value: boolean) => void,
     ) => {
       const el = ref.current;
       if (!el) {
@@ -381,14 +381,14 @@ function DetailPageClient() {
       setCanLeft(el.scrollLeft > 4);
       setCanRight(el.scrollLeft < maxScrollLeft - 4);
     },
-    []
+    [],
   );
 
   const updateCastScrollState = useCallback(() => {
     updateRailScrollState(
       castRailRef,
       setCanScrollCastLeft,
-      setCanScrollCastRight
+      setCanScrollCastRight,
     );
   }, [updateRailScrollState]);
 
@@ -396,7 +396,7 @@ function DetailPageClient() {
     updateRailScrollState(
       recommendationRailRef,
       setCanScrollRecommendationLeft,
-      setCanScrollRecommendationRight
+      setCanScrollRecommendationRight,
     );
   }, [updateRailScrollState]);
 
@@ -404,7 +404,7 @@ function DetailPageClient() {
     updateRailScrollState(
       collectionRailRef,
       setCanScrollCollectionLeft,
-      setCanScrollCollectionRight
+      setCanScrollCollectionRight,
     );
   }, [updateRailScrollState]);
 
@@ -418,13 +418,18 @@ function DetailPageClient() {
         behavior: 'smooth',
       });
     },
-    []
+    [],
   );
 
   const toggleTrailerSound = useCallback(() => {
     const nextMuted = !trailerMuted;
     setTrailerMuted(nextMuted);
   }, [trailerMuted]);
+
+  const handleTrailerError = useCallback(() => {
+    setStreamTrailerVisible(false);
+    setStreamTrailerUnavailable(true);
+  }, []);
 
   useEffect(() => {
     if (!favoriteId || !favoriteStorageKey) {
@@ -453,7 +458,7 @@ function DetailPageClient() {
       'favoritesUpdated',
       (favorites: Record<string, unknown>) => {
         setFavorited(Boolean(favorites[favoriteStorageKey]));
-      }
+      },
     );
 
     return () => {
@@ -605,7 +610,7 @@ function DetailPageClient() {
       );
       */
     },
-    [detail, router]
+    [detail, router],
   );
 
   const closeSeasonPicker = useCallback(() => {
@@ -691,21 +696,14 @@ function DetailPageClient() {
                 hlsUrl={streamTrailerHlsUrl}
                 muted={trailerMuted}
                 className='h-full w-full scale-[1.08] object-cover object-center brightness-[0.56]'
-                onCanPlay={() => {
-                  setStreamTrailerUnavailable(false);
-                }}
                 onPlaying={() => {
                   setStreamTrailerVisible(true);
-                  setStreamTrailerUnavailable(false);
                 }}
                 onEnded={() => {
                   setStreamTrailerVisible(false);
                   setStreamTrailerCompleted(true);
                 }}
-                onError={() => {
-                  setStreamTrailerVisible(false);
-                  setStreamTrailerUnavailable(true);
-                }}
+                onError={handleTrailerError}
               />
             </div>
           ) : null}
@@ -1077,7 +1075,7 @@ function DetailPageClient() {
                             year: item.year,
                             poster: item.poster,
                             score: item.score,
-                          })
+                          }),
                         )
                       }
                       className='group flex w-[132px] flex-shrink-0 flex-col text-left'
@@ -1145,7 +1143,7 @@ function DetailPageClient() {
                             year: item.year,
                             poster: item.poster,
                             score: item.score,
-                          })
+                          }),
                         )
                       }
                       className='group flex w-[132px] flex-shrink-0 flex-col text-left'
@@ -1219,8 +1217,8 @@ function RailButton({
         align === 'poster'
           ? 'top-[99px] -translate-y-1/2'
           : align === 'avatar'
-          ? 'top-12 -translate-y-1/2'
-          : 'bottom-0 top-0'
+            ? 'top-12 -translate-y-1/2'
+            : 'bottom-0 top-0'
       } ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ pointerEvents: 'none' }}
     >

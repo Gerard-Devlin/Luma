@@ -72,7 +72,8 @@ const runtimeCaching = [
     urlPattern: ({ url }) =>
       self.origin === url.origin &&
       (url.pathname.startsWith('/api/tmdb/') ||
-        url.pathname.startsWith('/api/player/')),
+        url.pathname.startsWith('/api/player/') ||
+        url.pathname.startsWith('/api/trailers/')),
     handler: 'NetworkOnly',
     method: 'GET',
   },

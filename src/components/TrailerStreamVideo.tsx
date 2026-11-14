@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type TrailerStreamVideoProps = {
   mp4Url: string | null;
   hlsUrl: string | null;
   muted: boolean;
   className?: string;
-  onCanPlay?: () => void;
   onPlaying?: () => void;
   onEnded?: () => void;
   onError?: () => void;
@@ -22,65 +21,65 @@ export default function TrailerStreamVideo({
   hlsUrl,
   muted,
   className,
-  onCanPlay,
   onPlaying,
   onEnded,
   onError,
 }: TrailerStreamVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [failedMp4Url, setFailedMp4Url] = useState<string | null>(null);
+  const useMp4 = Boolean(mp4Url && mp4Url !== failedMp4Url);
+  const url = useMp4 ? mp4Url : hlsUrl;
+
+  const handleSourceError = useCallback(() => {
+    if (useMp4 && hlsUrl) {
+      setFailedMp4Url(mp4Url);
+    } else {
+      onError?.();
+    }
+  }, [hlsUrl, mp4Url, onError, useMp4]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !url) return;
 
-    const clearSource = () => {
+    let cancelled = false;
+    let destroyHls: (() => void) | undefined;
+
+    if (useMp4 || canPlayNativeHls(video)) {
+      video.src = url;
+    } else {
+      void import('hls.js')
+        .then(({ default: Hls }) => {
+          if (cancelled) return;
+          if (!Hls.isSupported()) {
+            handleSourceError();
+            return;
+          }
+
+          const hls = new Hls();
+          destroyHls = () => hls.destroy();
+          hls.on(Hls.Events.ERROR, (_, error) => {
+            if (!cancelled && error.fatal) handleSourceError();
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+        })
+        .catch(() => {
+          if (!cancelled) handleSourceError();
+        });
+    }
+
+    return () => {
+      cancelled = true;
+      destroyHls?.();
       video.removeAttribute('src');
       video.load();
     };
-
-    if (mp4Url) {
-      video.src = mp4Url;
-      return () => {
-        clearSource();
-      };
-    }
-
-    if (hlsUrl) {
-      if (canPlayNativeHls(video)) {
-        video.src = hlsUrl;
-        return () => {
-          clearSource();
-        };
-      }
-    }
-
-    return undefined;
-  }, [hlsUrl, mp4Url]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.muted = muted;
-    const tryPlay = () => {
-      video.muted = muted;
-      void video.play().catch(() => {
-        // A play() rejection is often transient while the src/HLS attachment is
-        // settling. Native media errors still flow through the video onError.
-      });
-    };
-
-    tryPlay();
-    video.addEventListener('loadeddata', tryPlay);
-    video.addEventListener('canplay', tryPlay);
-    return () => {
-      video.removeEventListener('loadeddata', tryPlay);
-      video.removeEventListener('canplay', tryPlay);
-    };
-  }, [hlsUrl, mp4Url, muted]);
+  }, [handleSourceError, url, useMp4]);
 
   return (
     <video
+      key={url}
       ref={videoRef}
       className={className}
       controls={false}
@@ -95,10 +94,17 @@ export default function TrailerStreamVideo({
       onContextMenu={(event) => {
         event.preventDefault();
       }}
-      onCanPlay={onCanPlay}
+      onCanPlay={(event) => {
+        const video = event.currentTarget;
+        if (video.paused) {
+          void video.play().catch(() => {
+            // Leave the backdrop visible if the browser blocks autoplay.
+          });
+        }
+      }}
       onPlaying={onPlaying}
       onEnded={onEnded}
-      onError={onError}
+      onError={handleSourceError}
     />
   );
 }
