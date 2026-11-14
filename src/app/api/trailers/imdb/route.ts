@@ -6,14 +6,7 @@ import {
   pickBestMp4TrailerStream,
 } from '@/lib/trailer-stream';
 
-
 const IMDB_ID_PATTERN = /^tt\d+$/;
-
-const buildCacheHeaders = (): HeadersInit => ({
-  'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-  'CDN-Cache-Control': 'public, s-maxage=3600',
-  'Vercel-CDN-Cache-Control': 'public, s-maxage=3600',
-});
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +15,7 @@ export async function GET(request: Request) {
   if (!IMDB_ID_PATTERN.test(imdbId)) {
     return NextResponse.json(
       { url: null, hlsUrl: null, error: 'invalid_imdb_id' },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -34,18 +27,18 @@ export async function GET(request: Request) {
     if (!url && !hlsUrl) {
       return NextResponse.json(
         { url: null, hlsUrl: null, error: 'no_stream' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { url: url ?? null, hlsUrl: hlsUrl ?? null },
-      { headers: buildCacheHeaders() }
+      { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch {
     return NextResponse.json(
       { url: null, hlsUrl: null, error: 'fetch_failed' },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

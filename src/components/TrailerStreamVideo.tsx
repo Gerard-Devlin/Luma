@@ -9,8 +9,12 @@ type TrailerStreamVideoProps = {
   className?: string;
   onPlaying?: () => void;
   onEnded?: () => void;
+  onSourceChange?: () => void;
   onError?: () => void;
 };
+
+const DIRECT_STARTUP_TIMEOUT_MS = 8000;
+const FALLBACK_STARTUP_TIMEOUT_MS = 20000;
 
 const canPlayNativeHls = (video: HTMLVideoElement): boolean =>
   video.canPlayType('application/vnd.apple.mpegurl') !== '' ||
@@ -23,20 +27,34 @@ export default function TrailerStreamVideo({
   className,
   onPlaying,
   onEnded,
+  onSourceChange,
   onError,
 }: TrailerStreamVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [failedMp4Url, setFailedMp4Url] = useState<string | null>(null);
-  const useMp4 = Boolean(mp4Url && mp4Url !== failedMp4Url);
-  const url = useMp4 ? mp4Url : hlsUrl;
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sources = [
+    ...(mp4Url ? [{ url: mp4Url, hls: false }] : []),
+    ...(hlsUrl ? [{ url: hlsUrl, hls: true }] : []),
+    ...(mp4Url?.startsWith('https://imdb-video.media-imdb.com/')
+      ? [
+          {
+            url: `/api/trailers/imdb/media?url=${encodeURIComponent(mp4Url)}`,
+            hls: false,
+          },
+        ]
+      : []),
+  ];
+  const { url, hls: useHls } = sources[sourceIndex] ?? {};
+  const hasNextSource = sourceIndex + 1 < sources.length;
 
   const handleSourceError = useCallback(() => {
-    if (useMp4 && hlsUrl) {
-      setFailedMp4Url(mp4Url);
+    if (hasNextSource) {
+      onSourceChange?.();
+      setSourceIndex(sourceIndex + 1);
     } else {
       onError?.();
     }
-  }, [hlsUrl, mp4Url, onError, useMp4]);
+  }, [hasNextSource, onError, onSourceChange, sourceIndex]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -44,8 +62,16 @@ export default function TrailerStreamVideo({
 
     let cancelled = false;
     let destroyHls: (() => void) | undefined;
+    const startupTimeout = window.setTimeout(
+      handleSourceError,
+      sourceIndex === 0 && !useHls
+        ? DIRECT_STARTUP_TIMEOUT_MS
+        : FALLBACK_STARTUP_TIMEOUT_MS,
+    );
+    const clearStartupTimeout = () => window.clearTimeout(startupTimeout);
+    video.addEventListener('playing', clearStartupTimeout, { once: true });
 
-    if (useMp4 || canPlayNativeHls(video)) {
+    if (!useHls || canPlayNativeHls(video)) {
       video.src = url;
     } else {
       void import('hls.js')
@@ -71,11 +97,13 @@ export default function TrailerStreamVideo({
 
     return () => {
       cancelled = true;
+      clearStartupTimeout();
+      video.removeEventListener('playing', clearStartupTimeout);
       destroyHls?.();
       video.removeAttribute('src');
       video.load();
     };
-  }, [handleSourceError, url, useMp4]);
+  }, [handleSourceError, sourceIndex, url, useHls]);
 
   return (
     <video

@@ -11,7 +11,7 @@ interface ImdbTrailerStreamResult {
 }
 
 const parseTrailerStreamBody = (
-  body: unknown
+  body: unknown,
 ): { mp4Url: string | null; hlsUrl: string | null } => {
   if (!body || typeof body !== 'object') {
     return { mp4Url: null, hlsUrl: null };
@@ -30,7 +30,7 @@ const parseTrailerStreamBody = (
 
 export function useImdbTrailerStream(
   imdbId: string | undefined,
-  enabled: boolean
+  enabled: boolean,
 ): ImdbTrailerStreamResult {
   const [mp4Url, setMp4Url] = useState<string | null>(null);
   const [hlsUrl, setHlsUrl] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function useImdbTrailerStream(
       try {
         const response = await fetch(
           `/api/trailers/imdb?imdbId=${encodeURIComponent(imdbId as string)}`,
-          { signal: controller.signal }
+          { signal: controller.signal, cache: 'no-store' },
         );
         const body: unknown = await response.json().catch(() => null);
         if (controller.signal.aborted) return;

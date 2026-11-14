@@ -426,10 +426,14 @@ function DetailPageClient() {
     setTrailerMuted(nextMuted);
   }, [trailerMuted]);
 
-  const handleTrailerError = useCallback(() => {
+  const showTrailerPoster = useCallback(() => {
     setStreamTrailerVisible(false);
-    setStreamTrailerUnavailable(true);
   }, []);
+
+  const handleTrailerError = useCallback(() => {
+    showTrailerPoster();
+    setStreamTrailerUnavailable(true);
+  }, [showTrailerPoster]);
 
   useEffect(() => {
     if (!favoriteId || !favoriteStorageKey) {
@@ -668,24 +672,9 @@ function DetailPageClient() {
     >
       <div className='min-h-screen bg-black text-white'>
         <section className='relative min-h-screen overflow-hidden bg-black'>
-          {heroImage ? (
-            <Image
-              src={safeImageUrl(heroImage)}
-              alt={detail.title}
-              fill
-              priority
-              className='object-cover object-center brightness-[0.56]'
-              sizes='100vw'
-            />
-          ) : (
-            <div className='absolute inset-0 bg-zinc-900' />
-          )}
-
           {shouldRenderStreamTrailer ? (
             <div
-              className={`pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                showStreamTrailerBackground ? 'opacity-100' : 'opacity-0'
-              }`}
+              className='pointer-events-none absolute inset-0 overflow-hidden'
               aria-hidden='true'
             >
               <TrailerStreamVideo
@@ -703,31 +692,30 @@ function DetailPageClient() {
                   setStreamTrailerVisible(false);
                   setStreamTrailerCompleted(true);
                 }}
+                onSourceChange={showTrailerPoster}
                 onError={handleTrailerError}
               />
             </div>
           ) : null}
 
-          {shouldRenderStreamTrailer ? (
-            <div
-              className={`pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                showStreamTrailerBackground ? 'opacity-0' : 'opacity-100'
-              }`}
-              aria-hidden='true'
-            >
-              {heroImage ? (
-                <Image
-                  src={safeImageUrl(heroImage)}
-                  alt=''
-                  fill
-                  className='object-cover object-center brightness-[0.56]'
-                  sizes='100vw'
-                />
-              ) : (
-                <div className='absolute inset-0 bg-zinc-900' />
-              )}
-            </div>
-          ) : null}
+          <div
+            className={`pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              showStreamTrailerBackground ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {heroImage ? (
+              <Image
+                src={safeImageUrl(heroImage)}
+                alt={detail.title}
+                fill
+                priority
+                className='object-cover object-center brightness-[0.56]'
+                sizes='100vw'
+              />
+            ) : (
+              <div className='absolute inset-0 bg-zinc-900' />
+            )}
+          </div>
 
           <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 md:from-black/50 md:via-black/15 md:to-transparent' />
           <div className='absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/5 md:from-black/30 md:to-transparent' />

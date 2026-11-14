@@ -77,6 +77,12 @@ const runtimeCaching = [
     handler: 'NetworkOnly',
     method: 'GET',
   },
+  {
+    // IMDb URLs are signed and video playback relies on byte-range responses.
+    urlPattern: /^https:\/\/imdb-video\.media-imdb\.com\//,
+    handler: 'NetworkOnly',
+    method: 'GET',
+  },
   ...defaultRuntimeCaching,
 ];
 
